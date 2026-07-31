@@ -205,6 +205,74 @@ async function getActiveAccount(userId) {
 }
 
 // ---------------------------------------------------------------------
+// CRM persistence — every inbound webhook event and outbound send gets
+// written to crm_leads/crm_messages so modules/inbox (which only reads
+// crm_messages) actually has something to show. Without this, the webhook
+// handler was a dead end: events arrived, got logged to stdout, and
+// nothing else ever knew about them.
+// ---------------------------------------------------------------------
+async function resolveClientId(userId) {
+  const { data, error } = await supabase.from('crm_profiles').select('client_id').eq('id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.client_id) throw new Error(`No CRM client found for user ${userId}.`);
+  return data.client_id;
+}
+
+// Webhooks are unauthenticated (Meta calls them, not a logged-in user) — the
+// only thing tying an inbound message back to a client is which of *our*
+// numbers it arrived on.
+async function resolveClientByPhoneNumberId(phoneNumberId) {
+  const { data: account, error } = await supabase.from('crm_wa_accounts')
+    .select('user_id').eq('phone_number_id', phoneNumberId).eq('is_active', true).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!account) return null;
+  return { userId: account.user_id, clientId: await resolveClientId(account.user_id) };
+}
+
+async function findOrCreateLeadByPhone(clientId, phone) {
+  const { data: existing, error: findErr } = await supabase.from('crm_leads')
+    .select('id').eq('client_id', clientId).eq('phone', phone).maybeSingle();
+  if (findErr) throw new Error(findErr.message);
+  if (existing) return existing.id;
+  const { data, error } = await supabase.from('crm_leads')
+    .insert({ client_id: clientId, phone, source: 'whatsapp' }).select('id').single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+async function recordMessage(clientId, leadId, { direction, messageType = 'text', body, externalId, status, sentBy }) {
+  const { error } = await supabase.from('crm_messages').insert({
+    client_id: clientId, lead_id: leadId, channel: 'whatsapp', direction,
+    message_type: messageType, body: body || '', external_id: externalId || null,
+    is_read: direction === 'out', status: status || null, sent_by: sentBy || null,
+  });
+  if (error) throw new Error(error.message);
+  await supabase.from('crm_leads').update({
+    last_message: body || '', last_message_at: new Date().toISOString(),
+    needs_reply: direction === 'in',
+  }).eq('id', leadId);
+}
+
+/** Called by routes.js for each 'message' webhook event — persists it as an inbound crm_messages row. */
+async function handleInboundEvent(event) {
+  const ctx = await resolveClientByPhoneNumberId(event.phoneNumberId);
+  if (!ctx) { console.warn(`[whatsapp] inbound message on unknown phone_number_id ${event.phoneNumberId} — is that account connected here?`); return; }
+  const leadId = await findOrCreateLeadByPhone(ctx.clientId, event.from);
+  const buttonReply = event.interactiveReply?.button_reply?.title;
+  const listReply = event.interactiveReply?.list_reply?.title;
+  const body = event.text || buttonReply || listReply || '[unsupported message type]';
+  const messageType = event.interactiveReply ? 'interactive' : (event.text ? 'text' : 'unknown');
+  await recordMessage(ctx.clientId, leadId, { direction: 'in', messageType, body, externalId: event.messageId });
+}
+
+/** Called by routes.js for each 'status' webhook event — updates the matching outbound row's delivery status. */
+async function handleStatusEvent(event) {
+  const { error } = await supabase.from('crm_messages')
+    .update({ status: event.status }).eq('external_id', event.messageId).eq('direction', 'out');
+  if (error) console.error('[whatsapp] failed to update message status:', error.message);
+}
+
+// ---------------------------------------------------------------------
 // Sending
 // ---------------------------------------------------------------------
 async function sendRaw(phoneNumberId, accessToken, payload) {
@@ -218,11 +286,26 @@ async function sendRaw(phoneNumberId, accessToken, payload) {
   return data.messages[0].id;
 }
 
+// Best-effort CRM logging wrapper — a message that sent successfully via
+// Meta should never come back as an error just because our own bookkeeping
+// failed, so failures here are logged, not thrown.
+async function logOutbound(userId, to, { messageType, body, externalId }) {
+  try {
+    const clientId = await resolveClientId(userId);
+    const leadId = await findOrCreateLeadByPhone(clientId, to);
+    await recordMessage(clientId, leadId, { direction: 'out', messageType, body, externalId, status: 'sent', sentBy: userId });
+  } catch (err) {
+    console.error('[whatsapp] sent to Meta but failed to log to CRM:', err.message);
+  }
+}
+
 /** High-level send: looks up the user's active account and sends a text/button/list/cta message. */
 async function sendMessage(userId, { to, kind = 'text', cfg, vars }) {
   const account = await getActiveAccount(userId);
   const payload = buildMessagePayload(kind, cfg, to, vars);
   const messageId = await sendRaw(account.phone_number_id, decryptToken(account.access_token_enc), payload);
+  const bodyPreview = kind === 'text' ? renderTemplate(cfg.body, vars) : renderTemplate(cfg.body || cfg.displayText || `[${kind}]`, vars);
+  await logOutbound(userId, to, { messageType: kind, body: bodyPreview, externalId: messageId });
   return { messageId, phoneNumberId: account.phone_number_id };
 }
 
@@ -231,6 +314,7 @@ async function sendTemplate(userId, { to, name, language, components }) {
   const account = await getActiveAccount(userId);
   const payload = buildTemplatePayload(to, { name, language, components });
   const messageId = await sendRaw(account.phone_number_id, decryptToken(account.access_token_enc), payload);
+  await logOutbound(userId, to, { messageType: 'template', body: `[template: ${name}]`, externalId: messageId });
   return { messageId, phoneNumberId: account.phone_number_id };
 }
 
@@ -293,4 +377,6 @@ module.exports = {
   verifySubscription,
   verifySignature,
   parseInboundEvents,
+  handleInboundEvent,
+  handleStatusEvent,
 };

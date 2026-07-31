@@ -31,7 +31,7 @@ router.get('/oauth/:service/url', requireAuth, (req, res) => {
   const { service } = req.params;
   try {
     if (service === 'google') return res.json({ url: buildGoogleAuthUrl(req.user.id, req.query.return_to) });
-    if (['facebook', 'instagram', 'threads'].includes(service)) {
+    if (['facebook', 'instagram', 'threads', 'linkedin'].includes(service)) {
       return res.json({ url: metaConnections.buildAuthUrl(service, req.user.id, req.query.return_to) });
     }
     res.status(400).json({ error: `Unknown OAuth service "${service}"` });

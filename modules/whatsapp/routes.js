@@ -20,9 +20,11 @@ router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody
   if (!valid) return console.warn('[whatsapp webhook] rejected: bad signature');
   const events = service.parseInboundEvents(req.body);
   for (const event of events) {
-    // Wire this into your CRM's lead/conversation pipeline (create-or-find
-    // lead by `event.from`, store the inbound message, run automations, etc).
-    console.log('[whatsapp webhook]', event.type, event);
+    const handler = event.type === 'message' ? service.handleInboundEvent
+      : event.type === 'status' ? service.handleStatusEvent
+      : null;
+    if (!handler) continue;
+    handler(event).catch((err) => console.error(`[whatsapp webhook] failed to record ${event.type} event:`, err.message));
   }
 });
 

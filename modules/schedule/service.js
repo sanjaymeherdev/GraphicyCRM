@@ -7,10 +7,9 @@ const PLATFORM_SERVICES = {
   facebook: () => require('../facebook/service'),
   instagram: () => require('../instagram/service'),
   threads: () => require('../threads/service'),
-  // linkedin: not implemented in this backend yet — schema allows it as a
-  // caption-only target (see migrations comment); publish attempts fail
-  // loudly below so it shows up as a per-platform error rather than silently
-  // no-op'ing.
+  // LinkedIn is caption-only (see crm_scheduled_posts.media_url comment in
+  // migrations/schema_full.sql) — publishPost below ignores media_url for it.
+  linkedin: () => require('../linkedin/service'),
 };
 
 async function listPosts(clientId, { status } = {}) {

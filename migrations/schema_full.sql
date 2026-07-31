@@ -38,14 +38,14 @@ create table if not exists crm_oauth_tokens (
 );
 
 -- ---------------------------------------------------------------------
--- Meta platform connections — shared by facebook, instagram, threads modules.
--- One row per (user, platform, account_id) — a user could theoretically
--- connect multiple Pages/accounts per platform.
+-- Platform connections — shared by facebook, instagram, threads, linkedin
+-- modules. One row per (user, platform, account_id) — a user could
+-- theoretically connect multiple Pages/accounts per platform.
 -- ---------------------------------------------------------------------
 create table if not exists crm_connections (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  platform text not null check (platform in ('facebook','instagram','threads')),
+  platform text not null check (platform in ('facebook','instagram','threads','linkedin')),
   account_name text,
   account_id text not null,
   page_id text,

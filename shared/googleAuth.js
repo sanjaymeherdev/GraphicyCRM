@@ -101,6 +101,10 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/documents',
+  // drive.file (not full drive scope) — least-privilege: only reaches files
+  // this app creates/opens, which covers modules/docs' copyDoc() (Drive API
+  // file-copy) without granting blanket access to a user's whole Drive.
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 

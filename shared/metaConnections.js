@@ -31,6 +31,14 @@ const OAUTH_CONFIGS = {
     clientId: process.env.TH_APP_ID,
     clientSecret: process.env.TH_SECRET,
   },
+  // Sign In with LinkedIn (OpenID Connect) + Share on LinkedIn — personal
+  // profile posting only, no Company Page / Community Management access.
+  linkedin: {
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    scope: 'openid profile w_member_social',
+    clientId: process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+  },
 };
 
 function buildAuthUrl(platform, userId, returnTo) {
@@ -144,6 +152,38 @@ async function exchangeThreadsCode(code, redirectUri) {
   return { accountId: meRes.data.id, accountName: `@${meRes.data.username}`, accessToken: longToken, expiresAt };
 }
 
+// LinkedIn's OAuth code exchange is a single hop (no short->long token
+// exchange like the Meta platforms above) — the access_token it returns is
+// already valid for up to 60 days. userinfo (OIDC) gives us `sub`, the
+// LinkedIn member id, which modules/linkedin/service.js turns into the
+// author URN (urn:li:person:<sub>) required by the Share API.
+async function exchangeLinkedInCode(code, redirectUri) {
+  const config = OAUTH_CONFIGS.linkedin;
+  const tokenRes = await axios.post(
+    'https://www.linkedin.com/oauth/v2/accessToken',
+    new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+    }),
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+  const accessToken = tokenRes.data.access_token;
+  const expiresAt = tokenRes.data.expires_in ? new Date(Date.now() + tokenRes.data.expires_in * 1000) : null;
+
+  const userinfoRes = await axios.get('https://api.linkedin.com/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return {
+    accountId: userinfoRes.data.sub,
+    accountName: userinfoRes.data.name || userinfoRes.data.email || null,
+    accessToken,
+    expiresAt,
+  };
+}
+
 module.exports = {
   APP_BASE_URL,
   buildAuthUrl,
@@ -153,4 +193,5 @@ module.exports = {
   exchangeFacebookCode,
   exchangeInstagramCode,
   exchangeThreadsCode,
+  exchangeLinkedInCode,
 };
