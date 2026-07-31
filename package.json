@@ -1,0 +1,22 @@
+{
+  "name": "crm-backend",
+  "version": "1.0.0",
+  "description": "Modular CRM backend: whatsapp, facebook, instagram, threads, gmail, sheets, docs, ai-bot — one unified login (Supabase Auth + JWT/session).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.21.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
