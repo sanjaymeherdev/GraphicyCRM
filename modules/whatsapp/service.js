@@ -341,18 +341,24 @@ async function assertWithinReplyWindow(clientId, to) {
   }
 }
 
-/** High-level send: looks up the user's active account and sends a text/button/list/cta message. */
-async function sendMessage(userId, { to, kind = 'text', cfg, vars }) {
+/** High-level send: looks up the user's active account and sends a text/button/list/cta message.
+ * Pass `skipCrmLog: true` when the caller already knows the correct leadId and will log the
+ * message itself (e.g. modules/leads' reply endpoint) — otherwise this resolves the lead by
+ * phone match, which is usually right but can diverge from a caller's own already-resolved lead
+ * if the stored phone format differs, silently splitting one conversation across two leads. */
+async function sendMessage(userId, { to, kind = 'text', cfg, vars, skipCrmLog = false }) {
   const account = await getActiveAccount(userId);
   const clientId = await resolveClientId(userId);
   await assertWithinReplyWindow(clientId, to);
   const payload = buildMessagePayload(kind, cfg, to, vars);
   const messageId = await sendRaw(account.phone_number_id, decryptToken(account.access_token_enc), payload);
   const bodyPreview = kind === 'text' ? renderTemplate(cfg.body, vars) : renderTemplate(cfg.body || cfg.displayText || `[${kind}]`, vars);
-  try {
-    await recordMessage(clientId, await findOrCreateLeadByPhone(clientId, to), { direction: 'out', messageType: kind, body: bodyPreview, externalId: messageId, status: 'sent', sentBy: userId });
-  } catch (err) {
-    console.error('[whatsapp] sent to Meta but failed to log to CRM:', err.message);
+  if (!skipCrmLog) {
+    try {
+      await recordMessage(clientId, await findOrCreateLeadByPhone(clientId, to), { direction: 'out', messageType: kind, body: bodyPreview, externalId: messageId, status: 'sent', sentBy: userId });
+    } catch (err) {
+      console.error('[whatsapp] sent to Meta but failed to log to CRM:', err.message);
+    }
   }
   return { messageId, phoneNumberId: account.phone_number_id };
 }

@@ -52,7 +52,7 @@ router.post('/:id/messages', async (req, res) => {
       if (channel === 'whatsapp') {
         if (!lead.phone) throw new Error('Lead has no phone number on file');
         const digits = lead.phone.replace(/\D/g, '');
-        const result = await whatsapp.sendMessage(req.user.id, { to: digits, kind: 'text', cfg: { body } });
+        const result = await whatsapp.sendMessage(req.user.id, { to: digits, kind: 'text', cfg: { body }, skipCrmLog: true });
         external_id = result.messageId;
       } else if (channel === 'gmail') {
         if (!lead.email) throw new Error('Lead has no email on file');

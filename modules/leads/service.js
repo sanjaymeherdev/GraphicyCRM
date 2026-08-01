@@ -2,6 +2,10 @@
 // GET/POST /api/leads/:id/messages
 const { supabase } = require('../../shared/db');
 
+function normalizePhone(phone) {
+  return phone ? phone.replace(/\D/g, '') : phone;
+}
+
 async function listLeads(clientId, { status, source } = {}) {
   let q = supabase.from('crm_leads').select('*').eq('client_id', clientId).order('updated_at', { ascending: false });
   if (status) q = q.eq('status', status);
@@ -13,7 +17,7 @@ async function listLeads(clientId, { status, source } = {}) {
 
 async function createLead(clientId, { name, phone, email, source, status, notes }) {
   const { data, error } = await supabase.from('crm_leads').insert({
-    client_id: clientId, name: name || null, phone: phone || null, email: email || null,
+    client_id: clientId, name: name || null, phone: normalizePhone(phone) || null, email: email || null,
     source: source || 'other', status: status || 'new', notes: notes || null,
   }).select().single();
   if (error) throw new Error(error.message);
@@ -23,6 +27,7 @@ async function createLead(clientId, { name, phone, email, source, status, notes 
 async function updateLead(clientId, id, patch) {
   const allowed = ['name', 'phone', 'email', 'source', 'status', 'notes', 'needs_reply'];
   const clean = Object.fromEntries(Object.entries(patch || {}).filter(([k]) => allowed.includes(k)));
+  if (clean.phone) clean.phone = normalizePhone(clean.phone);
   clean.updated_at = new Date().toISOString();
   const { data, error } = await supabase.from('crm_leads').update(clean)
     .eq('id', id).eq('client_id', clientId).select().single();

@@ -12,14 +12,21 @@ async function resolveClientId(userId) {
   return data.client_id;
 }
 
+function normalizePhone(phone) {
+  return phone ? phone.replace(/\D/g, '') : phone;
+}
+
 /**
  * Finds or creates a lead for this client. Pass `phone` for WhatsApp (dedup
- * on phone), `externalId` for platforms with no phone number — Facebook
- * PSID, Instagram IGSID, Threads user id (dedup on external_id) — or
- * `email` for sources with only an email column, like a sheet watcher with
- * no phone_column configured (dedup on email). Checked in that order.
+ * on phone) — normalized to digits-only, since Meta's webhook events and a
+ * manually-entered "+1 555-123-4567" lead need to match the same row —
+ * `externalId` for platforms with no phone number — Facebook PSID,
+ * Instagram IGSID, Threads user id (dedup on external_id) — or `email` for
+ * sources with only an email column, like a sheet watcher with no
+ * phone_column configured (dedup on email). Checked in that order.
  */
 async function findOrCreateLead(clientId, source, { phone = null, externalId = null, email = null, name = null } = {}) {
+  phone = normalizePhone(phone);
   if (!phone && !externalId && !email) throw new Error('findOrCreateLead requires phone, externalId, or email');
   let query = supabase.from('crm_leads').select('id').eq('client_id', clientId).eq('source', source);
   query = phone ? query.eq('phone', phone) : externalId ? query.eq('external_id', externalId) : query.eq('email', email);
