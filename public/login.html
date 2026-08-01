@@ -131,10 +131,6 @@
       <p class="sub" id="formSub">Use your CRM account. This unlocks every connected module — no separate login per channel.</p>
 
       <form id="authForm">
-        <div id="nameField" style="display:none">
-          <label for="name">Full name</label>
-          <input id="name" type="text" autocomplete="name" placeholder="Ada Lovelace" />
-        </div>
         <div>
           <label for="email">Email</label>
           <input id="email" type="email" autocomplete="username" placeholder="you@company.com" required />
@@ -147,7 +143,7 @@
         <p class="msg" id="msg"></p>
       </form>
 
-      <p class="toggle-row" id="toggleRow">New here? <a id="toggleLink">Create an account</a></p>
+      <p class="toggle-row">Need an account? <a href="/admin/register.html">Admin Registration</a></p>
 
       <div class="scope-note">
         Session token is stored locally and sent as <code>Authorization: Bearer</code> to every module's API. Log out from any module to clear it everywhere.
@@ -180,83 +176,53 @@
     diagram.appendChild(node);
   });
 
-  // ---- auth form ----
-  let mode = 'login';
+  // ---- auth form — sign-in only. Account creation is admin-gated (see
+  // /admin/register.html), not open self-signup, so there's no mode toggle
+  // here anymore. ----
   const form = document.getElementById('authForm');
   const msg = document.getElementById('msg');
   const submitBtn = document.getElementById('submitBtn');
-  const nameField = document.getElementById('nameField');
-  const toggleLink = document.getElementById('toggleLink');
-  const toggleRow = document.getElementById('toggleRow');
-  const formTitle = document.getElementById('formTitle');
-  const formSub = document.getElementById('formSub');
-
-  function setMode(next){
-    mode = next;
-    const isRegister = mode === 'register';
-    nameField.style.display = isRegister ? 'block' : 'none';
-    submitBtn.textContent = isRegister ? 'Create account' : 'Sign in';
-    formTitle.textContent = isRegister ? 'Create account' : 'Sign in';
-    formSub.textContent = isRegister
-      ? 'One account unlocks every module below.'
-      : 'Use your CRM account. This unlocks every connected module — no separate login per channel.';
-    toggleRow.innerHTML = isRegister
-      ? 'Already have an account? <a id="toggleLink">Sign in</a>'
-      : 'New here? <a id="toggleLink">Create an account</a>';
-    document.getElementById('toggleLink').addEventListener('click', () => setMode(isRegister ? 'login' : 'register'));
-    msg.textContent = '';
-    msg.className = 'msg';
-  }
-  toggleLink.addEventListener('click', () => setMode('register'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     msg.textContent = '';
     msg.className = 'msg';
     submitBtn.disabled = true;
-    submitBtn.textContent = mode === 'register' ? 'Creating…' : 'Signing in…';
+    submitBtn.textContent = 'Signing in…';
 
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const full_name = document.getElementById('name').value.trim();
 
     try {
-      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // carries the session cookie set by /api/auth/login
-        body: JSON.stringify({ email, password, full_name }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
 
-      if (mode === 'register') {
-        msg.textContent = 'Account created — sign in below.';
-        msg.className = 'msg ok';
-        setMode('login');
-      } else {
-        // Two things the SPA (js/api.js) expects in localStorage: the bearer
-        // token (used as a fallback auth path — the session cookie set above
-        // via credentials:'include' is what actually authenticates same-
-        // origin fetch() calls) and the resolved client_id.
-        if (data.token) localStorage.setItem('crm_auth_token', data.token);
-        try {
-          const clientRes = await fetch('/api/client', { credentials: 'include' });
-          const clientData = await clientRes.json();
-          if (clientData?.client?.id) localStorage.setItem('crm_client_id', clientData.client.id);
-        } catch { /* non-fatal — client_id header isn't required for auth to work */ }
-        msg.textContent = 'Signed in — redirecting…';
-        msg.className = 'msg ok';
-        const params = new URLSearchParams(window.location.search);
-        window.location.href = params.get('return_to') || '/';
-      }
+      // Two things the SPA (js/api.js) expects in localStorage: the bearer
+      // token (used as a fallback auth path — the session cookie set above
+      // via credentials:'include' is what actually authenticates same-
+      // origin fetch() calls) and the resolved client_id.
+      if (data.token) localStorage.setItem('crm_auth_token', data.token);
+      try {
+        const clientRes = await fetch('/api/client', { credentials: 'include' });
+        const clientData = await clientRes.json();
+        if (clientData?.client?.id) localStorage.setItem('crm_client_id', clientData.client.id);
+      } catch { /* non-fatal — client_id header isn't required for auth to work */ }
+      msg.textContent = 'Signed in — redirecting…';
+      msg.className = 'msg ok';
+      const params = new URLSearchParams(window.location.search);
+      window.location.href = params.get('return_to') || '/';
     } catch (err) {
       msg.textContent = err.message;
       msg.className = 'msg error';
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = mode === 'register' ? 'Create account' : 'Sign in';
+      submitBtn.textContent = 'Sign in';
     }
   });
 </script>

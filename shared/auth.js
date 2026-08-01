@@ -62,7 +62,16 @@ async function requireAuth(req, res, next) {
 function authRouter() {
   const router = express.Router();
 
+  // Account creation is admin-gated, not open self-signup — matches the
+  // original repo's POST /api/admin/create-user + verifyAdmin middleware.
+  // A CRM instance shouldn't let any random visitor create their own login;
+  // only whoever holds ADMIN_SECRET (set as an env var) can provision users,
+  // typically via public/admin/register.html.
   router.post('/register', async (req, res) => {
+    const adminSecret = req.headers['x-admin-secret'] || req.body?.admin_secret;
+    if (!process.env.ADMIN_SECRET || adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(403).json({ error: 'Forbidden: invalid admin secret' });
+    }
     const { email, password, full_name } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     try {
