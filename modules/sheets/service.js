@@ -81,6 +81,16 @@ async function listWatchers(userId) {
   return data || [];
 }
 
+async function updateWatcher(userId, id, patch) {
+  const allowed = ['spreadsheet_id', 'worksheet', 'watch_type', 'poll_interval_minutes', 'date_column', 'offset_days',
+    'name_column', 'phone_column', 'email_column', 'channel', 'template_id', 'placeholder_mapping', 'message_template', 'active'];
+  const clean = Object.fromEntries(Object.entries(patch || {}).filter(([k]) => allowed.includes(k)));
+  const { data, error } = await supabase.from('crm_sheet_watchers').update(clean).eq('id', id).eq('user_id', userId).select().single();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Watcher not found');
+  return data;
+}
+
 async function deleteWatcher(userId, id) {
   const { error } = await supabase.from('crm_sheet_watchers').delete().eq('id', id).eq('user_id', userId);
   if (error) throw new Error(error.message);
@@ -169,7 +179,67 @@ async function pollOneWatcher(watcher, onMatch) {
   }
 }
 
+function substituteMergeFields(template, fields) {
+  return String(template || '').replace(/\{(\w+)\}/g, (_, key) => fields[key] ?? `{${key}}`);
+}
+
+function resolvePlaceholder(map, fields) {
+  if (!map) return '';
+  if (map.type === 'name') return fields.__name || '';
+  if (map.type === 'phone') return fields.__phone || '';
+  if (map.type === 'email') return fields.__email || '';
+  if (map.type === 'field') return fields[map.field] ?? '';
+  if (map.type === 'custom') return map.value || '';
+  return '';
+}
+
+/**
+ * Turns one matched sheet row into a lead (always) and, for channel
+ * 'whatsapp', an outbound message (either an approved template with
+ * placeholder_mapping resolved against the row, or a plain-text
+ * message_template with {field} merge tags). Called from server.js's poll
+ * tick — this is what replaces the old "console.log the match" stub.
+ */
+async function sendForMatch(watcher, row) {
+  const { resolveClientId, findOrCreateLead } = require('../../shared/crmMessages');
+  const name = watcher.name_column ? row[watcher.name_column] : undefined;
+  const phone = watcher.phone_column ? row[watcher.phone_column] : undefined;
+  const email = watcher.email_column ? row[watcher.email_column] : undefined;
+  if (!phone && !email) return; // no way to identify who this row is about
+
+  const clientId = await resolveClientId(watcher.user_id);
+  await findOrCreateLead(clientId, 'sheet', { phone: phone || null, email: phone ? null : (email || null), name });
+
+  if (watcher.channel !== 'whatsapp' || !phone) {
+    if (watcher.channel !== 'whatsapp') console.warn(`[sheets] watcher ${watcher.id}: channel "${watcher.channel}" sending isn't implemented yet — lead was still created/updated.`);
+    return;
+  }
+
+  const fields = { ...row, __name: name || '', __phone: phone || '', __email: email || '' };
+  const whatsapp = require('../whatsapp/service'); // lazy require avoids a require cycle at module-load time
+
+  if (watcher.template_id) {
+    const { data: tpl, error } = await supabase.from('crm_templates').select('*').eq('id', watcher.template_id).single();
+    if (error || !tpl) throw new Error('Linked template not found — pick a template again on this watcher');
+    const entries = Object.entries(watcher.placeholder_mapping || {});
+    const components = entries.length ? [{
+      type: 'BODY',
+      parameters: entries.map(([key, map]) => (/^\d+$/.test(key)
+        ? { type: 'text', text: String(resolvePlaceholder(map, fields)) }
+        : { type: 'text', parameter_name: key, text: String(resolvePlaceholder(map, fields)) })),
+    }] : [];
+    await whatsapp.sendTemplate(watcher.user_id, { to: phone, name: tpl.meta_template_name || tpl.name, language: tpl.language || 'en_US', components });
+  } else if (watcher.message_template) {
+    // No template configured — falls back to a free-form send, which only
+    // succeeds if this contact has messaged in within the last 22h (see
+    // whatsapp/service.js's reply-window check). For a brand-new lead
+    // straight from a spreadsheet that's almost never true; pick a template
+    // in the watcher for first-contact/cold sends instead.
+    await whatsapp.sendMessage(watcher.user_id, { to: phone, kind: 'text', cfg: { body: substituteMergeFields(watcher.message_template, fields) } });
+  }
+}
+
 module.exports = {
   getValues, getRows, updateRange, appendRows, getColumnName,
-  createWatcher, listWatchers, deleteWatcher, pollWatchers,
+  createWatcher, listWatchers, updateWatcher, deleteWatcher, pollWatchers, sendForMatch,
 };

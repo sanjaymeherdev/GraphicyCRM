@@ -299,6 +299,27 @@ const API = (() => {
     return await get(`/api/oauth/${service}/url`);
   }
 
+  // ─── SHEET WATCHERS (sheet → lead mapping) ───
+  async function getSheetWatchers() {
+    return await get('/api/sheets/watchers');
+  }
+
+  async function createSheetWatcher(data) {
+    return await post('/api/sheets/watchers', data);
+  }
+
+  async function updateSheetWatcher(id, data) {
+    return await put(`/api/sheets/watchers/${id}`, data);
+  }
+
+  async function deleteSheetWatcher(id) {
+    return await del(`/api/sheets/watchers/${id}`);
+  }
+
+  async function getSheetRows(spreadsheetId, worksheet) {
+    return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/rows`);
+  }
+
   // ─── SETTINGS ───
   async function getSettings() {
     return await get('/api/settings');
@@ -412,6 +433,11 @@ const API = (() => {
     getIntegrations,
     connectIntegration,
     getOAuthUrl,
+    getSheetWatchers,
+    createSheetWatcher,
+    updateSheetWatcher,
+    deleteSheetWatcher,
+    getSheetRows,
 
     // Settings
     getSettings,

@@ -63,6 +63,7 @@ const Automation = {
       ai_fallback: "I'll get a teammate to help with that.",
       conditions: [],
       else_template_id: null,
+      action_config: {},
       follow_up: { enabled: false, hours: 4, condition: 'no_reply', template_id: null },
     };
     this._rules.unshift(rule);
@@ -143,6 +144,77 @@ const Automation = {
               </div>
             `}
           </div>
+        </div>
+
+        <!-- ADVANCED: SHEET LOOKUP + KNOWLEDGE DOC -->
+        <div class="block block-advanced">
+          <div class="block-head">
+            <div class="block-title"><span class="badge-ic">🔎</span>Advanced grounding</div>
+            <span class="block-sub">look up a value or fetch a doc before replying</span>
+          </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <span class="switch ${rule.action_config?.sheet_lookup?.spreadsheetId ? 'on' : ''}" onclick="Automation.toggleSheetLookup('${rule.id}')"></span>
+              Sheet lookup <span class="block-sub" style="margin-left:4px;">— each rule gets its own lookup, so different keywords can search different sheets ("multi lookup")</span>
+            </label>
+          </div>
+          ${rule.action_config?.sheet_lookup?.spreadsheetId !== undefined ? `
+            <div class="field-row">
+              <div class="field">
+                <label>Spreadsheet ID</label>
+                <input type="text" placeholder="from the sheet's URL" value="${escapeHtml(rule.action_config?.sheet_lookup?.spreadsheetId || '')}"
+                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','spreadsheetId', this.value)" />
+              </div>
+              <div class="field">
+                <label>Worksheet (tab name)</label>
+                <input type="text" placeholder="Sheet1" value="${escapeHtml(rule.action_config?.sheet_lookup?.worksheet || '')}"
+                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','worksheet', this.value)" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Lookup column</label>
+                <input type="text" placeholder="e.g. Product" value="${escapeHtml(rule.action_config?.sheet_lookup?.lookupColumn || '')}"
+                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','lookupColumn', this.value)" />
+              </div>
+              <div class="field">
+                <label>Return column</label>
+                <input type="text" placeholder="e.g. Price" value="${escapeHtml(rule.action_config?.sheet_lookup?.returnColumn || '')}"
+                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','returnColumn', this.value)" />
+              </div>
+              <div class="field">
+                <label>Match type</label>
+                <select onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','matchType', this.value)">
+                  <option value="contains" ${(rule.action_config?.sheet_lookup?.matchType || 'contains') === 'contains' ? 'selected' : ''}>Contains</option>
+                  <option value="exact" ${rule.action_config?.sheet_lookup?.matchType === 'exact' ? 'selected' : ''}>Exact</option>
+                </select>
+              </div>
+            </div>
+            <div class="block-sub" style="margin:2px 0 10px;">The message text is matched against every row's lookup column. Use <code>{{sheet_lookup}}</code> in a template body, or add a condition above on "Sheet lookup" (e.g. equals <code>__not_found__</code> for a no-match branch).</div>
+          ` : ''}
+          ${rule.action_type === 'ai' ? `
+            <div class="field">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <span class="switch ${rule.action_config?.knowledge_doc?.docId ? 'on' : ''}" onclick="Automation.toggleKnowledgeDoc('${rule.id}')"></span>
+                Knowledge doc <span class="block-sub" style="margin-left:4px;">— a Google Doc's text gets fetched and added to the AI's context</span>
+              </label>
+            </div>
+            ${rule.action_config?.knowledge_doc?.docId !== undefined ? `
+              <div class="field-row">
+                <div class="field">
+                  <label>Doc ID</label>
+                  <input type="text" placeholder="from the doc's URL" value="${escapeHtml(rule.action_config?.knowledge_doc?.docId || '')}"
+                    onchange="Automation.updateActionConfig('${rule.id}','knowledge_doc','docId', this.value)" />
+                </div>
+                <div class="field">
+                  <label>Doc name <span class="block-sub">(label only)</span></label>
+                  <input type="text" placeholder="e.g. FAQ doc" value="${escapeHtml(rule.action_config?.knowledge_doc?.docName || '')}"
+                    onchange="Automation.updateActionConfig('${rule.id}','knowledge_doc','docName', this.value)" />
+                </div>
+              </div>
+              <div class="block-sub" style="margin:2px 0 10px;">Fetched text is cached for 5 minutes and capped at 8,000 characters so the AI prompt stays bounded.</div>
+            ` : ''}
+          ` : ''}
         </div>
 
         <!-- CONDITIONS -->
@@ -304,6 +376,39 @@ const Automation = {
     if (rule) {
       rule.follow_up = rule.follow_up || { enabled: false, hours: 4, condition: 'no_reply', template_id: null };
       rule.follow_up[field] = value;
+    }
+  },
+
+  toggleSheetLookup(ruleId) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    rule.action_config = rule.action_config || {};
+    if (rule.action_config.sheet_lookup?.spreadsheetId !== undefined) {
+      delete rule.action_config.sheet_lookup;
+    } else {
+      rule.action_config.sheet_lookup = { spreadsheetId: '', worksheet: '', lookupColumn: '', returnColumn: '', matchType: 'contains' };
+    }
+    this.renderEditor(ruleId);
+  },
+
+  toggleKnowledgeDoc(ruleId) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    rule.action_config = rule.action_config || {};
+    if (rule.action_config.knowledge_doc?.docId !== undefined) {
+      delete rule.action_config.knowledge_doc;
+    } else {
+      rule.action_config.knowledge_doc = { docId: '', docName: '' };
+    }
+    this.renderEditor(ruleId);
+  },
+
+  updateActionConfig(ruleId, group, field, value) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    if (rule) {
+      rule.action_config = rule.action_config || {};
+      rule.action_config[group] = rule.action_config[group] || {};
+      rule.action_config[group][field] = value;
     }
   },
 

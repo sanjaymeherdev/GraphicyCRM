@@ -13,20 +13,22 @@ async function resolveClientId(userId) {
 }
 
 /**
- * Finds or creates a lead for this client. Pass `phone` for WhatsApp
- * (dedup on phone) or `externalId` for platforms with no phone number —
- * Facebook PSID, Instagram IGSID, Threads user id (dedup on external_id).
+ * Finds or creates a lead for this client. Pass `phone` for WhatsApp (dedup
+ * on phone), `externalId` for platforms with no phone number — Facebook
+ * PSID, Instagram IGSID, Threads user id (dedup on external_id) — or
+ * `email` for sources with only an email column, like a sheet watcher with
+ * no phone_column configured (dedup on email). Checked in that order.
  */
-async function findOrCreateLead(clientId, source, { phone = null, externalId = null, name = null } = {}) {
-  if (!phone && !externalId) throw new Error('findOrCreateLead requires phone or externalId');
+async function findOrCreateLead(clientId, source, { phone = null, externalId = null, email = null, name = null } = {}) {
+  if (!phone && !externalId && !email) throw new Error('findOrCreateLead requires phone, externalId, or email');
   let query = supabase.from('crm_leads').select('id').eq('client_id', clientId).eq('source', source);
-  query = phone ? query.eq('phone', phone) : query.eq('external_id', externalId);
+  query = phone ? query.eq('phone', phone) : externalId ? query.eq('external_id', externalId) : query.eq('email', email);
   const { data: existing, error: findErr } = await query.maybeSingle();
   if (findErr) throw new Error(findErr.message);
   if (existing) return existing.id;
 
   const { data, error } = await supabase.from('crm_leads')
-    .insert({ client_id: clientId, source, phone, external_id: externalId, name })
+    .insert({ client_id: clientId, source, phone, external_id: externalId, email, name })
     .select('id').single();
   if (error) throw new Error(error.message);
   return data.id;

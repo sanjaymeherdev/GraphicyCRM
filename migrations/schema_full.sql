@@ -87,7 +87,19 @@ create table if not exists crm_sheet_watchers (
   poll_interval_minutes int not null default 15,
   date_column text,               -- required for date_reminder
   offset_days int default 0,      -- e.g. remind 3 days before the date
-  message_template text,          -- free-form, interpreted by whatever onMatch handler you wire up
+  -- Lead-field mapping — which sheet columns identify the lead a matched row
+  -- is about. At least one of phone_column/email_column is required for a
+  -- match to actually produce a lead (see server.js's watcher onMatch).
+  name_column text,
+  phone_column text,
+  email_column text,
+  channel text default 'whatsapp' check (channel in ('whatsapp','facebook','instagram')),
+  template_id uuid references crm_templates(id) on delete set null,
+  -- Same shape as campaign placeholder mapping: { "1": {type:'name'}, "2":
+  -- {type:'field', field:'Amount'}, ... } — resolved against the matched
+  -- row's columns when sending a WhatsApp template.
+  placeholder_mapping jsonb not null default '{}',
+  message_template text,          -- fallback body (merge tags via {field}) when no template_id, or for non-WhatsApp channels
   fired_log jsonb default '{}',   -- {"<rowIndex>": "<YYYY-M-D fired>"} — de-dupes date_reminder fires
   last_row_count int default 0,
   last_polled_at timestamptz,
@@ -95,6 +107,12 @@ create table if not exists crm_sheet_watchers (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+alter table crm_sheet_watchers add column if not exists name_column text;
+alter table crm_sheet_watchers add column if not exists phone_column text;
+alter table crm_sheet_watchers add column if not exists email_column text;
+alter table crm_sheet_watchers add column if not exists channel text default 'whatsapp';
+alter table crm_sheet_watchers add column if not exists template_id uuid references crm_templates(id) on delete set null;
+alter table crm_sheet_watchers add column if not exists placeholder_mapping jsonb not null default '{}';
 
 -- ---------------------------------------------------------------------
 -- AI bot automation rules — modules/ai-bot
@@ -195,7 +213,7 @@ create table if not exists crm_leads (
   -- deduped on `phone` directly; this is only populated/queried for the
   -- other three.
   external_id text,
-  source text not null default 'other' check (source in ('whatsapp','instagram','facebook','threads','webform','email','other')),
+  source text not null default 'other' check (source in ('whatsapp','instagram','facebook','threads','webform','email','sheet','other')),
   status text not null default 'new' check (status in ('new','contacted','engaged','converted','lost')),
   notes text,
   needs_reply boolean not null default false,
@@ -206,6 +224,10 @@ create table if not exists crm_leads (
 );
 alter table crm_leads add column if not exists external_id text;
 create index if not exists crm_leads_client_source_external_id_idx on crm_leads(client_id, source, external_id) where external_id is not null;
+do $$ begin
+  alter table crm_leads drop constraint if exists crm_leads_source_check;
+  alter table crm_leads add constraint crm_leads_source_check check (source in ('whatsapp','instagram','facebook','threads','webform','email','sheet','other'));
+exception when others then null; end $$;
 
 -- ---------------------------------------------------------------------
 -- Contacts — GET/POST /api/contacts (converted/qualified leads, or people
@@ -218,7 +240,7 @@ create table if not exists crm_contacts (
   name text,
   phone text,
   email text,
-  source text not null default 'other' check (source in ('whatsapp','instagram','facebook','threads','webform','email','other')),
+  source text not null default 'other' check (source in ('whatsapp','instagram','facebook','threads','webform','email','sheet','other')),
   status text not null default 'new' check (status in ('new','contacted','engaged','converted','lost')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -337,10 +359,16 @@ create table if not exists crm_automations (
   conditions jsonb not null default '[]',        -- e.g. [{ field:'source', op:'eq', value:'whatsapp' }]
   else_template_id uuid references crm_templates(id) on delete set null,
   follow_up jsonb not null default '{"enabled":false,"hours":4,"condition":"no_reply","template_id":null}',
+  -- { sheet_lookup: { spreadsheetId, worksheet, lookupColumn, returnColumn, matchType },
+  --   knowledge_doc: { docId, docName } } — see modules/ai-bot/service.js's
+  -- performSheetLookup/getGroundingDocContent, reused (not duplicated) by
+  -- modules/automations/service.js's matchRule.
+  action_config jsonb not null default '{}',
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table crm_automations add column if not exists action_config jsonb not null default '{}';
 
 -- Pending follow-ups scheduled by an automation's follow_up config —
 -- a worker polls this table (due_at <= now(), fired = false) and sends

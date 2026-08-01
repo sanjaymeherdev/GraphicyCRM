@@ -51,4 +51,14 @@ async function requireClient(req, res, next) {
   }
 }
 
-module.exports = { requireClient };
+// A client's connected integrations (Google tokens, social platform
+// connections) belong to a user row, not the client row directly — resolve
+// the first profile under this client to act through. Fine for the common
+// one-login-per-client case; revisit if/when a client can have multiple
+// team members each with their own connections.
+async function resolveFirstUserId(clientId) {
+  const { data } = await supabase.from('crm_profiles').select('id').eq('client_id', clientId).limit(1).maybeSingle();
+  return data?.id || null;
+}
+
+module.exports = { requireClient, resolveFirstUserId };

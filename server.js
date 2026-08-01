@@ -20,6 +20,7 @@ const { sessionMiddleware, authRouter } = require('./shared/auth');
 const googleConnectRoutes = require('./shared/googleConnectRoutes');
 const frontendAdapters = require('./shared/frontendAdapters');
 const { supabase } = require('./shared/db');
+const { resolveFirstUserId } = require('./shared/clientContext');
 const sheetsService = require('./modules/sheets/service');
 const scheduleService = require('./modules/schedule/service');
 
@@ -116,26 +117,13 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 // ---------------------------------------------------------------------
 const SHEET_POLL_MS = 60 * 1000;
 setInterval(() => {
-  sheetsService.pollWatchers(async (watcher, row) => {
-    console.log(`[sheets] watcher ${watcher.id} matched row:`, row);
-    // Example wiring:
-    // const whatsapp = require('./modules/whatsapp/service');
-    // await whatsapp.sendMessage(watcher.user_id, { to: row.phone, kind: 'text', cfg: { body: watcher.message_template } });
-  }).catch((err) => console.error('[sheets] poll tick failed:', err.message));
+  sheetsService.pollWatchers((watcher, row) => sheetsService.sendForMatch(watcher, row))
+    .catch((err) => console.error('[sheets] poll tick failed:', err.message));
 }, SHEET_POLL_MS);
 
 const SCHEDULE_POLL_MS = 60 * 1000;
-// A client's connected social accounts belong to a user, not the client
-// row directly (see shared/metaConnections.js) — resolve the first profile
-// under this client to publish through. Fine for the common one-login-per-
-// client case; revisit if/when a client can have multiple team members each
-// with their own platform connections.
-async function firstUserIdForClient(clientId) {
-  const { data } = await supabase.from('crm_profiles').select('id').eq('client_id', clientId).limit(1).maybeSingle();
-  return data?.id || null;
-}
 setInterval(() => {
-  scheduleService.pollDuePosts(firstUserIdForClient)
+  scheduleService.pollDuePosts(resolveFirstUserId)
     .catch((err) => console.error('[schedule] poll tick failed:', err.message));
 }, SCHEDULE_POLL_MS);
 

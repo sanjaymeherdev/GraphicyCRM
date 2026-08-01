@@ -172,4 +172,5 @@ async function deleteRule(userId, id) {
 module.exports = {
   generateReply, getAvailableModels, isAllowedModel,
   matchRule, listRules, createRule, updateRule, deleteRule,
+  performSheetLookup, getGroundingDocContent,
 };

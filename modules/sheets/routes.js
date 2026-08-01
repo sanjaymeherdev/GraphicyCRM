@@ -41,6 +41,11 @@ router.post('/watchers', async (req, res) => {
   catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+router.put('/watchers/:id', async (req, res) => {
+  try { res.json({ success: true, watcher: await service.updateWatcher(req.user.id, req.params.id, req.body || {}) }); }
+  catch (err) { res.status(err.message === 'Watcher not found' ? 404 : 400).json({ error: err.message }); }
+});
+
 router.delete('/watchers/:id', async (req, res) => {
   try { await service.deleteWatcher(req.user.id, req.params.id); res.json({ success: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
