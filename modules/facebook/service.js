@@ -1,12 +1,17 @@
 // modules/facebook/service.js — Facebook Page API: publish posts, reply to
 // comments, send/receive Messenger DMs, list posts/comments/conversations.
 // Ported from the original repo's sm/platforms/facebook.js (Graph API calls
-// are unchanged) + sm/routes/connections.js's Facebook OAuth flow.
+// are unchanged) + sm/routes/connections.js's Facebook OAuth flow +
+// sm/routes/webhooks.js's Facebook signature/event handling (minus the
+// keyword/AI automation-matching engine, which is cross-platform and lives
+// in modules/automations, not per-channel).
 const axios = require('axios');
+const crypto = require('crypto');
 const {
-  buildAuthUrl, parseState, upsertConnection, getConnection,
-  exchangeFacebookCode, APP_BASE_URL,
+  buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
+  exchangeFacebookCode, signSelectionToken, parseSelectionToken, APP_BASE_URL,
 } = require('../../shared/metaConnections');
+const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
 
 const VERSION = process.env.GRAPH_VERSION || 'v25.0';
 const BASE = `https://graph.facebook.com/${VERSION}`;
@@ -26,12 +31,9 @@ function getAuthUrl(userId, returnTo) {
   return buildAuthUrl('facebook', userId, returnTo);
 }
 
-async function handleOAuthCallback(code, state) {
-  const { userId, returnTo } = parseState(state);
-  const redirectUri = `${APP_BASE_URL}/api/facebook/connect/callback`;
-  const { pages, expiresAt } = await exchangeFacebookCode(code, redirectUri);
-  // Connect the first Page (extend with a picker UI if the user manages several).
-  const page = pages[0];
+// Completes the connection for one already-chosen Page — shared by the
+// single-Page fast path below and the picker's follow-up selection.
+async function finishPage(userId, page, expiresAt) {
   const connection = await upsertConnection(userId, {
     platform: 'facebook', account_name: page.name, account_id: page.id,
     page_id: page.id, access_token: page.access_token, token_expires_at: expiresAt,
@@ -47,6 +49,35 @@ async function handleOAuthCallback(code, state) {
       page_id: page.id, access_token: page.access_token, token_expires_at: expiresAt,
     });
   }
+  return connection;
+}
+
+async function handleOAuthCallback(code, state) {
+  const { userId, returnTo } = parseState(state);
+  const redirectUri = `${APP_BASE_URL}/api/facebook/connect/callback`;
+  const { pages, expiresAt } = await exchangeFacebookCode(code, redirectUri);
+
+  if (pages.length === 1) {
+    const connection = await finishPage(userId, pages[0], expiresAt);
+    return { connection, returnTo };
+  }
+
+  // More than one Page — don't guess. Hand back a short-lived token the
+  // picker submits to POST /connect/select-page to finish connecting.
+  const selectionToken = signSelectionToken({ userId, returnTo, pages, expiresAt });
+  return {
+    needsPageSelection: true,
+    selectionToken,
+    pages: pages.map((p) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account })),
+  };
+}
+
+/** Finishes a connection after the user picked a Page from the multi-Page selector. */
+async function selectPage(selectionToken, pageId) {
+  const { userId, returnTo, pages, expiresAt } = parseSelectionToken(selectionToken);
+  const page = pages.find((p) => p.id === pageId);
+  if (!page) throw new Error('That Page was not in the original list — please reconnect.');
+  const connection = await finishPage(userId, page, expiresAt ? new Date(expiresAt) : null);
   return { connection, returnTo };
 }
 
@@ -117,7 +148,49 @@ async function sendPrivateReply(userId, commentId, message) {
   return res.message_id;
 }
 
+// ---------------------------------------------------------------------
+// Webhook signature verification. Meta signs the raw body with the app
+// secret; without this check, POST /webhook accepted any unsigned request,
+// letting anyone forge inbound Facebook events. FB_SECRET is tried first,
+// then IG_SECRET — Meta sometimes delivers Facebook Page events through an
+// app configured under the Instagram secret when both share one Meta app.
+// ---------------------------------------------------------------------
+function verifySignature(rawBody, sigHeader) {
+  const secrets = [process.env.FB_SECRET, process.env.IG_SECRET].filter(Boolean);
+  if (!secrets.length) return true; // not configured — allow through (dev only)
+  if (!sigHeader) return false;
+  return secrets.some((secret) => {
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    try { return crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected)); }
+    catch { return false; }
+  });
+}
+
+// ---------------------------------------------------------------------
+// CRM persistence for inbound comments/DMs — closes the same loop built for
+// WhatsApp (see modules/whatsapp/service.js): without this, webhook events
+// never reached crm_messages, so modules/inbox stayed empty for Facebook.
+// Auto-reply/keyword-matching on these events is a separate concern, handled
+// by modules/automations, not here.
+// ---------------------------------------------------------------------
+async function handleCommentEvent({ pageId, commentId, text, senderId, senderName }) {
+  const conn = await resolveByAccountId('facebook', pageId);
+  if (!conn) return console.warn(`[facebook] comment on unknown Page ${pageId} — is that Page connected here?`);
+  const clientId = await resolveClientId(conn.user_id);
+  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName });
+  await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+}
+
+async function handleDmEvent({ pageId, mid, text, senderId }) {
+  const conn = await resolveByAccountId('facebook', pageId);
+  if (!conn) return console.warn(`[facebook] DM on unknown Page ${pageId} — is that Page connected here?`);
+  const clientId = await resolveClientId(conn.user_id);
+  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId });
+  await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
+}
+
 module.exports = {
-  getAuthUrl, handleOAuthCallback,
+  getAuthUrl, handleOAuthCallback, selectPage,
   publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendPrivateReply,
+  verifySignature, handleCommentEvent, handleDmEvent,
 };

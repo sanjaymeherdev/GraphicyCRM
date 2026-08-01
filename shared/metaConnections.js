@@ -96,6 +96,21 @@ async function getConnection(userId, platform) {
   return { ...data, access_token: decryptToken(data.access_token_enc) };
 }
 
+// Reverse lookup for webhook handlers: Meta calls these unauthenticated, so
+// the only way to know which of our users' connections a comment/DM belongs
+// to is the Page/account id the event arrived on. Checks account_id first,
+// then page_id (Instagram events sometimes carry the linked Page's id).
+async function resolveByAccountId(platform, accountId) {
+  if (!accountId) return null;
+  const { data, error } = await supabase.from('crm_connections')
+    .select('*').eq('platform', platform).eq('is_connected', true)
+    .or(`account_id.eq.${accountId},page_id.eq.${accountId}`)
+    .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { ...data, access_token: decryptToken(data.access_token_enc) };
+}
+
 // --- Platform-specific token exchange (authorization code -> long-lived token) ---
 
 async function exchangeFacebookCode(code, redirectUri) {
@@ -109,15 +124,36 @@ async function exchangeFacebookCode(code, redirectUri) {
   const userToken = longRes.data.access_token;
   const expiresAt = longRes.data.expires_in ? new Date(Date.now() + longRes.data.expires_in * 1000) : null;
 
-  // pages_show_list — grab every Page the user manages; a real UI would let
-  // them pick if there's more than one. Here we connect the first and also
-  // auto-link its Instagram business account, if any, mirroring the source repo.
+  // pages_show_list — every Page this user manages. Caller decides: connect
+  // directly if there's exactly one, or run a picker if there's more than
+  // one — silently picking pages[0] risks linking the wrong Page (and, for
+  // Instagram-via-Facebook, the wrong linked IG account) for anyone who
+  // manages multiple Pages.
   const pagesRes = await axios.get(`https://graph.facebook.com/${GRAPH_VERSION}/me/accounts`, {
     params: { fields: 'id,name,instagram_business_account,access_token', access_token: userToken },
   });
   const pages = pagesRes.data.data || [];
   if (!pages.length) throw new Error('No Facebook Pages found for this account — is it a Page admin?');
   return { pages, expiresAt };
+}
+
+// A short-lived, tamper-proof (AES-GCM) token carrying the Page list from an
+// in-progress Facebook OAuth callback, so the picker round-trip (show pages
+// -> user picks one -> finish connecting) doesn't need server-side session
+// state. Reuses the same encrypt/decrypt used for stored tokens — it's
+// already authenticated encryption, no separate JWT dependency needed.
+const SELECTION_TOKEN_TTL_MS = 10 * 60 * 1000;
+
+function signSelectionToken(payload) {
+  return encryptToken(JSON.stringify({ ...payload, exp: Date.now() + SELECTION_TOKEN_TTL_MS }));
+}
+
+function parseSelectionToken(token) {
+  let payload;
+  try { payload = JSON.parse(decryptToken(token)); }
+  catch { throw new Error('Invalid or corrupted selection token.'); }
+  if (!payload.exp || Date.now() > payload.exp) throw new Error('Page selection expired — please reconnect.');
+  return payload;
 }
 
 async function exchangeInstagramCode(code, redirectUri) {
@@ -190,8 +226,11 @@ module.exports = {
   parseState,
   upsertConnection,
   getConnection,
+  resolveByAccountId,
   exchangeFacebookCode,
   exchangeInstagramCode,
   exchangeThreadsCode,
   exchangeLinkedInCode,
+  signSelectionToken,
+  parseSelectionToken,
 };

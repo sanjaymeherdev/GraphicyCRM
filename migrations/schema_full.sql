@@ -190,6 +190,11 @@ create table if not exists crm_leads (
   name text,
   phone text,
   email text,
+  -- Platform-native sender id for channels with no phone number (Facebook
+  -- PSID, Instagram IGSID, Threads user id) — WhatsApp leads are still
+  -- deduped on `phone` directly; this is only populated/queried for the
+  -- other three.
+  external_id text,
   source text not null default 'other' check (source in ('whatsapp','instagram','facebook','threads','webform','email','other')),
   status text not null default 'new' check (status in ('new','contacted','engaged','converted','lost')),
   notes text,
@@ -199,6 +204,8 @@ create table if not exists crm_leads (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table crm_leads add column if not exists external_id text;
+create index if not exists crm_leads_client_source_external_id_idx on crm_leads(client_id, source, external_id) where external_id is not null;
 
 -- ---------------------------------------------------------------------
 -- Contacts — GET/POST /api/contacts (converted/qualified leads, or people
@@ -276,9 +283,37 @@ create table if not exists crm_templates (
   body text not null default '',
   footer text,
   meta_template_name text,   -- set when type = 'whatsapp_template'
+  -- Meta WhatsApp template management (modules/templates 'meta/*' routes) —
+  -- irrelevant for type='plaintext' rows, all null/default there.
+  category text default 'MARKETING' check (category in ('MARKETING','UTILITY','AUTHENTICATION')),
+  language text default 'en_US',
+  status text not null default 'local' check (status in ('local','PENDING','APPROVED','REJECTED')),
+  header_type text default 'NONE',
+  header_text text,
+  header_media_url text,
+  buttons jsonb not null default '[]',
+  placeholders jsonb not null default '[]',
+  meta_template_id text,     -- Meta's own template id, once submitted — used to match on re-sync
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Additive columns for databases that already ran this table's original
+-- (narrower) definition — safe to re-run, no-ops once applied.
+alter table crm_templates add column if not exists category text default 'MARKETING';
+alter table crm_templates add column if not exists language text default 'en_US';
+alter table crm_templates add column if not exists status text not null default 'local';
+alter table crm_templates add column if not exists header_type text default 'NONE';
+alter table crm_templates add column if not exists header_text text;
+alter table crm_templates add column if not exists header_media_url text;
+alter table crm_templates add column if not exists buttons jsonb not null default '[]';
+alter table crm_templates add column if not exists placeholders jsonb not null default '[]';
+alter table crm_templates add column if not exists meta_template_id text;
+do $$ begin
+  alter table crm_templates add constraint crm_templates_status_check check (status in ('local','PENDING','APPROVED','REJECTED'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table crm_templates add constraint crm_templates_category_check check (category in ('MARKETING','UTILITY','AUTHENTICATION'));
+exception when duplicate_object then null; end $$;
 
 -- ---------------------------------------------------------------------
 -- Automations — GET/POST/PUT/DELETE /api/automations

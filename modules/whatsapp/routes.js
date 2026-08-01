@@ -60,6 +60,16 @@ router.delete('/accounts/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.post('/accounts/refresh-quality', async (req, res) => {
+  try { res.json({ success: true, ...(await service.refreshQuality(req.user.id)) }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/messages/mark-read', async (req, res) => {
+  try { await service.markAllRead(req.user.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Send a free-form text/button/list/cta_url message (must be within the 24h window)
 router.post('/messages/send', async (req, res) => {
   const { to, kind, cfg, vars } = req.body || {};

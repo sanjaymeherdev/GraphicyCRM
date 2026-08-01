@@ -6,10 +6,12 @@
 // so every call tries the connection's primary host first and falls back to
 // the other on an auth/capability error, exactly as the source did.
 const axios = require('axios');
+const crypto = require('crypto');
 const {
-  buildAuthUrl, parseState, upsertConnection, getConnection,
+  buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
   exchangeInstagramCode, APP_BASE_URL,
 } = require('../../shared/metaConnections');
+const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
 
 const FB_VERSION = process.env.GRAPH_VERSION || 'v25.0';
 const FB_BASE = `https://graph.facebook.com/${FB_VERSION}`;
@@ -136,7 +138,45 @@ async function listConversations(userId, limit = 25) {
   }).filter(Boolean);
 }
 
+// ---------------------------------------------------------------------
+// Webhook signature verification. IG_SECRET is tried first, then FB_SECRET
+// as a fallback — Meta sometimes delivers Instagram events through an app
+// configured under the Facebook secret when both share one Meta app.
+// ---------------------------------------------------------------------
+function verifySignature(rawBody, sigHeader) {
+  const secrets = [process.env.IG_SECRET, process.env.FB_SECRET].filter(Boolean);
+  if (!secrets.length) return true; // not configured — allow through (dev only)
+  if (!sigHeader) return false;
+  return secrets.some((secret) => {
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    try { return crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected)); }
+    catch { return false; }
+  });
+}
+
+// ---------------------------------------------------------------------
+// CRM persistence for inbound comments/DMs — same loop as WhatsApp/Facebook
+// (see modules/whatsapp/service.js). Auto-reply/keyword-matching is a
+// separate concern handled by modules/automations, not here.
+// ---------------------------------------------------------------------
+async function handleCommentEvent({ accountId, commentId, text, senderId, senderName }) {
+  const conn = await resolveByAccountId('instagram', accountId);
+  if (!conn) return console.warn(`[instagram] comment on unknown account ${accountId} — is that account connected here?`);
+  const clientId = await resolveClientId(conn.user_id);
+  const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
+  await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+}
+
+async function handleDmEvent({ accountId, mid, text, senderId }) {
+  const conn = await resolveByAccountId('instagram', accountId);
+  if (!conn) return console.warn(`[instagram] DM on unknown account ${accountId} — is that account connected here?`);
+  const clientId = await resolveClientId(conn.user_id);
+  const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId });
+  await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
+}
+
 module.exports = {
   getAuthUrl, handleOAuthCallback,
   publishPost, replyToComment, sendDM, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
+  verifySignature, handleCommentEvent, handleDmEvent,
 };

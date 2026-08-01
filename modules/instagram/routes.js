@@ -2,12 +2,25 @@
 const express = require('express');
 const { requireAuth } = require('../../shared/auth');
 const service = require('./service');
+const facebookService = require('../facebook/service');
 
 const router = express.Router();
 
 router.get('/connect', requireAuth, (req, res) => {
   res.json({ url: service.getAuthUrl(req.user.id, req.query.return_to) });
 });
+
+// "Login with Facebook" — Instagram business accounts reached through a
+// linked Facebook Page use the Facebook app's OAuth (FB_APP_ID/FB_SECRET),
+// not Instagram's own app. This is deliberately an alias for
+// GET /api/facebook/connect: the callback (and multi-Page picker, if the
+// user manages more than one Page) both live in modules/facebook, which is
+// what auto-links the chosen Page's IG business account. There's no
+// Instagram-specific callback to add here.
+router.get('/connect/via-facebook', requireAuth, (req, res) => {
+  res.json({ url: facebookService.getAuthUrl(req.user.id, req.query.return_to) });
+});
+
 router.get('/connect/callback', async (req, res) => {
   const { code, state, error } = req.query;
   if (error) return res.status(400).send(`Instagram connect failed: ${error}`);
@@ -23,11 +36,27 @@ router.get('/webhook', (req, res) => {
   }
   res.sendStatus(403);
 });
-router.post('/webhook', express.json(), (req, res) => {
-  res.sendStatus(200);
+router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }), (req, res) => {
+  const valid = service.verifySignature(req.rawBody, req.headers['x-hub-signature-256']);
+  if (!valid) return res.sendStatus(403);
+  res.sendStatus(200); // ack immediately, Meta retries on non-2xx
+
   for (const entry of req.body?.entry || []) {
-    for (const event of entry.messaging || []) console.log('[instagram webhook] message event', event);
-    for (const change of entry.changes || []) console.log('[instagram webhook] change event', change);
+    const accountId = entry.id;
+    for (const change of entry.changes || []) {
+      if (change.field !== 'comments') continue;
+      const value = change.value || {};
+      service.handleCommentEvent({
+        accountId, commentId: value.id, text: value.text,
+        senderId: value.from?.id || null, senderName: value.from?.username || null,
+      }).catch((err) => console.error('[instagram webhook] failed to record comment:', err.message));
+    }
+    for (const messaging of entry.messaging || []) {
+      if (!messaging.message || messaging.message.is_echo) continue;
+      service.handleDmEvent({
+        accountId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null,
+      }).catch((err) => console.error('[instagram webhook] failed to record DM:', err.message));
+    }
   }
 });
 

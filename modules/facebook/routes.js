@@ -14,10 +14,35 @@ router.get('/connect/callback', async (req, res) => {
   const { code, state, error } = req.query;
   if (error) return res.status(400).send(`Facebook connect failed: ${error}`);
   try {
-    const { returnTo } = await service.handleOAuthCallback(code, state);
-    res.redirect(returnTo || '/');
+    const result = await service.handleOAuthCallback(code, state);
+    if (result.needsPageSelection) {
+      const options = result.pages.map((p) => `<button onclick="choose('${p.id}')" style="display:block;width:100%;margin:6px 0;padding:10px;font-size:15px;">${p.name}${p.hasInstagram ? ' (+ Instagram)' : ''}</button>`).join('');
+      return res.send(`<!doctype html><html><body style="font-family:sans-serif;max-width:420px;margin:40px auto;">
+        <h3>Which Page should this connect?</h3>
+        <div>${options}</div>
+        <script>
+          function choose(pageId) {
+            fetch('/api/facebook/connect/select-page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify({ selectionToken: ${JSON.stringify(result.selectionToken)}, pageId }) })
+              .then(r => r.json()).then(d => { window.location = d.returnTo || '/'; });
+          }
+        </script>
+      </body></html>`);
+    }
+    res.redirect(result.returnTo || '/');
   } catch (err) {
     res.status(500).send(`Facebook connect failed: ${err.message}`);
+  }
+});
+
+router.post('/connect/select-page', express.json(), async (req, res) => {
+  const { selectionToken, pageId } = req.body || {};
+  if (!selectionToken || !pageId) return res.status(400).json({ error: 'selectionToken and pageId required' });
+  try {
+    const { returnTo } = await service.selectPage(selectionToken, pageId);
+    res.json({ success: true, returnTo: returnTo || '/' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -28,11 +53,34 @@ router.get('/webhook', (req, res) => {
   }
   res.sendStatus(403);
 });
-router.post('/webhook', express.json(), (req, res) => {
-  res.sendStatus(200);
-  for (const entry of req.body?.entry || []) {
-    for (const event of entry.messaging || []) console.log('[facebook webhook] message event', event);
-    for (const change of entry.changes || []) console.log('[facebook webhook] change event', change);
+router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }), (req, res) => {
+  const valid = service.verifySignature(req.rawBody, req.headers['x-hub-signature-256']);
+  if (!valid) return res.sendStatus(403);
+  res.sendStatus(200); // ack immediately, Meta retries on non-2xx
+
+  const payload = req.body || {};
+  if (payload.object === 'user') {
+    // Subscribed to the wrong webhook object — "user" only reports personal-
+    // profile changes and never delivers Page comments. Needs "page" + "feed".
+    return console.warn('[facebook webhook] received a USER-object webhook — subscribe to the "page" object with the "feed" field instead.');
+  }
+  for (const entry of payload.entry || []) {
+    const pageId = entry.id;
+    for (const change of entry.changes || []) {
+      if (change.field !== 'feed') continue;
+      const value = change.value || {};
+      if (value.item !== 'comment' || value.verb !== 'add') continue;
+      service.handleCommentEvent({
+        pageId, commentId: value.comment_id, text: value.message,
+        senderId: value.from?.id || null, senderName: value.from?.name || null,
+      }).catch((err) => console.error('[facebook webhook] failed to record comment:', err.message));
+    }
+    for (const messaging of entry.messaging || []) {
+      if (!messaging.message || messaging.message.is_echo) continue;
+      service.handleDmEvent({
+        pageId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null,
+      }).catch((err) => console.error('[facebook webhook] failed to record DM:', err.message));
+    }
   }
 });
 

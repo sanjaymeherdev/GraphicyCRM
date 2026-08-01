@@ -10,6 +10,14 @@ const { encryptToken, decryptToken } = require('../../shared/crypto');
 
 const META_API_VERSION = process.env.META_API_VERSION || 'v21.0';
 const EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+// Free-form messages (text/button/list/cta_url — anything that isn't an
+// approved template) are only deliverable within WhatsApp's 24-hour customer
+// service window, counted from the contact's most recent inbound message.
+// 22h here (not 24h) is a safety margin under Meta's real limit, to absorb
+// clock drift/latency between Meta's timestamp and this check. Enforced
+// server-side, not just a disabled button in the UI — a stale button state
+// or a direct API call shouldn't be able to bypass it.
+const REPLY_WINDOW_HOURS = 22;
 
 class WhatsAppValidationError extends Error {}
 
@@ -195,6 +203,40 @@ async function disconnectAccount(userId, accountId) {
   if (error) throw new Error(error.message);
 }
 
+// Pulls the current quality_rating (and display name) for every one of the
+// user's connected numbers straight from Meta rather than trusting whatever
+// was last saved locally — quality drifts up/down over time based on recent
+// sending behavior, independent of any action taken here.
+async function refreshQuality(userId) {
+  const { data: accounts, error } = await supabase.from('crm_wa_accounts')
+    .select('id, phone_number_id, access_token_enc').eq('user_id', userId).eq('is_active', true);
+  if (error) throw new Error(error.message);
+  if (!accounts?.length) return { updated: 0, failed: [], accounts: [] };
+
+  const results = await Promise.all(accounts.map(async (acc) => {
+    try {
+      const accessToken = decryptToken(acc.access_token_enc);
+      const metaRes = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${acc.phone_number_id}?fields=quality_rating,verified_name,display_phone_number`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const metaData = await metaRes.json();
+      if (!metaRes.ok) return { id: acc.id, ok: false, error: metaData.error?.message || `Meta API ${metaRes.status}` };
+      const { error: updateErr } = await supabase.from('crm_wa_accounts').update({
+        quality_rating: metaData.quality_rating || 'UNKNOWN',
+        display_name: metaData.verified_name || undefined,
+        updated_at: new Date().toISOString(),
+      }).eq('id', acc.id);
+      if (updateErr) return { id: acc.id, ok: false, error: updateErr.message };
+      return { id: acc.id, ok: true, quality_rating: metaData.quality_rating || 'UNKNOWN' };
+    } catch (err) {
+      return { id: acc.id, ok: false, error: err.message };
+    }
+  }));
+
+  const refreshed = await listAccounts(userId);
+  return { updated: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok), accounts: refreshed };
+}
+
 async function getActiveAccount(userId) {
   const { data, error } = await supabase.from('crm_wa_accounts')
     .select('*').eq('user_id', userId).eq('is_active', true)
@@ -209,13 +251,17 @@ async function getActiveAccount(userId) {
 // written to crm_leads/crm_messages so modules/inbox (which only reads
 // crm_messages) actually has something to show. Without this, the webhook
 // handler was a dead end: events arrived, got logged to stdout, and
-// nothing else ever knew about them.
+// nothing else ever knew about them. Shared with facebook/instagram/threads
+// via shared/crmMessages.js — only the "which client owns this event"
+// lookup below is WhatsApp-specific (keyed by phone_number_id).
 // ---------------------------------------------------------------------
-async function resolveClientId(userId) {
-  const { data, error } = await supabase.from('crm_profiles').select('client_id').eq('id', userId).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data?.client_id) throw new Error(`No CRM client found for user ${userId}.`);
-  return data.client_id;
+const { resolveClientId, findOrCreateLead, recordMessage: recordCrmMessage } = require('../../shared/crmMessages');
+
+async function findOrCreateLeadByPhone(clientId, phone) {
+  return findOrCreateLead(clientId, 'whatsapp', { phone });
+}
+async function recordMessage(clientId, leadId, opts) {
+  return recordCrmMessage(clientId, leadId, { ...opts, channel: 'whatsapp' });
 }
 
 // Webhooks are unauthenticated (Meta calls them, not a logged-in user) — the
@@ -227,30 +273,6 @@ async function resolveClientByPhoneNumberId(phoneNumberId) {
   if (error) throw new Error(error.message);
   if (!account) return null;
   return { userId: account.user_id, clientId: await resolveClientId(account.user_id) };
-}
-
-async function findOrCreateLeadByPhone(clientId, phone) {
-  const { data: existing, error: findErr } = await supabase.from('crm_leads')
-    .select('id').eq('client_id', clientId).eq('phone', phone).maybeSingle();
-  if (findErr) throw new Error(findErr.message);
-  if (existing) return existing.id;
-  const { data, error } = await supabase.from('crm_leads')
-    .insert({ client_id: clientId, phone, source: 'whatsapp' }).select('id').single();
-  if (error) throw new Error(error.message);
-  return data.id;
-}
-
-async function recordMessage(clientId, leadId, { direction, messageType = 'text', body, externalId, status, sentBy }) {
-  const { error } = await supabase.from('crm_messages').insert({
-    client_id: clientId, lead_id: leadId, channel: 'whatsapp', direction,
-    message_type: messageType, body: body || '', external_id: externalId || null,
-    is_read: direction === 'out', status: status || null, sent_by: sentBy || null,
-  });
-  if (error) throw new Error(error.message);
-  await supabase.from('crm_leads').update({
-    last_message: body || '', last_message_at: new Date().toISOString(),
-    needs_reply: direction === 'in',
-  }).eq('id', leadId);
 }
 
 /** Called by routes.js for each 'message' webhook event — persists it as an inbound crm_messages row. */
@@ -299,13 +321,39 @@ async function logOutbound(userId, to, { messageType, body, externalId }) {
   }
 }
 
+async function markAllRead(userId) {
+  const clientId = await resolveClientId(userId);
+  const { error } = await supabase.from('crm_messages')
+    .update({ is_read: true }).eq('client_id', clientId).eq('channel', 'whatsapp').eq('direction', 'in').eq('is_read', false);
+  if (error) throw new Error(error.message);
+}
+
+async function assertWithinReplyWindow(clientId, to) {
+  const leadId = await findOrCreateLeadByPhone(clientId, to);
+  const { data: lastInbound, error } = await supabase.from('crm_messages')
+    .select('created_at').eq('lead_id', leadId).eq('channel', 'whatsapp').eq('direction', 'in')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!lastInbound) throw new Error('No inbound message found for this contact — use an approved template to start the conversation.');
+  const hoursSince = (Date.now() - new Date(lastInbound.created_at).getTime()) / 3600000;
+  if (hoursSince > REPLY_WINDOW_HOURS) {
+    throw new Error(`Reply window has closed (${hoursSince.toFixed(1)}h since their last message, limit is ${REPLY_WINDOW_HOURS}h). Use an approved template instead.`);
+  }
+}
+
 /** High-level send: looks up the user's active account and sends a text/button/list/cta message. */
 async function sendMessage(userId, { to, kind = 'text', cfg, vars }) {
   const account = await getActiveAccount(userId);
+  const clientId = await resolveClientId(userId);
+  await assertWithinReplyWindow(clientId, to);
   const payload = buildMessagePayload(kind, cfg, to, vars);
   const messageId = await sendRaw(account.phone_number_id, decryptToken(account.access_token_enc), payload);
   const bodyPreview = kind === 'text' ? renderTemplate(cfg.body, vars) : renderTemplate(cfg.body || cfg.displayText || `[${kind}]`, vars);
-  await logOutbound(userId, to, { messageType: kind, body: bodyPreview, externalId: messageId });
+  try {
+    await recordMessage(clientId, await findOrCreateLeadByPhone(clientId, to), { direction: 'out', messageType: kind, body: bodyPreview, externalId: messageId, status: 'sent', sentBy: userId });
+  } catch (err) {
+    console.error('[whatsapp] sent to Meta but failed to log to CRM:', err.message);
+  }
   return { messageId, phoneNumberId: account.phone_number_id };
 }
 
@@ -371,6 +419,8 @@ module.exports = {
   connectAccount,
   disconnectAccount,
   getActiveAccount,
+  refreshQuality,
+  markAllRead,
   sendMessage,
   sendTemplate,
   sendRaw,
