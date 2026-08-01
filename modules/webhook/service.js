@@ -4,6 +4,7 @@
 // loose: { name, phone, email, message } — anything else is ignored.
 const crypto = require('crypto');
 const { supabase } = require('../../shared/db');
+const { findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
 
 async function generateToken(clientId) {
   const token = crypto.randomBytes(24).toString('base64url');
@@ -21,33 +22,17 @@ async function getClientIdForToken(token) {
 }
 
 /** Upserts a lead by phone/email (whichever is given) for this client, and
- * logs the payload's message text as an inbound crm_messages row if present. */
+ * logs the payload's message text as an inbound crm_messages row if present.
+ * Uses the same find-or-create-lead helper every channel module shares —
+ * this also normalizes phone to digits-only, so a webform submission for a
+ * number that already messaged in on WhatsApp lands on the same lead
+ * instead of silently creating a duplicate. */
 async function ingest(clientId, { name, phone, email, message }) {
   if (!phone && !email) throw new Error('phone or email is required');
-
-  let lead;
-  let q = supabase.from('crm_leads').select('*').eq('client_id', clientId);
-  q = phone ? q.eq('phone', phone) : q.eq('email', email);
-  const { data: existing } = await q.maybeSingle();
-
-  if (existing) {
-    lead = existing;
-  } else {
-    const { data, error } = await supabase.from('crm_leads').insert({
-      client_id: clientId, name: name || null, phone: phone || null, email: email || null, source: 'webform',
-    }).select().single();
-    if (error) throw new Error(error.message);
-    lead = data;
-  }
-
-  if (message) {
-    const { error } = await supabase.from('crm_messages').insert({
-      client_id: clientId, lead_id: lead.id, channel: 'webform', direction: 'in',
-      message_type: 'text', body: message,
-    });
-    if (error) throw new Error(error.message);
-  }
-
+  const leadId = await findOrCreateLead(clientId, 'webform', { phone, email, name });
+  const { data: lead, error } = await supabase.from('crm_leads').select('*').eq('id', leadId).single();
+  if (error) throw new Error(error.message);
+  if (message) await recordMessage(clientId, leadId, { channel: 'webform', direction: 'in', messageType: 'text', body: message });
   return lead;
 }
 

@@ -285,6 +285,21 @@ async function handleInboundEvent(event) {
   const body = event.text || buttonReply || listReply || '[unsupported message type]';
   const messageType = event.interactiveReply ? 'interactive' : (event.text ? 'text' : 'unknown');
   await recordMessage(ctx.clientId, leadId, { direction: 'in', messageType, body, externalId: event.messageId });
+
+  // Auto-reply matching — text messages only (keyword rules match on text;
+  // button/list replies could be added later if a rule needs to react to those).
+  if (event.text) {
+    const automations = require('../automations/service');
+    try {
+      const match = await automations.matchRule(ctx.clientId, { text: event.text });
+      if (match?.replyType === 'text' && match.text) {
+        await sendMessage(ctx.userId, { to: event.from, kind: 'text', cfg: { body: match.text } });
+        if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(ctx.clientId, leadId, match.rule);
+      }
+    } catch (err) {
+      console.error('[whatsapp] auto-reply failed:', err.message);
+    }
+  }
 }
 
 /** Called by routes.js for each 'status' webhook event — updates the matching outbound row's delivery status. */

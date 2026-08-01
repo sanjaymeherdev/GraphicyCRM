@@ -179,6 +179,7 @@ async function handleCommentEvent({ pageId, commentId, text, senderId, senderNam
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+  await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
 async function handleDmEvent({ pageId, mid, text, senderId }) {
@@ -187,6 +188,27 @@ async function handleDmEvent({ pageId, mid, text, senderId }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
+  await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
+}
+
+// Matches an active automation against inbound text and, if one fires,
+// sends the reply through whichever function the caller passed (a comment
+// reply or a DM, per the event type) and logs it + schedules a follow-up.
+// Errors here are logged, not thrown — an automation misfiring should never
+// take down the webhook handler that's persisting the inbound message.
+async function tryAutoReply({ userId, clientId, leadId, text, send, replyMessageType }) {
+  if (!text) return;
+  const automations = require('../automations/service');
+  try {
+    const match = await automations.matchRule(clientId, { text });
+    if (match?.replyType === 'text' && match.text) {
+      const externalId = await send(match.text);
+      await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'out', messageType: replyMessageType, body: match.text, externalId });
+      if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
+    }
+  } catch (err) {
+    console.error('[facebook] auto-reply failed:', err.message);
+  }
 }
 
 module.exports = {

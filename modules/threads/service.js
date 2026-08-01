@@ -148,6 +148,22 @@ async function handleReplyEvent({ accountId, replyId, text }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'threads', { externalId: replyId });
   await recordMessage(clientId, leadId, { channel: 'threads', direction: 'in', messageType: 'comment', body: text, externalId: replyId });
+
+  // Auto-reply matching. No DM fallback here — Threads has no messaging API
+  // (see sendDM above), so a matched rule only ever posts a public reply.
+  if (text) {
+    const automations = require('../automations/service');
+    try {
+      const match = await automations.matchRule(clientId, { text });
+      if (match?.replyType === 'text' && match.text) {
+        const externalId = await replyToThread(conn.user_id, replyId, match.text);
+        await recordMessage(clientId, leadId, { channel: 'threads', direction: 'out', messageType: 'comment', body: match.text, externalId });
+        if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
+      }
+    } catch (err) {
+      console.error('[threads] auto-reply failed:', err.message);
+    }
+  }
 }
 
 module.exports = {

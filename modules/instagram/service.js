@@ -165,6 +165,7 @@ async function handleCommentEvent({ accountId, commentId, text, senderId, sender
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+  await tryAutoReply({ clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
 async function handleDmEvent({ accountId, mid, text, senderId }) {
@@ -173,6 +174,27 @@ async function handleDmEvent({ accountId, mid, text, senderId }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
+  await tryAutoReply({ clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
+}
+
+// Matches an active automation against inbound text and, if one fires,
+// sends the reply through whichever function the caller passed (a comment
+// reply or a DM) and logs it + schedules a follow-up. Errors are logged,
+// not thrown — an automation misfiring shouldn't take down the webhook
+// handler that's persisting the inbound message.
+async function tryAutoReply({ clientId, leadId, text, send, replyMessageType }) {
+  if (!text) return;
+  const automations = require('../automations/service');
+  try {
+    const match = await automations.matchRule(clientId, { text });
+    if (match?.replyType === 'text' && match.text) {
+      const externalId = await send(match.text);
+      await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'out', messageType: replyMessageType, body: match.text, externalId });
+      if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
+    }
+  } catch (err) {
+    console.error('[instagram] auto-reply failed:', err.message);
+  }
 }
 
 module.exports = {

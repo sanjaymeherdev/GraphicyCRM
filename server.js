@@ -23,6 +23,8 @@ const { supabase } = require('./shared/db');
 const { resolveFirstUserId } = require('./shared/clientContext');
 const sheetsService = require('./modules/sheets/service');
 const scheduleService = require('./modules/schedule/service');
+const insightsService = require('./modules/insights/service');
+const automationsService = require('./modules/automations/service');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -126,6 +128,23 @@ setInterval(() => {
   scheduleService.pollDuePosts(resolveFirstUserId)
     .catch((err) => console.error('[schedule] poll tick failed:', err.message));
 }, SCHEDULE_POLL_MS);
+
+// Graph's /insights edge is rate-limited per app — polling every request
+// (like the original repo did) isn't viable at any real scale, hence the
+// cache-table + periodic-snapshot design (see modules/insights/service.js).
+const INSIGHTS_POLL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  insightsService.pollInsights().catch((err) => console.error('[insights] poll tick failed:', err.message));
+}, INSIGHTS_POLL_MS);
+insightsService.pollInsights().catch((err) => console.error('[insights] initial poll failed:', err.message));
+
+// Follow-ups (crm_followups) are due-timestamped, not interval-based like
+// the other pollers, so this runs frequently — a follow-up due at 2:03pm
+// shouldn't wait up to an hour to actually go out.
+const FOLLOWUP_POLL_MS = 5 * 60 * 1000;
+setInterval(() => {
+  automationsService.checkFollowUps().catch((err) => console.error('[automations] follow-up poll tick failed:', err.message));
+}, FOLLOWUP_POLL_MS);
 
 const PORT = process.env.PORT || 3000;
 

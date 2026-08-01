@@ -103,4 +103,75 @@ async function matchRule(clientId, { text }) {
   return { rule, replyType: 'none', sheetLookupResult };
 }
 
-module.exports = { listAutomations, createAutomation, updateAutomation, deleteAutomation, matchRule };
+/** Schedules a crm_followups row per the matched rule's follow_up config —
+ * called by each channel's inbound handler right after it sends the auto-reply. */
+async function scheduleFollowUp(clientId, leadId, rule) {
+  if (!rule.follow_up?.enabled || !rule.follow_up?.template_id) return;
+  const hours = rule.follow_up.hours || 4;
+  const { error } = await supabase.from('crm_followups').insert({
+    client_id: clientId, lead_id: leadId, automation_id: rule.id,
+    condition: rule.follow_up.condition || 'no_reply',
+    due_at: new Date(Date.now() + hours * 3600000).toISOString(),
+  });
+  if (error) console.error('[automations] failed to schedule follow-up:', error.message);
+}
+
+async function markFollowUpFired(id) {
+  await supabase.from('crm_followups').update({ fired: true, fired_at: new Date().toISOString() }).eq('id', id);
+}
+
+/** Sends a follow-up's template body through whichever channel the lead's most
+ * recent message was on. WhatsApp needs an approved template for a send this
+ * far outside any reply window; Facebook/Instagram DM plain text is fine;
+ * Threads has no DM API, so a threads-sourced lead can't get a DM follow-up. */
+async function sendFollowUpMessage(userId, clientId, lead, channel, tpl) {
+  const { recordMessage } = require('../../shared/crmMessages');
+  if (channel === 'whatsapp' && lead.phone) {
+    const whatsapp = require('../whatsapp/service');
+    if (tpl.type === 'whatsapp_template' && tpl.meta_template_name) {
+      await whatsapp.sendTemplate(userId, { to: lead.phone, name: tpl.meta_template_name, language: tpl.language || 'en_US', components: [] });
+    } else {
+      await whatsapp.sendMessage(userId, { to: lead.phone, kind: 'text', cfg: { body: tpl.body } });
+    }
+  } else if ((channel === 'facebook' || channel === 'instagram') && lead.external_id) {
+    const svc = require(`../${channel}/service`);
+    const externalId = await svc.sendDM(userId, lead.external_id, tpl.body);
+    await recordMessage(clientId, lead.id, { channel, direction: 'out', messageType: 'text', body: tpl.body, externalId });
+  } else {
+    console.warn(`[automations] follow-up for lead ${lead.id}: no sendable channel/identifier (channel="${channel}")`);
+  }
+}
+
+/** Polls crm_followups for due, unfired rows and sends them (if their
+ * condition still holds — currently only 'no_reply' is implemented: skips
+ * silently if the lead has messaged back since, i.e. crm_leads.needs_reply
+ * flipped true from a later inbound message). Called on a timer from server.js. */
+async function checkFollowUps() {
+  const { data: due, error } = await supabase.from('crm_followups')
+    .select('*, crm_leads(*), crm_automations(follow_up)')
+    .eq('fired', false).lte('due_at', new Date().toISOString());
+  if (error) throw new Error(error.message);
+
+  for (const followup of due || []) {
+    try {
+      const lead = followup.crm_leads;
+      if (!lead) { await markFollowUpFired(followup.id); continue; }
+      if (followup.condition === 'no_reply' && lead.needs_reply) { await markFollowUpFired(followup.id); continue; } // lead already replied — condition no longer holds
+
+      const templateId = followup.crm_automations?.follow_up?.template_id;
+      const { data: tpl } = templateId ? await supabase.from('crm_templates').select('*').eq('id', templateId).single() : { data: null };
+      if (!tpl) { await markFollowUpFired(followup.id); continue; }
+
+      const { data: lastMsg } = await supabase.from('crm_messages').select('channel')
+        .eq('lead_id', lead.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const channel = lastMsg?.channel || lead.source;
+      const userId = await resolveFirstUserId(followup.client_id);
+      if (userId) await sendFollowUpMessage(userId, followup.client_id, lead, channel, tpl);
+      await markFollowUpFired(followup.id);
+    } catch (err) {
+      console.error(`[automations] follow-up ${followup.id} failed:`, err.message);
+    }
+  }
+}
+
+module.exports = { listAutomations, createAutomation, updateAutomation, deleteAutomation, matchRule, scheduleFollowUp, checkFollowUps };
