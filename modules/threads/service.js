@@ -3,10 +3,12 @@
 // sm/platforms/threads.js. Threads has no DM/messaging API as of this
 // writing — sendDM below intentionally throws, matching the source.
 const axios = require('axios');
+const crypto = require('crypto');
 const {
-  buildAuthUrl, parseState, upsertConnection, getConnection,
+  buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
   exchangeThreadsCode, APP_BASE_URL,
 } = require('../../shared/metaConnections');
+const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
 
 const VERSION = process.env.THREADS_VERSION || 'v1.0';
 const BASE = `https://graph.threads.net/${VERSION}`;
@@ -81,4 +83,74 @@ async function sendDM() {
   throw new Error('Threads has no DM/messaging API — this is a platform limitation, not a bug.');
 }
 
-module.exports = { getAuthUrl, handleOAuthCallback, publishPost, replyToThread, listRecentThreads, listRecentComments, sendDM };
+// ---------------------------------------------------------------------
+// Webhook signature verification. TH_SECRET tried first, then IG_SECRET,
+// then FB_SECRET — Meta sometimes delivers Threads events through an app
+// configured under a sibling platform's secret when they share one Meta app.
+// ---------------------------------------------------------------------
+function verifySignature(rawBody, sigHeader) {
+  const secrets = [process.env.TH_SECRET, process.env.IG_SECRET, process.env.FB_SECRET].filter(Boolean);
+  if (!secrets.length) return true; // not configured — allow through (dev only)
+  if (!sigHeader) return false;
+  return secrets.some((secret) => {
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    try { return crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected)); }
+    catch { return false; }
+  });
+}
+
+// Threads' webhook payload arrives in two shapes depending on topic:
+//  - modern: { topic: 'moderate'|'interaction', values: [{ uid, value: { text, id, root_post, replied_to } }] }
+//  - legacy: { entry: [{ id, changes: [{ field: 'replies'|'comments', value }] }] }
+// Normalizes both into a flat { text, replyId, mediaId, accountId }[] list.
+// 'interaction' topic events (new posts, no comment text) are skipped.
+function parseInboundEvents(payload) {
+  const items = [];
+  if (Array.isArray(payload.values)) {
+    for (const item of payload.values) {
+      const value = item.value || {};
+      if (payload.topic === 'interaction' && !value.text) continue;
+      if (payload.topic === 'moderate' || value.text) {
+        items.push({
+          text: value.text, replyId: value.id,
+          mediaId: value.root_post?.id || value.replied_to?.id || payload.target_id,
+          accountId: item.uid || value.root_post?.owner_id || null,
+        });
+      }
+    }
+  } else {
+    for (const entry of payload.entry || []) {
+      for (const change of entry.changes || []) {
+        if (change.field !== 'replies' && change.field !== 'comments') continue;
+        const value = change.value || {};
+        items.push({ text: value.text, replyId: value.id, mediaId: value.media?.id || entry.id, accountId: entry.id });
+      }
+    }
+  }
+  return items;
+}
+
+// ---------------------------------------------------------------------
+// CRM persistence for inbound replies — same loop as WhatsApp/Facebook/
+// Instagram. Auto-reply/keyword-matching is handled by modules/automations,
+// not here.
+// ---------------------------------------------------------------------
+async function handleReplyEvent({ accountId, replyId, text }) {
+  // Threads' webhook payload gives no stable numeric sender id for
+  // replies (only a username on read, and not even that on the webhook
+  // event itself) — leads dedupe on the reply id, so each reply becomes a
+  // distinct lead/message rather than a threaded conversation per replier.
+  // Good enough to surface in the inbox; a proper per-user match would need
+  // an extra GET on the reply object for its author, which the webhook
+  // payload alone doesn't justify.
+  const conn = await resolveByAccountId('threads', accountId);
+  if (!conn) return console.warn(`[threads] reply on unknown account ${accountId} — is that account connected here?`);
+  const clientId = await resolveClientId(conn.user_id);
+  const leadId = await findOrCreateLead(clientId, 'threads', { externalId: replyId });
+  await recordMessage(clientId, leadId, { channel: 'threads', direction: 'in', messageType: 'comment', body: text, externalId: replyId });
+}
+
+module.exports = {
+  getAuthUrl, handleOAuthCallback, publishPost, replyToThread, listRecentThreads, listRecentComments, sendDM,
+  verifySignature, parseInboundEvents, handleReplyEvent,
+};

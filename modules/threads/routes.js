@@ -17,6 +17,26 @@ router.get('/connect/callback', async (req, res) => {
   } catch (err) { res.status(500).send(`Threads connect failed: ${err.message}`); }
 });
 
+// --- Webhook (replies — public, Meta calls this; Threads has no DM API) ---
+router.get('/webhook', (req, res) => {
+  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.TH_WEBHOOK_VERIFY_TOKEN) {
+    return res.status(200).send(req.query['hub.challenge']);
+  }
+  res.sendStatus(403);
+});
+
+router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }), (req, res) => {
+  const valid = service.verifySignature(req.rawBody, req.headers['x-hub-signature-256']);
+  if (!valid) return res.sendStatus(403);
+  res.sendStatus(200); // ack immediately, Meta retries on non-2xx
+
+  const events = service.parseInboundEvents(req.body || {});
+  for (const { text, replyId, accountId } of events) {
+    service.handleReplyEvent({ accountId, replyId, text })
+      .catch((err) => console.error('[threads webhook] failed to record reply:', err.message));
+  }
+});
+
 router.use(requireAuth);
 
 router.post('/posts', async (req, res) => {
