@@ -186,12 +186,22 @@ async function connectAccount(userId, { waba_id, phone_number_id, access_token }
     method: 'POST', headers: { Authorization: `Bearer ${access_token}` },
   });
 
-  const { data, error } = await supabase.from('crm_wa_accounts').insert({
+  // Only one connected number per user at a time — deactivate any other
+  // active account before inserting the new one, same as the Meta
+  // OAuth platforms (see shared/metaConnections.js's upsertConnection).
+  const { error: deactivateErr } = await supabase.from('crm_wa_accounts')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('user_id', userId).eq('is_active', true).neq('phone_number_id', phone_number_id);
+  if (deactivateErr) throw new Error(deactivateErr.message);
+
+  // Reconnecting the SAME number (e.g. refreshed token) should update the
+  // existing row rather than insert a duplicate — upsert on the natural key.
+  const { data, error } = await supabase.from('crm_wa_accounts').upsert({
     user_id: userId, waba_id, phone_number_id,
     phone_number: phoneData.display_phone_number, display_name: phoneData.verified_name,
     access_token_enc: encryptToken(access_token), quality_rating: phoneData.quality_rating || 'UNKNOWN',
-    is_active: true, created_at: new Date().toISOString(),
-  }).select().single();
+    is_active: true, updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,phone_number_id' }).select().single();
   if (error) throw new Error(error.message);
   return data;
 }
