@@ -12,6 +12,7 @@ const Inbox = {
       <div class="card" style="padding:0;overflow:hidden;">
         <div class="seg" id="inboxTabSeg" style="margin:12px 12px 0;">
           <button class="${this._activeChannel === '' ? 'on' : ''}" data-channel="" onclick="Inbox.setChannelTab('')">All</button>
+          <button class="${this._activeChannel === 'whatsapp' ? 'on' : ''}" data-channel="whatsapp" onclick="Inbox.setChannelTab('whatsapp')">📱 WhatsApp</button>
           <button class="${this._activeChannel === 'instagram' ? 'on' : ''}" data-channel="instagram" onclick="Inbox.setChannelTab('instagram')">📷 IG</button>
           <button class="${this._activeChannel === 'facebook' ? 'on' : ''}" data-channel="facebook" onclick="Inbox.setChannelTab('facebook')">👥 FB</button>
           <button class="${this._activeChannel === 'email' ? 'on' : ''}" data-channel="email" onclick="Inbox.setChannelTab('email')">📧 Email</button>
