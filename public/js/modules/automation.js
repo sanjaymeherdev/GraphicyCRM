@@ -97,11 +97,14 @@ const Automation = {
     if (sheetLookup?.spreadsheetId !== undefined && !this._sheetsList.length && !this._loadingSheets) {
       this.loadGoogleSheetsList().then(() => this.renderEditor(id));
     }
-    if (sheetLookup?.spreadsheetId) {
+    if (sheetLookup?.spreadsheetId && !this._tabsCache[sheetLookup.spreadsheetId] && !this._loadingTabs[sheetLookup.spreadsheetId]) {
       this.loadTabsFor(sheetLookup.spreadsheetId).then(() => this.renderEditor(id));
     }
     if (sheetLookup?.spreadsheetId && sheetLookup?.worksheet) {
-      this.loadHeadersFor(sheetLookup.spreadsheetId, sheetLookup.worksheet).then(() => this.renderEditor(id));
+      const key = `${sheetLookup.spreadsheetId}::${sheetLookup.worksheet}`;
+      if (!this._headersCache[key] && !this._loadingHeaders[key]) {
+        this.loadHeadersFor(sheetLookup.spreadsheetId, sheetLookup.worksheet).then(() => this.renderEditor(id));
+      }
     }
 
     editor.innerHTML = `
