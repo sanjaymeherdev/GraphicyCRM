@@ -350,6 +350,10 @@ const API = (() => {
     return await post('/api/wa/verify', { waba_id: wabaId, access_token: token });
   }
 
+  async function connectWhatsApp(wabaId, phoneNumberId, token) {
+    return await post('/api/whatsapp/accounts', { waba_id: wabaId, phone_number_id: phoneNumberId, access_token: token });
+  }
+
   // ─── SCHEDULE (content posts across facebook/instagram/threads/linkedin) ───
   async function getScheduledPosts(params = {}) {
     const qs = new URLSearchParams(params).toString();
@@ -454,6 +458,7 @@ const API = (() => {
 
     // WhatsApp
     verifyWhatsApp,
+    connectWhatsApp,
 
     // Schedule
     getScheduledPosts,

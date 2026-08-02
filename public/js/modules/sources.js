@@ -24,6 +24,16 @@ const Sources = {
           <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectFacebook()">Connect with Facebook</button>
         </div>
         <div class="conn-card">
+          <div class="m-head"><span class="badge-ic">🧵</span><h3>Threads</h3></div>
+          <p class="m-desc">Connect via Meta OAuth</p>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectThreads()">Connect with Threads</button>
+        </div>
+        <div class="conn-card">
+          <div class="m-head"><span class="badge-ic">💼</span><h3>LinkedIn</h3></div>
+          <p class="m-desc">Direct login, or via Facebook if reached through a linked Page</p>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectLinkedIn()">Connect with LinkedIn</button>
+        </div>
+        <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📧</span><h3>Gmail</h3></div>
           <p class="m-desc">Connect via Google OAuth</p>
           <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectGoogle()">Connect with Google</button>
@@ -79,13 +89,22 @@ const Sources = {
     }
   },
 
-  selectNumber(idx) {
+  async selectNumber(idx) {
     const nums = window._wabaNumbers || [];
     if (!nums[idx]) return;
     document.querySelectorAll('.num-pick').forEach(el => el.classList.remove('sel'));
     document.querySelector(`.num-pick[data-i="${idx}"]`)?.classList.add('sel');
-    window._selectedNumber = nums[idx];
-    showToast(`Selected ${nums[idx].phone_number}`);
+    const picked = nums[idx];
+    const wabaId = document.getElementById('wabaId').value.trim();
+    const token = document.getElementById('wabaToken').value.trim();
+    try {
+      await API.connectWhatsApp(wabaId, picked.phone_number_id, token);
+      showToast(`✅ Connected ${picked.phone_number}`);
+      document.getElementById('wabaNumbers').innerHTML = '';
+      document.getElementById('wabaToken').value = '';
+    } catch (err) {
+      showToast('Failed to connect: ' + err.message, true);
+    }
   },
 
   async connectInstagram() {
@@ -100,6 +119,24 @@ const Sources = {
   async connectFacebook() {
     try {
       const data = await API.getOAuthUrl('facebook');
+      window.location.href = data.url;
+    } catch (err) {
+      showToast('Failed: ' + err.message, true);
+    }
+  },
+
+  async connectThreads() {
+    try {
+      const data = await API.getOAuthUrl('threads');
+      window.location.href = data.url;
+    } catch (err) {
+      showToast('Failed: ' + err.message, true);
+    }
+  },
+
+  async connectLinkedIn() {
+    try {
+      const data = await API.getOAuthUrl('linkedin');
       window.location.href = data.url;
     } catch (err) {
       showToast('Failed: ' + err.message, true);
