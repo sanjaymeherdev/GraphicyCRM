@@ -117,7 +117,11 @@ create table if not exists crm_sheet_watchers (
   phone_column text,
   email_column text,
   channel text default 'whatsapp' check (channel in ('whatsapp','facebook','instagram')),
-  template_id uuid references crm_templates(id) on delete set null,
+  -- template_id (FK to crm_templates) is added further down via ALTER TABLE,
+  -- after crm_templates is created — crm_templates doesn't exist yet at this
+  -- point in the file (it's part of 002_crmsuite, below), so an inline FK
+  -- here would fail with "relation crm_templates does not exist" on a fresh
+  -- empty database run top-to-bottom.
   -- Same shape as campaign placeholder mapping: { "1": {type:'name'}, "2":
   -- {type:'field', field:'Amount'}, ... } — resolved against the matched
   -- row's columns when sending a WhatsApp template.
@@ -134,7 +138,6 @@ alter table crm_sheet_watchers add column if not exists name_column text;
 alter table crm_sheet_watchers add column if not exists phone_column text;
 alter table crm_sheet_watchers add column if not exists email_column text;
 alter table crm_sheet_watchers add column if not exists channel text default 'whatsapp';
-alter table crm_sheet_watchers add column if not exists template_id uuid references crm_templates(id) on delete set null;
 alter table crm_sheet_watchers add column if not exists placeholder_mapping jsonb not null default '{}';
 
 -- ---------------------------------------------------------------------
@@ -359,6 +362,10 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   alter table crm_templates add constraint crm_templates_category_check check (category in ('MARKETING','UTILITY','AUTHENTICATION'));
 exception when duplicate_object then null; end $$;
+
+-- Deferred from crm_sheet_watchers' definition above (001_init section) —
+-- crm_templates has to exist first, which it now does.
+alter table crm_sheet_watchers add column if not exists template_id uuid references crm_templates(id) on delete set null;
 
 -- ---------------------------------------------------------------------
 -- Automations — GET/POST/PUT/DELETE /api/automations
