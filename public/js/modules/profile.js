@@ -22,21 +22,23 @@ const Profile = {
 
     panel.innerHTML = `
       <div class="page-header"><div><div class="page-title">Profile</div><div class="page-sub">Your account settings</div></div></div>
-      <div class="card" style="max-width:600px;">
-        <div style="display:flex;gap:16px;margin-bottom:20px;">
-          <div class="user-avatar-lg" style="width:64px;height:64px;font-size:28px;">${getInitials(u.name || 'U')}</div>
-          <div><h3 style="font-size:18px;">${escapeHtml(u.name || 'User')}</h3>
-          <div style="color:var(--text2);">${escapeHtml(u.email || '')}</div>
-          <div style="margin-top:4px;"><span class="badge badge-green">● Active</span></div></div>
+      <div class="grid-2" style="align-items:start;">
+        <div class="card">
+          <div style="display:flex;gap:16px;margin-bottom:20px;">
+            <div class="user-avatar-lg" style="width:64px;height:64px;font-size:28px;">${getInitials(u.name || 'U')}</div>
+            <div><h3 style="font-size:18px;">${escapeHtml(u.name || 'User')}</h3>
+            <div style="color:var(--text2);">${escapeHtml(u.email || '')}</div>
+            <div style="margin-top:4px;"><span class="badge badge-green">● Active</span></div></div>
+          </div>
+          <div class="field"><label>Full Name</label><input type="text" id="profileName" value="${escapeHtml(u.name || '')}" /></div>
+          <div class="field"><label>Email</label><input type="email" id="profileEmail" value="${escapeHtml(u.email || '')}" /></div>
+          <div class="field"><label>New Password</label><input type="password" id="profilePassword" placeholder="Leave blank to keep current" /></div>
+          <button class="btn btn-primary" onclick="Profile.save()">💾 Save Profile</button>
         </div>
-        <div class="field"><label>Full Name</label><input type="text" id="profileName" value="${escapeHtml(u.name || '')}" /></div>
-        <div class="field"><label>Email</label><input type="email" id="profileEmail" value="${escapeHtml(u.email || '')}" /></div>
-        <div class="field"><label>New Password</label><input type="password" id="profilePassword" placeholder="Leave blank to keep current" /></div>
-        <button class="btn btn-primary" onclick="Profile.save()">💾 Save Profile</button>
-      </div>
-      <div class="card" style="max-width:600px;margin-top:16px;">
-        <div class="page-header" style="margin-bottom:8px;"><div><div class="page-title" style="font-size:16px;">Connected accounts</div><div class="page-sub">Every source currently linked to your account</div></div></div>
-        ${connectedAccountsHtml}
+        <div class="card">
+          <div class="page-header" style="margin-bottom:8px;"><div><div class="page-title" style="font-size:16px;">Connected accounts</div><div class="page-sub">Every source currently linked to your account</div></div></div>
+          ${connectedAccountsHtml}
+        </div>
       </div>
     `;
   },
