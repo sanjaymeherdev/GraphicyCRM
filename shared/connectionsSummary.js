@@ -44,7 +44,7 @@ async function getConnectionsSummary(userId) {
   (waRes.data || []).forEach((w) => {
     list.push({
       platform: 'whatsapp', ...PLATFORM_META.whatsapp,
-      account_name: w.display_name || w.phone_number || 'WhatsApp number',
+      account_name: w.display_name && w.phone_number ? `${w.display_name} (${w.phone_number})` : (w.phone_number || w.display_name || 'WhatsApp number'),
       connected_at: w.updated_at,
       // Internal wa_accounts row id — WhatsApp can have more than one
       // connected number, so disconnecting is per-account (DELETE
