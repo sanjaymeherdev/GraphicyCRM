@@ -93,6 +93,16 @@ const Automation = {
     if (rule.action_type === 'ai' && !this._modelsList.length && !this._loadingModels) {
       this.loadModelsList().then(() => this.renderEditor(id));
     }
+    const sheetLookup = rule.action_config?.sheet_lookup;
+    if (sheetLookup?.spreadsheetId !== undefined && !this._sheetsList.length && !this._loadingSheets) {
+      this.loadGoogleSheetsList().then(() => this.renderEditor(id));
+    }
+    if (sheetLookup?.spreadsheetId) {
+      this.loadTabsFor(sheetLookup.spreadsheetId).then(() => this.renderEditor(id));
+    }
+    if (sheetLookup?.spreadsheetId && sheetLookup?.worksheet) {
+      this.loadHeadersFor(sheetLookup.spreadsheetId, sheetLookup.worksheet).then(() => this.renderEditor(id));
+    }
 
     editor.innerHTML = `
       <div class="chain">
@@ -173,40 +183,61 @@ const Automation = {
               Sheet lookup <span class="block-sub" style="margin-left:4px;">— each rule gets its own lookup, so different keywords can search different sheets ("multi lookup")</span>
             </label>
           </div>
-          ${rule.action_config?.sheet_lookup?.spreadsheetId !== undefined ? `
+          ${rule.action_config?.sheet_lookup?.spreadsheetId !== undefined ? (() => {
+            const sl = rule.action_config.sheet_lookup;
+            const tabs = this._tabsCache[sl.spreadsheetId] || [];
+            const tabsLoading = !!this._loadingTabs[sl.spreadsheetId];
+            const headersKey = `${sl.spreadsheetId}::${sl.worksheet}`;
+            const headers = this._headersCache[headersKey] || [];
+            const headersLoading = !!this._loadingHeaders[headersKey];
+            // Same "fall back to the raw stored value if it's no longer in the
+            // fetched list" pattern as sources.js's columnSelect — so editing an
+            // existing rule never silently blanks out its saved mapping.
+            const columnSelect = (field, currentValue) => `
+              <select onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','${field}', this.value)" ${!headers.length && !headersLoading ? 'disabled' : ''}>
+                <option value="">${headersLoading ? 'Loading columns…' : (headers.length ? '— pick a column —' : 'Pick a spreadsheet + worksheet first')}</option>
+                ${headers.map((h) => `<option value="${escapeHtml(h)}" ${h === currentValue ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('')}
+                ${currentValue && !headers.includes(currentValue) ? `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(currentValue)} (not found in sheet)</option>` : ''}
+              </select>
+            `;
+            return `
             <div class="field-row">
               <div class="field">
-                <label>Spreadsheet ID</label>
-                <input type="text" placeholder="from the sheet's URL" value="${escapeHtml(rule.action_config?.sheet_lookup?.spreadsheetId || '')}"
-                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','spreadsheetId', this.value)" />
+                <label>Spreadsheet</label>
+                <select onchange="Automation.onSheetLookupSpreadsheetChange('${rule.id}', this.value)">
+                  <option value="">${this._loadingSheets ? 'Loading your Google Sheets…' : '— Select a spreadsheet —'}</option>
+                  ${this._sheetsList.map((s) => `<option value="${s.id}" ${s.id === sl.spreadsheetId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+                  ${sl.spreadsheetId && !this._sheetsList.some((s) => s.id === sl.spreadsheetId) ? `<option value="${escapeHtml(sl.spreadsheetId)}" selected>${escapeHtml(sl.spreadsheetId)} (not found — check Google connection)</option>` : ''}
+                </select>
               </div>
               <div class="field">
                 <label>Worksheet (tab name)</label>
-                <input type="text" placeholder="Sheet1" value="${escapeHtml(rule.action_config?.sheet_lookup?.worksheet || '')}"
-                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','worksheet', this.value)" />
+                <select onchange="Automation.onSheetLookupWorksheetChange('${rule.id}', this.value)" ${!sl.spreadsheetId ? 'disabled' : ''}>
+                  <option value="">${tabsLoading ? 'Loading tabs…' : (tabs.length ? '— pick a tab —' : (sl.spreadsheetId ? 'No tabs found' : 'Pick a spreadsheet first'))}</option>
+                  ${tabs.map((t) => `<option value="${escapeHtml(t)}" ${t === sl.worksheet ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+                  ${sl.worksheet && !tabs.includes(sl.worksheet) ? `<option value="${escapeHtml(sl.worksheet)}" selected>${escapeHtml(sl.worksheet)} (not found in sheet)</option>` : ''}
+                </select>
               </div>
             </div>
             <div class="field-row">
               <div class="field">
                 <label>Lookup column</label>
-                <input type="text" placeholder="e.g. Product" value="${escapeHtml(rule.action_config?.sheet_lookup?.lookupColumn || '')}"
-                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','lookupColumn', this.value)" />
+                ${columnSelect('lookupColumn', sl.lookupColumn)}
               </div>
               <div class="field">
                 <label>Return column</label>
-                <input type="text" placeholder="e.g. Price" value="${escapeHtml(rule.action_config?.sheet_lookup?.returnColumn || '')}"
-                  onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','returnColumn', this.value)" />
+                ${columnSelect('returnColumn', sl.returnColumn)}
               </div>
               <div class="field">
                 <label>Match type</label>
                 <select onchange="Automation.updateActionConfig('${rule.id}','sheet_lookup','matchType', this.value)">
-                  <option value="contains" ${(rule.action_config?.sheet_lookup?.matchType || 'contains') === 'contains' ? 'selected' : ''}>Contains</option>
-                  <option value="exact" ${rule.action_config?.sheet_lookup?.matchType === 'exact' ? 'selected' : ''}>Exact</option>
+                  <option value="contains" ${(sl.matchType || 'contains') === 'contains' ? 'selected' : ''}>Contains</option>
+                  <option value="exact" ${sl.matchType === 'exact' ? 'selected' : ''}>Exact</option>
                 </select>
               </div>
             </div>
             <div class="block-sub" style="margin:2px 0 10px;">The message text is matched against every row's lookup column. Use <code>{{sheet_lookup}}</code> in a template body, or add a condition above on "Sheet lookup" (e.g. equals <code>__not_found__</code> for a no-match branch).</div>
-          ` : ''}
+          `; })() : ''}
           ${rule.action_type === 'ai' ? `
             <div class="field">
               <label style="display:flex;align-items:center;gap:8px;">
@@ -427,9 +458,90 @@ const Automation = {
     rule.action_config = rule.action_config || {};
     if (rule.action_config.sheet_lookup?.spreadsheetId !== undefined) {
       delete rule.action_config.sheet_lookup;
+      this.renderEditor(ruleId);
     } else {
       rule.action_config.sheet_lookup = { spreadsheetId: '', worksheet: '', lookupColumn: '', returnColumn: '', matchType: 'contains' };
+      this.renderEditor(ruleId);
+      this.loadGoogleSheetsList().then(() => this.renderEditor(ruleId));
     }
+  },
+
+  // Sheet lookup dropdown pickers — spreadsheet/tabs/headers, fetched from
+  // Google via the same /api/sheets endpoints (and same caches-by-id shape)
+  // as the Sheet→Leads watcher picker in sources.js, so a spreadsheet's tabs
+  // or a worksheet's headers only ever get fetched once per id.
+  _sheetsList: [],
+  _loadingSheets: false,
+  _tabsCache: {},    // spreadsheetId -> string[]
+  _loadingTabs: {},  // spreadsheetId -> bool
+  _headersCache: {},   // "spreadsheetId::worksheet" -> string[]
+  _loadingHeaders: {}, // "spreadsheetId::worksheet" -> bool
+
+  async loadGoogleSheetsList() {
+    if (this._sheetsList.length || this._loadingSheets) return;
+    this._loadingSheets = true;
+    try {
+      const data = await API.listGoogleSheets();
+      this._sheetsList = data.spreadsheets || [];
+    } catch (err) {
+      showToast('Failed to load your Google Sheets: ' + err.message, true);
+    } finally {
+      this._loadingSheets = false;
+    }
+  },
+
+  async loadTabsFor(spreadsheetId) {
+    if (!spreadsheetId || this._tabsCache[spreadsheetId] || this._loadingTabs[spreadsheetId]) return;
+    this._loadingTabs[spreadsheetId] = true;
+    try {
+      const data = await API.listSheetTabs(spreadsheetId);
+      this._tabsCache[spreadsheetId] = data.tabs || [];
+    } catch (err) {
+      showToast('Failed to load sheet tabs: ' + err.message, true);
+      this._tabsCache[spreadsheetId] = [];
+    } finally {
+      this._loadingTabs[spreadsheetId] = false;
+    }
+  },
+
+  async loadHeadersFor(spreadsheetId, worksheet) {
+    const key = `${spreadsheetId}::${worksheet}`;
+    if (!spreadsheetId || !worksheet || this._headersCache[key] || this._loadingHeaders[key]) return;
+    this._loadingHeaders[key] = true;
+    try {
+      const data = await API.listSheetHeaders(spreadsheetId, worksheet);
+      this._headersCache[key] = data.headers || [];
+    } catch (err) {
+      showToast('Failed to load columns: ' + err.message, true);
+      this._headersCache[key] = [];
+    } finally {
+      this._loadingHeaders[key] = false;
+    }
+  },
+
+  // Spreadsheet dropdown changed — reset worksheet + column choices (they no
+  // longer apply to the new spreadsheet), then fetch its tabs.
+  async onSheetLookupSpreadsheetChange(ruleId, spreadsheetId) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    const sl = rule?.action_config?.sheet_lookup;
+    if (!sl) return;
+    sl.spreadsheetId = spreadsheetId;
+    sl.worksheet = ''; sl.lookupColumn = ''; sl.returnColumn = '';
+    this.renderEditor(ruleId);
+    await this.loadTabsFor(spreadsheetId);
+    this.renderEditor(ruleId);
+  },
+
+  // Worksheet dropdown changed — reset column choices, then fetch the new
+  // worksheet's header row.
+  async onSheetLookupWorksheetChange(ruleId, worksheet) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    const sl = rule?.action_config?.sheet_lookup;
+    if (!sl) return;
+    sl.worksheet = worksheet;
+    sl.lookupColumn = ''; sl.returnColumn = '';
+    this.renderEditor(ruleId);
+    await this.loadHeadersFor(sl.spreadsheetId, worksheet);
     this.renderEditor(ruleId);
   },
 

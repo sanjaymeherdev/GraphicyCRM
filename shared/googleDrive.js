@@ -1,5 +1,5 @@
 // shared/googleDrive.js — lists a user's Google Drive files by type
-// (id/name only, via drive.metadata.readonly — see shared/googleAuth.js's
+// (id/name only, via the full drive scope — see shared/googleAuth.js's
 // GOOGLE_SCOPES) so the frontend can offer a dropdown of a user's actual
 // Sheets/Docs instead of asking them to paste a spreadsheet/doc ID by hand.
 // Used by:
@@ -34,7 +34,7 @@ async function listDriveFiles(userId, kind) {
   });
   const data = await res.json();
   if (!res.ok) {
-    // Most common cause: the user connected Google before drive.metadata.readonly
+    // Most common cause: the user connected Google before the full drive scope
     // was added to GOOGLE_SCOPES and hasn't reconnected since.
     if (res.status === 403) {
       throw new Error('Google Drive access not granted for this account — reconnect Google (Sources tab) to allow listing your Sheets/Docs.');

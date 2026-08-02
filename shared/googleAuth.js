@@ -105,10 +105,18 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/documents',
-  // drive.file (not full drive scope) — least-privilege: only reaches files
-  // this app creates/opens, which covers modules/docs' copyDoc() (Drive API
-  // file-copy) without granting blanket access to a user's whole Drive.
-  'https://www.googleapis.com/auth/drive.file',
+  // Full drive scope (not drive.file) — needed so Drive's files.list can see
+  // *any* of the user's spreadsheets/docs for the "pick a sheet" / "pick a
+  // doc" dropdowns (modules/sheets, modules/docs, via shared/googleDrive.js).
+  // drive.file only ever returns files this app itself created or that the
+  // user opened through a Picker, which is why those dropdowns used to come
+  // back with just zero/one file. drive.readonly alone would fix the listing
+  // but isn't enough for modules/docs' copyDoc() (Drive API file-copy) to
+  // create a copy of a doc this app didn't create, so this needs write
+  // access too. This is a restricted/sensitive scope — a production OAuth
+  // client needs Google's verification review to use it outside the ~100
+  // test-user cap.
+  'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
