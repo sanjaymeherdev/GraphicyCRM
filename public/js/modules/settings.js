@@ -1,8 +1,35 @@
 // js/modules/settings.js
 const Settings = {
+  // Real, callable models — fetched from GET /api/ai-bot/models (the exact
+  // list modules/ai-bot/service.js accepts), not a hardcoded guess.
+  _modelsList: [],
+  _defaultModel: '',
+  _loadingModels: false,
+
+  async loadModelsList() {
+    if (this._modelsList.length || this._loadingModels) return;
+    this._loadingModels = true;
+    try {
+      const data = await API.getAvailableModels();
+      this._modelsList = data.models || [];
+      this._defaultModel = data.default_model || '';
+    } catch (err) {
+      showToast('Failed to load AI models: ' + err.message, true);
+    } finally {
+      this._loadingModels = false;
+    }
+  },
+
   render(state) {
     const panel = document.getElementById('tab-settings');
     const isDark = state.isDark;
+
+    if (!this._modelsList.length && !this._loadingModels) {
+      this.loadModelsList().then(() => this.render(state));
+    }
+    const modelOptions = this._modelsList.length
+      ? this._modelsList.map((m) => `<option value="${m}" ${m === this._defaultModel ? 'selected' : ''}>${m}</option>`).join('')
+      : `<option value="">${this._loadingModels ? 'Loading models…' : 'No models available'}</option>`;
 
     panel.innerHTML = `
       <div class="page-header"><div><div class="page-title">Settings</div><div class="page-sub">Configure AI, channels, and theme</div></div></div>
@@ -10,12 +37,8 @@ const Settings = {
         <div class="card">
           <div class="card-header"><div class="card-title">🤖 AI Model</div></div>
           <div class="field"><label>Model</label>
-            <select id="aiModelSelect">
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-3.5-turbo" selected>GPT-3.5 Turbo</option>
-              <option value="claude-3">Claude 3</option>
-              <option value="mistral-large">Mistral Large</option>
-            </select>
+            <select id="aiModelSelect">${modelOptions}</select>
+            <div class="block-sub" style="margin-top:4px;">Only models actually enabled on this server's NVIDIA API key are listed. Per-rule overrides are set in Automation → AI message → Model.</div>
           </div>
           <div class="field"><label>System Prompt</label>
             <textarea id="systemPrompt" rows="3" placeholder="You are a helpful sales assistant...">You are a helpful CRM assistant that helps manage leads and respond to inquiries.</textarea>
@@ -70,7 +93,7 @@ const Settings = {
 
   async saveAI() {
     const settings = {
-      ai_model: document.getElementById('aiModelSelect')?.value || 'gpt-3.5-turbo',
+      ai_model: document.getElementById('aiModelSelect')?.value || this._defaultModel,
       system_prompt: document.getElementById('systemPrompt')?.value || '',
       api_key: document.getElementById('aiApiKey')?.value || '',
     };

@@ -195,6 +195,17 @@ const API = (() => {
           { id: 'mock_doc_2', name: 'Product one-pager', modifiedTime: new Date().toISOString() },
         ]
       }),
+      '/api/ai-bot/models': () => ({
+        models: [
+          'meta/llama-3.1-70b-instruct', 'meta/llama-3.1-8b-instruct',
+          'meta/llama-3.2-11b-vision-instruct', 'meta/llama-3.2-3b-instruct', 'meta/llama-3.2-90b-vision-instruct',
+          'mistralai/mistral-medium-3.5-128b',
+          'nvidia/ising-calibration-1-35b-a3b', 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',
+          'nvidia/llama-3.3-nemotron-super-49b-v1', 'nvidia/nemotron-3-nano-30b-a3b',
+          'nvidia/nemotron-3-super-120b-a12b', 'nvidia/nemotron-nano-12b-v2-vl',
+        ],
+        default_model: 'meta/llama-3.1-70b-instruct',
+      }),
     };
 
     // '/api/sheets/:id/tabs' and '/api/sheets/:id/:worksheet/headers' have a
@@ -360,6 +371,11 @@ const API = (() => {
     return await get('/api/docs/list');
   }
 
+  // ─── AI BOT ───
+  async function getAvailableModels() {
+    return await get('/api/ai-bot/models');
+  }
+
   // ─── SETTINGS ───
   async function getSettings() {
     return await get('/api/settings');
@@ -486,6 +502,7 @@ const API = (() => {
     listSheetTabs,
     listSheetHeaders,
     listGoogleDocs,
+    getAvailableModels,
 
     // Settings
     getSettings,

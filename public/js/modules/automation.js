@@ -90,6 +90,9 @@ const Automation = {
     if (rule.action_config?.knowledge_doc?.docId !== undefined && !this._docsList.length && !this._loadingDocs) {
       this.loadGoogleDocsList().then(() => this.renderEditor(id));
     }
+    if (rule.action_type === 'ai' && !this._modelsList.length && !this._loadingModels) {
+      this.loadModelsList().then(() => this.renderEditor(id));
+    }
 
     editor.innerHTML = `
       <div class="chain">
@@ -141,6 +144,14 @@ const Automation = {
               <div class="field">
                 <label>System prompt</label>
                 <textarea id="ai-prompt" onchange="Automation.updateRule('${rule.id}', 'ai_prompt', this.value)">${escapeHtml(rule.ai_prompt)}</textarea>
+              </div>
+              <div class="field">
+                <label>Model</label>
+                <select onchange="Automation.updateActionConfigField('${rule.id}', 'model', this.value)">
+                  ${this._modelsList.map((m) => `<option value="${m}" ${(rule.action_config?.model || this._defaultModel) === m ? 'selected' : ''}>${m}</option>`).join('')
+                    || `<option value="">${this._loadingModels ? 'Loading models…' : 'No models available'}</option>`}
+                </select>
+                <div class="block-sub">Only models actually enabled on this server's NVIDIA API key are listed.</div>
               </div>
               <div class="field">
                 <label>Fallback</label>
@@ -378,6 +389,35 @@ const Automation = {
     if (rule) {
       rule.follow_up = rule.follow_up || { enabled: false, hours: 4, condition: 'no_reply', template_id: null };
       rule.follow_up[field] = value;
+    }
+  },
+
+  // AI model dropdown — fetched from GET /api/ai-bot/models, which returns
+  // exactly the ALLOWED_MODELS list modules/ai-bot/service.js will actually
+  // accept (and rejects anything else with a 400) — so this can never show
+  // a model that doesn't really work.
+  _modelsList: [],
+  _defaultModel: '',
+  _loadingModels: false,
+  async loadModelsList() {
+    if (this._modelsList.length || this._loadingModels) return;
+    this._loadingModels = true;
+    try {
+      const data = await API.getAvailableModels();
+      this._modelsList = data.models || [];
+      this._defaultModel = data.default_model || '';
+    } catch (err) {
+      showToast('Failed to load AI models: ' + err.message, true);
+    } finally {
+      this._loadingModels = false;
+    }
+  },
+
+  updateActionConfigField(ruleId, field, value) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    if (rule) {
+      rule.action_config = rule.action_config || {};
+      rule.action_config[field] = value;
     }
   },
 
