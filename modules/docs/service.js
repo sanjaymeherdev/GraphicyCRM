@@ -7,9 +7,15 @@
 // proposal docs, meeting notes, generated reports).
 const fetch = require('node-fetch');
 const { getValidGoogleAccessToken } = require('../../shared/googleAuth');
+const { listDriveFiles } = require('../../shared/googleDrive');
 
 const DOCS_API = 'https://docs.googleapis.com/v1/documents';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+
+/** Lists the user's Google Docs (id, name, modifiedTime) — powers the AI bot's "knowledge doc" dropdown. */
+async function listDocs(userId) {
+  return listDriveFiles(userId, 'document');
+}
 
 async function apiFetch(url, accessToken, options = {}) {
   const res = await fetch(url, {
@@ -75,4 +81,4 @@ async function copyDoc(userId, documentId, newTitle) {
   return { documentId: copy.id, url: `https://docs.google.com/document/d/${copy.id}/edit` };
 }
 
-module.exports = { createDoc, getDoc, appendText, replaceText, copyDoc };
+module.exports = { createDoc, getDoc, appendText, replaceText, copyDoc, listDocs };

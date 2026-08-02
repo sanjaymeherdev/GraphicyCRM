@@ -87,6 +87,10 @@ const Automation = {
       `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
     ).join('');
 
+    if (rule.action_config?.knowledge_doc?.docId !== undefined && !this._docsList.length && !this._loadingDocs) {
+      this.loadGoogleDocsList().then(() => this.renderEditor(id));
+    }
+
     editor.innerHTML = `
       <div class="chain">
         <!-- TRIGGER -->
@@ -202,14 +206,12 @@ const Automation = {
             ${rule.action_config?.knowledge_doc?.docId !== undefined ? `
               <div class="field-row">
                 <div class="field">
-                  <label>Doc ID</label>
-                  <input type="text" placeholder="from the doc's URL" value="${escapeHtml(rule.action_config?.knowledge_doc?.docId || '')}"
-                    onchange="Automation.updateActionConfig('${rule.id}','knowledge_doc','docId', this.value)" />
-                </div>
-                <div class="field">
-                  <label>Doc name <span class="block-sub">(label only)</span></label>
-                  <input type="text" placeholder="e.g. FAQ doc" value="${escapeHtml(rule.action_config?.knowledge_doc?.docName || '')}"
-                    onchange="Automation.updateActionConfig('${rule.id}','knowledge_doc','docName', this.value)" />
+                  <label>Google Doc</label>
+                  <select onchange="Automation.onKnowledgeDocChange('${rule.id}', this.value)">
+                    <option value="">${this._loadingDocs ? 'Loading your Google Docs…' : '— Select a doc —'}</option>
+                    ${this._docsList.map((doc) => `<option value="${doc.id}" ${doc.id === rule.action_config?.knowledge_doc?.docId ? 'selected' : ''}>${escapeHtml(doc.name)}</option>`).join('')}
+                    ${rule.action_config?.knowledge_doc?.docId && !this._docsList.some((doc) => doc.id === rule.action_config.knowledge_doc.docId) ? `<option value="${escapeHtml(rule.action_config.knowledge_doc.docId)}" selected>${escapeHtml(rule.action_config.knowledge_doc.docName || rule.action_config.knowledge_doc.docId)} (not found — check Google connection)</option>` : ''}
+                  </select>
                 </div>
               </div>
               <div class="block-sub" style="margin:2px 0 10px;">Fetched text is cached for 5 minutes and capped at 8,000 characters so the AI prompt stays bounded.</div>
@@ -397,9 +399,38 @@ const Automation = {
     rule.action_config = rule.action_config || {};
     if (rule.action_config.knowledge_doc?.docId !== undefined) {
       delete rule.action_config.knowledge_doc;
+      this.renderEditor(ruleId);
     } else {
       rule.action_config.knowledge_doc = { docId: '', docName: '' };
+      this.renderEditor(ruleId);
+      this.loadGoogleDocsList().then(() => this.renderEditor(ruleId));
     }
+  },
+
+  // Google Docs dropdown (AI bot "knowledge doc" picker) — fetched once via
+  // Drive API and cached; picking one auto-fills docName from the doc's
+  // actual title instead of the user typing both an ID and a label.
+  _docsList: [],
+  _loadingDocs: false,
+  async loadGoogleDocsList() {
+    if (this._docsList.length || this._loadingDocs) return;
+    this._loadingDocs = true;
+    try {
+      const data = await API.listGoogleDocs();
+      this._docsList = data.docs || [];
+    } catch (err) {
+      showToast('Failed to load your Google Docs: ' + err.message, true);
+    } finally {
+      this._loadingDocs = false;
+    }
+  },
+
+  onKnowledgeDocChange(ruleId, docId) {
+    const rule = this._rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    const doc = this._docsList.find((d) => d.id === docId);
+    rule.action_config = rule.action_config || {};
+    rule.action_config.knowledge_doc = { docId, docName: doc?.name || '' };
     this.renderEditor(ruleId);
   },
 

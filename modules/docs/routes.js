@@ -6,6 +6,13 @@ const service = require('./service');
 const router = express.Router();
 router.use(requireAuth);
 
+// Registered before '/:documentId' below — otherwise a request to
+// GET /api/docs/list would match documentId="list" instead.
+router.get('/list', async (req, res) => {
+  try { res.json({ success: true, docs: await service.listDocs(req.user.id) }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post('/', async (req, res) => {
   try { res.json({ success: true, doc: await service.createDoc(req.user.id, req.body || {}) }); }
   catch (err) { res.status(500).json({ error: err.message }); }

@@ -6,6 +6,25 @@ const service = require('./service');
 const router = express.Router();
 router.use(requireAuth);
 
+// --- Dropdown pickers (Sheet→Leads watcher UI) — registered first since
+// '/list' would otherwise be swallowed by the '/:spreadsheetId/...' routes
+// below if Express matched by segment count alone; being explicit here
+// keeps route order obviously correct either way. ---
+router.get('/list', async (req, res) => {
+  try { res.json({ success: true, spreadsheets: await service.listSpreadsheets(req.user.id) }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/:spreadsheetId/tabs', async (req, res) => {
+  try { res.json({ success: true, tabs: await service.listTabs(req.user.id, req.params.spreadsheetId) }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/:spreadsheetId/:worksheet/headers', async (req, res) => {
+  try { res.json({ success: true, headers: await service.getHeaders(req.user.id, req.params.spreadsheetId, req.params.worksheet) }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/:spreadsheetId/:worksheet/rows', async (req, res) => {
   try { res.json({ success: true, rows: await service.getRows(req.user.id, req.params.spreadsheetId, req.params.worksheet) }); }
   catch (err) { res.status(500).json({ error: err.message }); }

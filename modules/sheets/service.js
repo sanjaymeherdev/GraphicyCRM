@@ -5,9 +5,33 @@
 // src/routes/sheet-watchers.js.
 const fetch = require('node-fetch');
 const { getValidGoogleAccessToken } = require('../../shared/googleAuth');
+const { listDriveFiles } = require('../../shared/googleDrive');
 const { supabase } = require('../../shared/db');
 
 const valueRange = (worksheet, a1 = 'A1:ZZ5000') => `${worksheet}!${a1}`;
+
+/** Lists the user's Google Sheets (id, name, modifiedTime) for the "pick a spreadsheet" dropdown. */
+async function listSpreadsheets(userId) {
+  return listDriveFiles(userId, 'spreadsheet');
+}
+
+/** Lists a spreadsheet's tabs (worksheet names) for the "pick a worksheet" dropdown. */
+async function listTabs(userId, spreadsheetId) {
+  const accessToken = await getValidGoogleAccessToken(userId);
+  const params = new URLSearchParams({ fields: 'sheets.properties.title' });
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Sheets API error ${res.status}`);
+  return (data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+}
+
+/** Returns a worksheet's header row (row 1) for the "pick a column" dropdowns. */
+async function getHeaders(userId, spreadsheetId, worksheet) {
+  const values = await getValues(userId, spreadsheetId, worksheet, 'A1:ZZ1');
+  return (values[0] || []).map((h) => String(h || '').trim()).filter(Boolean);
+}
 
 async function getValues(userId, spreadsheetId, worksheet, a1Range) {
   const accessToken = await getValidGoogleAccessToken(userId);
@@ -241,5 +265,6 @@ async function sendForMatch(watcher, row) {
 
 module.exports = {
   getValues, getRows, updateRange, appendRows, getColumnName,
+  listSpreadsheets, listTabs, getHeaders,
   createWatcher, listWatchers, updateWatcher, deleteWatcher, pollWatchers, sendForMatch,
 };

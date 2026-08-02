@@ -183,7 +183,25 @@ const API = (() => {
           metrics: { views: 2000 + i * 300, likes: 100 + i * 15 },
         }))
       }),
+      '/api/sheets/list': () => ({
+        spreadsheets: [
+          { id: 'mock_sheet_1', name: 'Leads 2026', modifiedTime: new Date().toISOString() },
+          { id: 'mock_sheet_2', name: 'Event RSVPs', modifiedTime: new Date().toISOString() },
+        ]
+      }),
+      '/api/docs/list': () => ({
+        docs: [
+          { id: 'mock_doc_1', name: 'FAQ — Support', modifiedTime: new Date().toISOString() },
+          { id: 'mock_doc_2', name: 'Product one-pager', modifiedTime: new Date().toISOString() },
+        ]
+      }),
     };
+
+    // '/api/sheets/:id/tabs' and '/api/sheets/:id/:worksheet/headers' have a
+    // variable id in the middle, so they can't be matched by a fixed prefix
+    // key above — match on the fixed suffix instead.
+    if (endpoint.includes('/api/sheets/') && endpoint.endsWith('/tabs')) return { tabs: ['Sheet1', 'Sheet2'] };
+    if (endpoint.includes('/api/sheets/') && endpoint.endsWith('/headers')) return { headers: ['Name', 'Phone', 'Email', 'Date'] };
 
     // Find matching mock
     for (const [path, fn] of Object.entries(mocks)) {
@@ -325,6 +343,23 @@ const API = (() => {
     return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/rows`);
   }
 
+  // ─── DROPDOWN PICKERS (Google Sheets / Docs, via Drive) ───
+  async function listGoogleSheets() {
+    return await get('/api/sheets/list');
+  }
+
+  async function listSheetTabs(spreadsheetId) {
+    return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/tabs`);
+  }
+
+  async function listSheetHeaders(spreadsheetId, worksheet) {
+    return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/headers`);
+  }
+
+  async function listGoogleDocs() {
+    return await get('/api/docs/list');
+  }
+
   // ─── SETTINGS ───
   async function getSettings() {
     return await get('/api/settings');
@@ -447,6 +482,10 @@ const API = (() => {
     updateSheetWatcher,
     deleteSheetWatcher,
     getSheetRows,
+    listGoogleSheets,
+    listSheetTabs,
+    listSheetHeaders,
+    listGoogleDocs,
 
     // Settings
     getSettings,

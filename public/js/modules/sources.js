@@ -209,6 +209,86 @@ const Sources = {
   _watchers: [],
   _watcherDraft: null, // draft object while creating/editing; null = list view
 
+  // Dropdown-picker caches — fetched from Google (via Drive/Sheets APIs) so
+  // the watcher form can offer "pick a spreadsheet / pick a tab / pick a
+  // column" dropdowns instead of asking the user to paste IDs by hand.
+  _sheetsList: [],
+  _loadingSheets: false,
+  _tabsCache: {},   // spreadsheetId -> string[]
+  _loadingTabs: {}, // spreadsheetId -> bool
+  _headersCache: {},   // "spreadsheetId::worksheet" -> string[]
+  _loadingHeaders: {}, // "spreadsheetId::worksheet" -> bool
+
+  headersKey(spreadsheetId, worksheet) { return `${spreadsheetId}::${worksheet}`; },
+
+  async loadGoogleSheetsList() {
+    if (this._sheetsList.length || this._loadingSheets) return;
+    this._loadingSheets = true;
+    try {
+      const data = await API.listGoogleSheets();
+      this._sheetsList = data.spreadsheets || [];
+    } catch (err) {
+      showToast('Failed to load your Google Sheets: ' + err.message, true);
+    } finally {
+      this._loadingSheets = false;
+    }
+  },
+
+  async loadTabsFor(spreadsheetId) {
+    if (!spreadsheetId || this._tabsCache[spreadsheetId] || this._loadingTabs[spreadsheetId]) return;
+    this._loadingTabs[spreadsheetId] = true;
+    try {
+      const data = await API.listSheetTabs(spreadsheetId);
+      this._tabsCache[spreadsheetId] = data.tabs || [];
+    } catch (err) {
+      showToast('Failed to load sheet tabs: ' + err.message, true);
+      this._tabsCache[spreadsheetId] = [];
+    } finally {
+      this._loadingTabs[spreadsheetId] = false;
+    }
+  },
+
+  async loadHeadersFor(spreadsheetId, worksheet) {
+    const key = this.headersKey(spreadsheetId, worksheet);
+    if (!spreadsheetId || !worksheet || this._headersCache[key] || this._loadingHeaders[key]) return;
+    this._loadingHeaders[key] = true;
+    try {
+      const data = await API.listSheetHeaders(spreadsheetId, worksheet);
+      this._headersCache[key] = data.headers || [];
+    } catch (err) {
+      showToast('Failed to load columns: ' + err.message, true);
+      this._headersCache[key] = [];
+    } finally {
+      this._loadingHeaders[key] = false;
+    }
+  },
+
+  // Spreadsheet dropdown changed — reset everything downstream (tab +
+  // column choices no longer apply to the new spreadsheet), then fetch its
+  // tabs and re-render once they're in.
+  async onSpreadsheetChange(spreadsheetId) {
+    const d = this._watcherDraft;
+    if (!d) return;
+    d.spreadsheet_id = spreadsheetId;
+    d.worksheet = '';
+    d.name_column = ''; d.phone_column = ''; d.email_column = ''; d.date_column = '';
+    this.renderWatcherForm();
+    await this.loadTabsFor(spreadsheetId);
+    this.renderWatcherForm();
+  },
+
+  // Worksheet dropdown changed — reset column choices, fetch the new
+  // worksheet's header row, then re-render with column dropdowns populated.
+  async onWorksheetChange(worksheet) {
+    const d = this._watcherDraft;
+    if (!d) return;
+    d.worksheet = worksheet;
+    d.name_column = ''; d.phone_column = ''; d.email_column = ''; d.date_column = '';
+    this.renderWatcherForm();
+    await this.loadHeadersFor(d.spreadsheet_id, worksheet);
+    this.renderWatcherForm();
+  },
+
   async toggleWatcherPanel() {
     const panel = document.getElementById('sheetWatcherPanel');
     const opening = panel.style.display === 'none';
@@ -233,10 +313,12 @@ const Sources = {
     const panel = document.getElementById('sheetWatcherPanel');
     if (this._watcherDraft) { this.renderWatcherForm(); return; }
 
-    const rows = this._watchers.map(w => `
+    const rows = this._watchers.map(w => {
+      const sheetName = this._sheetsList.find((s) => s.id === w.spreadsheet_id)?.name;
+      return `
       <div class="rule-card" style="cursor:default;">
         <div class="meta" style="justify-content:space-between;">
-          <span><strong>${escapeHtml(w.worksheet)}</strong> in <code>${escapeHtml(w.spreadsheet_id.slice(0, 18))}…</code></span>
+          <span><strong>${escapeHtml(w.worksheet)}</strong> in ${sheetName ? escapeHtml(sheetName) : `<code>${escapeHtml(w.spreadsheet_id.slice(0, 18))}…</code>`}</span>
           <span class="badge ${w.active ? 'badge-green' : ''}">${w.active ? 'Active' : 'Paused'}</span>
         </div>
         <div class="block-sub" style="margin:4px 0;">
@@ -249,7 +331,8 @@ const Sources = {
           <button class="btn btn-danger btn-sm" onclick="Sources.deleteWatcher('${w.id}')">Delete</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     panel.innerHTML = `
       <div class="page-header">
@@ -267,12 +350,19 @@ const Sources = {
       channel: 'whatsapp', template_id: null, message_template: '', placeholder_mapping: {}, active: true,
     };
     this.renderWatcherForm();
+    this.loadGoogleSheetsList().then(() => this.renderWatcherForm());
   },
 
-  editWatcher(id) {
+  async editWatcher(id) {
     const w = this._watchers.find(x => x.id === id);
     if (!w) return;
     this._watcherDraft = { ...w, placeholder_mapping: { ...(w.placeholder_mapping || {}) } };
+    this.renderWatcherForm();
+    await this.loadGoogleSheetsList();
+    if (this._watcherDraft.spreadsheet_id) await this.loadTabsFor(this._watcherDraft.spreadsheet_id);
+    if (this._watcherDraft.spreadsheet_id && this._watcherDraft.worksheet) {
+      await this.loadHeadersFor(this._watcherDraft.spreadsheet_id, this._watcherDraft.worksheet);
+    }
     this.renderWatcherForm();
   },
 
@@ -312,6 +402,24 @@ const Sources = {
     const d = this._watcherDraft;
     const templates = (window.state?.templates || []).filter(t => t.type === 'whatsapp_template');
     const tplOptions = templates.map(t => `<option value="${t.id}" ${t.id === d.template_id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
+
+    const tabs = this._tabsCache[d.spreadsheet_id] || [];
+    const tabsLoading = !!this._loadingTabs[d.spreadsheet_id];
+    const headers = this._headersCache[this.headersKey(d.spreadsheet_id, d.worksheet)] || [];
+    const headersLoading = !!this._loadingHeaders[this.headersKey(d.spreadsheet_id, d.worksheet)];
+
+    // Reusable "pick a column" dropdown — falls back to the raw stored
+    // value as an extra option if it's no longer in the fetched header list
+    // (e.g. the sheet's columns changed since this watcher was set up), so
+    // editing an old watcher never silently blanks out its mapping.
+    const columnSelect = (field, currentValue, extraOption) => `
+      <select onchange="Sources.updateWatcherDraft('${field}', this.value)" ${!headers.length && !headersLoading ? 'disabled' : ''}>
+        <option value="">${headersLoading ? 'Loading columns…' : (headers.length ? (extraOption || '— none —') : 'Pick a spreadsheet + worksheet first')}</option>
+        ${headers.map((h) => `<option value="${escapeHtml(h)}" ${h === currentValue ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('')}
+        ${currentValue && !headers.includes(currentValue) ? `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(currentValue)} (not found in sheet)</option>` : ''}
+      </select>
+    `;
+
     const placeholderRows = Object.entries(d.placeholder_mapping || {}).map(([key, map]) => `
       <div class="cond-row">
         <input type="text" value="${escapeHtml(key)}" disabled style="max-width:50px;" title="{{${escapeHtml(key)}}} in the template" />
@@ -322,7 +430,12 @@ const Sources = {
           <option value="field" ${map.type === 'field' ? 'selected' : ''}>Other column</option>
           <option value="custom" ${map.type === 'custom' ? 'selected' : ''}>Fixed text</option>
         </select>
-        ${map.type === 'field' ? `<input type="text" placeholder="column header" value="${escapeHtml(map.field || '')}" onchange="Sources.updatePlaceholderRow('${key}','field', this.value)" />` : ''}
+        ${map.type === 'field' ? `
+          <select onchange="Sources.updatePlaceholderRow('${key}','field', this.value)">
+            <option value="">${headers.length ? '— pick a column —' : 'Pick a spreadsheet + worksheet first'}</option>
+            ${headers.map((h) => `<option value="${escapeHtml(h)}" ${h === map.field ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('')}
+          </select>
+        ` : ''}
         ${map.type === 'custom' ? `<input type="text" placeholder="literal value" value="${escapeHtml(map.value || '')}" onchange="Sources.updatePlaceholderRow('${key}','value', this.value)" />` : ''}
         <button class="rm" onclick="Sources.removePlaceholderRow('${key}')">&times;</button>
       </div>
@@ -334,8 +447,21 @@ const Sources = {
         <div class="block block-trigger">
           <div class="block-head"><div class="block-title"><span class="badge-ic">📊</span>Sheet</div></div>
           <div class="field-row">
-            <div class="field"><label>Spreadsheet ID</label><input type="text" placeholder="from the sheet's URL" value="${escapeHtml(d.spreadsheet_id)}" onchange="Sources.updateWatcherDraft('spreadsheet_id', this.value)" /></div>
-            <div class="field"><label>Worksheet (tab name)</label><input type="text" placeholder="Sheet1" value="${escapeHtml(d.worksheet)}" onchange="Sources.updateWatcherDraft('worksheet', this.value)" /></div>
+            <div class="field">
+              <label>Spreadsheet</label>
+              <select onchange="Sources.onSpreadsheetChange(this.value)">
+                <option value="">${this._loadingSheets ? 'Loading your Google Sheets…' : '— Select a spreadsheet —'}</option>
+                ${this._sheetsList.map((s) => `<option value="${s.id}" ${s.id === d.spreadsheet_id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+                ${d.spreadsheet_id && !this._sheetsList.some((s) => s.id === d.spreadsheet_id) ? `<option value="${escapeHtml(d.spreadsheet_id)}" selected>${escapeHtml(d.spreadsheet_id)} (not found — check Google connection)</option>` : ''}
+              </select>
+            </div>
+            <div class="field">
+              <label>Worksheet (tab)</label>
+              <select onchange="Sources.onWorksheetChange(this.value)" ${!d.spreadsheet_id ? 'disabled' : ''}>
+                <option value="">${!d.spreadsheet_id ? 'Pick a spreadsheet first' : (tabsLoading ? 'Loading tabs…' : '— Select a tab —')}</option>
+                ${tabs.map((t) => `<option value="${escapeHtml(t)}" ${t === d.worksheet ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <div class="field-row">
             <div class="field">
@@ -349,7 +475,7 @@ const Sources = {
           </div>
           ${d.watch_type === 'date_reminder' ? `
             <div class="field-row">
-              <div class="field"><label>Date column</label><input type="text" placeholder="e.g. Birthday" value="${escapeHtml(d.date_column || '')}" onchange="Sources.updateWatcherDraft('date_column', this.value)" /></div>
+              <div class="field"><label>Date column</label>${columnSelect('date_column', d.date_column || '')}</div>
               <div class="field"><label>Remind (days before)</label><input type="number" min="0" value="${d.offset_days || 0}" onchange="Sources.updateWatcherDraft('offset_days', parseInt(this.value)||0)" /></div>
             </div>
           ` : ''}
@@ -358,9 +484,9 @@ const Sources = {
         <div class="block block-action">
           <div class="block-head"><div class="block-title"><span class="badge-ic">👤</span>Lead field mapping</div><span class="block-sub">which columns identify who a row is about</span></div>
           <div class="field-row">
-            <div class="field"><label>Name column</label><input type="text" placeholder="e.g. Full Name" value="${escapeHtml(d.name_column || '')}" onchange="Sources.updateWatcherDraft('name_column', this.value)" /></div>
-            <div class="field"><label>Phone column</label><input type="text" placeholder="e.g. Phone" value="${escapeHtml(d.phone_column || '')}" onchange="Sources.updateWatcherDraft('phone_column', this.value)" /></div>
-            <div class="field"><label>Email column</label><input type="text" placeholder="e.g. Email" value="${escapeHtml(d.email_column || '')}" onchange="Sources.updateWatcherDraft('email_column', this.value)" /></div>
+            <div class="field"><label>Name column</label>${columnSelect('name_column', d.name_column || '')}</div>
+            <div class="field"><label>Phone column</label>${columnSelect('phone_column', d.phone_column || '')}</div>
+            <div class="field"><label>Email column</label>${columnSelect('email_column', d.email_column || '')}</div>
           </div>
           <div class="block-sub">At least a phone or an email column is required — that's what a matched row turns into a lead on.</div>
         </div>
