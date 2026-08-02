@@ -45,9 +45,19 @@ async function fetchWithHostFallback(hosts, path, params) {
   const isHostMismatch = (err) => [3, 100, 190].includes(err.graphError?.code) || err.status === 401 || err.status === 403;
   try {
     return await fetchGraph(buildUrl(hosts.primary, path, params));
-  } catch (err) {
-    if (!hosts.fallback || !isHostMismatch(err)) throw err;
-    return fetchGraph(buildUrl(hosts.fallback, path, params));
+  } catch (primaryErr) {
+    if (!hosts.fallback || !isHostMismatch(primaryErr)) throw primaryErr;
+    console.warn(`[insights] ${hosts.primary} rejected ${path} (${primaryErr.graphError?.code}: ${primaryErr.graphError?.message}) — retrying via ${hosts.fallback}`);
+    try {
+      return await fetchGraph(buildUrl(hosts.fallback, path, params));
+    } catch (fallbackErr) {
+      // Both hosts failed — this is NOT a host-mismatch, the token itself
+      // is bad (expired/revoked/corrupted). Tag it so callers/logs can tell
+      // the difference from a one-host failure.
+      fallbackErr.bothHostsFailed = true;
+      fallbackErr.primaryError = primaryErr.graphError?.message;
+      throw fallbackErr;
+    }
   }
 }
 
@@ -176,7 +186,10 @@ async function pollInsights() {
       await pollAccountInsights(clientId, connection);
       await pollPostInsights(clientId, connection);
     } catch (err) {
-      console.error(`[insights] poll failed for ${connection.platform} connection ${connection.id}:`, err.graphError?.message || err.message);
+      const reason = err.bothHostsFailed
+        ? `${err.graphError?.message || err.message} — failed on BOTH graph.facebook.com and graph.instagram.com, so this is a bad/expired token, not a host-routing issue. Reconnect the account.`
+        : (err.graphError?.message || err.message);
+      console.error(`[insights] poll failed for ${connection.platform} connection ${connection.id}:`, reason);
     }
   }
 }
