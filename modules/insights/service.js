@@ -42,7 +42,15 @@ async function fetchGraph(url) {
 }
 
 async function fetchWithHostFallback(hosts, path, params) {
-  const isHostMismatch = (err) => [3, 100, 190].includes(err.graphError?.code) || err.status === 401 || err.status === 403;
+  // Code 190 (invalid/expired token) and 401/403 are genuine auth/audience
+  // errors — a token issued for one host can legitimately be rejected by
+  // the other, so retrying the fallback host is the right move. Code 100
+  // is Meta's catch-all "invalid parameter" code and covers everything
+  // from a bad metric name to a missing metric_type — NOT a host issue —
+  // so it must not trigger a host switch, or a fixable request-shape bug
+  // gets misdiagnosed as a bad token (see fetchMetricsResilient's own
+  // per-metric handling for code-100 cases that ARE about metric names).
+  const isHostMismatch = (err) => [3, 190].includes(err.graphError?.code) || err.status === 401 || err.status === 403;
   try {
     return await fetchGraph(buildUrl(hosts.primary, path, params));
   } catch (primaryErr) {
@@ -105,10 +113,13 @@ async function pollAccountInsights(clientId, connection) {
       const info = await fetchWithHostFallback(hosts, `/${pageId}`, { fields: 'followers_count,media_count', access_token: accessToken });
       followers = info.followers_count || 0;
     } catch (err) { console.error('[insights] IG followers_count failed:', err.graphError?.message || err.message); }
-    metrics = toMetricsMap(await fetchMetricsResilient(hosts, pageId, ['reach', 'views', 'accounts_engaged'], accessToken, { period: 'day' }));
+    // metric_type=total_value is required by Graph API for these metrics
+    // at the account level as of v22+ — omitting it returns code 100
+    // "should be specified with parameter metric_type=total_value".
+    metrics = toMetricsMap(await fetchMetricsResilient(hosts, pageId, ['reach', 'views', 'accounts_engaged'], accessToken, { period: 'day', metric_type: 'total_value' }));
   } else if (platform === 'facebook') {
     const hosts = { primary: FB_BASE, fallback: null };
-    metrics = toMetricsMap(await fetchMetricsResilient(hosts, pageId, ['page_views', 'page_post_engagements'], accessToken, { period: 'day' }));
+    metrics = toMetricsMap(await fetchMetricsResilient(hosts, pageId, ['page_views_total', 'page_post_engagements'], accessToken, { period: 'day' }));
     try {
       const info = await fetchGraph(buildUrl(FB_BASE, `/${pageId}`, { fields: 'fan_count', access_token: accessToken }));
       followers = info.fan_count || 0;
