@@ -68,6 +68,11 @@ router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody
 
 router.use(requireAuth);
 
+router.delete('/connect', async (req, res) => {
+  try { await service.disconnect(req.user.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post('/media', async (req, res) => {
   try { res.json({ success: true, mediaId: await service.publishPost(req.user.id, req.body || {}) }); }
   catch (err) { res.status(500).json({ error: err.message }); }

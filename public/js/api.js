@@ -333,6 +333,14 @@ const API = (() => {
     return await get(`/api/oauth/${service}/url`);
   }
 
+  async function disconnectOAuth(service) {
+    return await del(`/api/oauth/${service}`);
+  }
+
+  async function disconnectWhatsAppAccount(id) {
+    return await del(`/api/whatsapp/accounts/${id}`);
+  }
+
   // ─── SHEET WATCHERS (sheet → lead mapping) ───
   async function getSheetWatchers() {
     return await get('/api/sheets/watchers');
@@ -493,6 +501,8 @@ const API = (() => {
     getIntegrations,
     connectIntegration,
     getOAuthUrl,
+    disconnectOAuth,
+    disconnectWhatsAppAccount,
     getSheetWatchers,
     createSheetWatcher,
     updateSheetWatcher,

@@ -3,7 +3,7 @@
 // elsewhere (the individual OAuth connect flows, WhatsApp verify, theme).
 const express = require('express');
 const { requireAuth } = require('./auth');
-const { buildGoogleAuthUrl } = require('./googleAuth');
+const { buildGoogleAuthUrl, disconnectGoogle } = require('./googleAuth');
 const metaConnections = require('./metaConnections');
 const whatsapp = require('../modules/whatsapp/service');
 
@@ -37,6 +37,24 @@ router.get('/oauth/:service/url', requireAuth, (req, res) => {
     res.status(400).json({ error: `Unknown OAuth service "${service}"` });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// --- Disconnect: js/modules/sources.js's "Disconnect" buttons call this
+// for every OAuth-based source. WhatsApp isn't included here — it can have
+// more than one connected number, so it's disconnected per-account via
+// DELETE /api/whatsapp/accounts/:id instead (see Sources.disconnectWhatsApp).
+router.delete('/oauth/:service', requireAuth, async (req, res) => {
+  const { service } = req.params;
+  try {
+    if (service === 'google') { await disconnectGoogle(req.user.id); return res.json({ success: true }); }
+    if (['facebook', 'instagram', 'threads', 'linkedin'].includes(service)) {
+      await metaConnections.disconnectConnection(req.user.id, service);
+      return res.json({ success: true });
+    }
+    res.status(400).json({ error: `Unknown OAuth service "${service}"` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

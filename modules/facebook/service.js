@@ -9,9 +9,11 @@ const axios = require('axios');
 const crypto = require('crypto');
 const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
-  exchangeFacebookCode, signSelectionToken, parseSelectionToken, APP_BASE_URL,
+  exchangeFacebookCode, signSelectionToken, parseSelectionToken, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
 const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
+
+function disconnect(userId) { return disconnectConnection(userId, 'facebook'); }
 
 const VERSION = process.env.GRAPH_VERSION || 'v25.0';
 const BASE = `https://graph.facebook.com/${VERSION}`;
@@ -212,7 +214,7 @@ async function tryAutoReply({ userId, clientId, leadId, text, send, replyMessage
 }
 
 module.exports = {
-  getAuthUrl, handleOAuthCallback, selectPage,
+  getAuthUrl, handleOAuthCallback, selectPage, disconnect,
   publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendPrivateReply,
   verifySignature, handleCommentEvent, handleDmEvent,
 };

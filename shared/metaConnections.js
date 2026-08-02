@@ -220,12 +220,23 @@ async function exchangeLinkedInCode(code, redirectUri) {
   };
 }
 
+// Disconnects every active connection a user has on a platform (there's
+// normally exactly one, but nothing stops someone from having reconnected
+// a different Page/account over time, leaving more than one active row).
+async function disconnectConnection(userId, platform) {
+  const { error } = await supabase.from('crm_connections')
+    .update({ is_connected: false, updated_at: new Date().toISOString() })
+    .eq('user_id', userId).eq('platform', platform).eq('is_connected', true);
+  if (error) throw error;
+}
+
 module.exports = {
   APP_BASE_URL,
   buildAuthUrl,
   parseState,
   upsertConnection,
   getConnection,
+  disconnectConnection,
   resolveByAccountId,
   exchangeFacebookCode,
   exchangeInstagramCode,

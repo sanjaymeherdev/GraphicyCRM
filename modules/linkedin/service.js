@@ -12,8 +12,10 @@
 const axios = require('axios');
 const {
   buildAuthUrl, parseState, upsertConnection, getConnection,
-  exchangeLinkedInCode, APP_BASE_URL,
+  exchangeLinkedInCode, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
+
+function disconnect(userId) { return disconnectConnection(userId, 'linkedin'); }
 
 const BASE = 'https://api.linkedin.com/v2';
 
@@ -71,4 +73,4 @@ async function sendDM() {
   throw new Error('LinkedIn messaging requires Marketing Developer Platform access — not supported by this backend.');
 }
 
-module.exports = { getAuthUrl, handleOAuthCallback, publishPost, sendDM };
+module.exports = { getAuthUrl, handleOAuthCallback, publishPost, sendDM, disconnect };

@@ -20,6 +20,11 @@ router.get('/connect/callback', async (req, res) => {
 
 router.use(requireAuth);
 
+router.delete('/connect', async (req, res) => {
+  try { await service.disconnect(req.user.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post('/posts', async (req, res) => {
   try { res.json({ success: true, id: await service.publishPost(req.user.id, req.body || {}) }); }
   catch (err) { res.status(500).json({ error: err.message }); }

@@ -189,8 +189,16 @@ async function handleGoogleOAuthCallback(code, state) {
   return { returnTo };
 }
 
+// Removes the user's Google connection entirely. Gmail, Sheets, Docs, and
+// Drive share this one row (see the file header), so disconnecting here
+// disconnects all four at once — matching how connecting works.
+async function disconnectGoogle(userId) {
+  const { error } = await supabase.from('crm_oauth_tokens').delete().eq('user_id', userId).eq('service', 'google');
+  if (error) throw new Error(error.message);
+}
+
 module.exports = {
   getValidGoogleAccessToken, saveGoogleTokens,
-  buildGoogleAuthUrl, handleGoogleOAuthCallback, googleRedirectUri,
+  buildGoogleAuthUrl, handleGoogleOAuthCallback, googleRedirectUri, disconnectGoogle,
 };
 

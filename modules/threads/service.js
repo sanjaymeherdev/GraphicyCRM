@@ -6,9 +6,11 @@ const axios = require('axios');
 const crypto = require('crypto');
 const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
-  exchangeThreadsCode, APP_BASE_URL,
+  exchangeThreadsCode, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
 const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
+
+function disconnect(userId) { return disconnectConnection(userId, 'threads'); }
 
 const VERSION = process.env.THREADS_VERSION || 'v1.0';
 const BASE = `https://graph.threads.net/${VERSION}`;
@@ -167,6 +169,6 @@ async function handleReplyEvent({ accountId, replyId, text }) {
 }
 
 module.exports = {
-  getAuthUrl, handleOAuthCallback, publishPost, replyToThread, listRecentThreads, listRecentComments, sendDM,
+  getAuthUrl, handleOAuthCallback, disconnect, publishPost, replyToThread, listRecentThreads, listRecentComments, sendDM,
   verifySignature, parseInboundEvents, handleReplyEvent,
 };

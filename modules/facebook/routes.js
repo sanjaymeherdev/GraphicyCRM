@@ -47,6 +47,11 @@ router.post('/connect/select-page', express.json(), async (req, res) => {
   }
 });
 
+router.delete('/connect', requireAuth, async (req, res) => {
+  try { await service.disconnect(req.user.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- Webhook (Page comments/messages — public, Meta calls this) ---
 router.get('/webhook', (req, res) => {
   if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.FB_WEBHOOK_VERIFY_TOKEN) {

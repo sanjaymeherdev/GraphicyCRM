@@ -4,7 +4,7 @@
 // their own.
 const express = require('express');
 const { requireAuth } = require('./auth');
-const { buildGoogleAuthUrl, handleGoogleOAuthCallback, googleRedirectUri } = require('./googleAuth');
+const { buildGoogleAuthUrl, handleGoogleOAuthCallback, googleRedirectUri, disconnectGoogle } = require('./googleAuth');
 
 const router = express.Router();
 
@@ -16,6 +16,11 @@ console.log(`[google-auth] OAuth redirect_uri (register this exact URL in Google
 
 router.get('/connect', requireAuth, (req, res) => {
   res.json({ url: buildGoogleAuthUrl(req.user.id, req.query.return_to) });
+});
+
+router.delete('/connect', requireAuth, async (req, res) => {
+  try { await disconnectGoogle(req.user.id); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.get('/connect/callback', async (req, res) => {

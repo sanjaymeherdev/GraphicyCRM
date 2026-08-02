@@ -13,17 +13,44 @@ const Sources = {
   },
 
   // Renders a card's action button as either "Connect with X" or a
-  // disabled "✅ Connected" state (with the actual connected account name
-  // underneath, when we have one).
+  // disabled "✅ Connected" state (with the actual connected account name,
+  // and a Disconnect button) underneath, when we have one).
   connectButton(platform, label, onclick) {
     if (this.isConnected(platform)) {
       const acct = this.connectedAccountName(platform);
       return `
         <button class="btn btn-connected" style="width:100%;justify-content:center;" disabled>✅ Connected</button>
         ${acct ? `<div class="conn-account-sub">${escapeHtml(acct)}</div>` : ''}
+        <button class="btn btn-danger btn-sm" style="width:100%;justify-content:center;margin-top:8px;" onclick="Sources.disconnectOAuth('${platform}')">Disconnect</button>
       `;
     }
     return `<button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="${onclick}">${label}</button>`;
+  },
+
+  async disconnectOAuth(service) {
+    const label = service === 'google' ? 'Google (this disconnects Gmail, Sheets, and Docs together)' : service;
+    if (!confirm(`Disconnect ${label}?`)) return;
+    try {
+      await API.disconnectOAuth(service);
+      showToast('Disconnected');
+      if (window.refreshAllData) await window.refreshAllData();
+      else this.render(window.state || {});
+    } catch (err) {
+      showToast('Failed to disconnect: ' + err.message, true);
+    }
+  },
+
+  async disconnectWhatsApp() {
+    if (!confirm('Disconnect WhatsApp?')) return;
+    const ids = this._connections.filter((c) => c.platform === 'whatsapp').map((c) => c.disconnect_id).filter(Boolean);
+    try {
+      await Promise.all(ids.map((id) => API.disconnectWhatsAppAccount(id)));
+      showToast('Disconnected');
+      if (window.refreshAllData) await window.refreshAllData();
+      else this.render(window.state || {});
+    } catch (err) {
+      showToast('Failed to disconnect: ' + err.message, true);
+    }
   },
 
   render(state) {
@@ -39,6 +66,7 @@ const Sources = {
             <p class="m-desc">Connected</p>
             <button class="btn btn-connected" style="width:100%;justify-content:center;" disabled>✅ Connected</button>
             <div class="conn-account-sub">${escapeHtml(this.connectedAccountName('whatsapp'))}</div>
+            <button class="btn btn-danger btn-sm" style="width:100%;justify-content:center;margin-top:8px;" onclick="Sources.disconnectWhatsApp()">Disconnect</button>
           ` : `
             <p class="m-desc">Connect with System User Token and WABA ID</p>
             <div class="field"><label>WABA ID</label><input type="text" id="wabaId" placeholder="e.g. 123456789" /></div>
@@ -75,6 +103,11 @@ const Sources = {
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📊</span><h3>Google Sheets</h3></div>
           <p class="m-desc">Connect via Google OAuth</p>
+          ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
+        </div>
+        <div class="conn-card">
+          <div class="m-head"><span class="badge-ic">📄</span><h3>Google Docs</h3></div>
+          <p class="m-desc">Same Google connection as Gmail/Sheets above — connecting or disconnecting any one of these three connects/disconnects all of them together. Used as an info source for the AI bot (Automation → Advanced grounding → Knowledge doc).</p>
           ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
         </div>
         <div class="conn-card">

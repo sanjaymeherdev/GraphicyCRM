@@ -9,9 +9,11 @@ const axios = require('axios');
 const crypto = require('crypto');
 const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
-  exchangeInstagramCode, APP_BASE_URL,
+  exchangeInstagramCode, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
 const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
+
+function disconnect(userId) { return disconnectConnection(userId, 'instagram'); }
 
 const FB_VERSION = process.env.GRAPH_VERSION || 'v25.0';
 const FB_BASE = `https://graph.facebook.com/${FB_VERSION}`;
@@ -198,7 +200,7 @@ async function tryAutoReply({ clientId, leadId, text, send, replyMessageType }) 
 }
 
 module.exports = {
-  getAuthUrl, handleOAuthCallback,
+  getAuthUrl, handleOAuthCallback, disconnect,
   publishPost, replyToComment, sendDM, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
   verifySignature, handleCommentEvent, handleDmEvent,
 };

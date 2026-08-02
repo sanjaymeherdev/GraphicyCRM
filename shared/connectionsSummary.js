@@ -32,7 +32,7 @@ async function getConnectionsSummary(userId) {
       .select('platform, account_name, account_id, updated_at')
       .eq('user_id', userId).eq('is_connected', true),
     supabase.from('crm_wa_accounts')
-      .select('display_name, phone_number, updated_at')
+      .select('id, display_name, phone_number, updated_at')
       .eq('user_id', userId).eq('is_active', true),
     supabase.from('crm_oauth_tokens')
       .select('account_email, updated_at')
@@ -46,6 +46,10 @@ async function getConnectionsSummary(userId) {
       platform: 'whatsapp', ...PLATFORM_META.whatsapp,
       account_name: w.display_name || w.phone_number || 'WhatsApp number',
       connected_at: w.updated_at,
+      // Internal wa_accounts row id — WhatsApp can have more than one
+      // connected number, so disconnecting is per-account (DELETE
+      // /api/whatsapp/accounts/:id) rather than per-platform like the rest.
+      disconnect_id: w.id,
     });
   });
 
