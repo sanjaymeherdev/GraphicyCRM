@@ -1,6 +1,7 @@
 // modules/threads/routes.js
 const express = require('express');
 const { requireAuth } = require('../../shared/auth');
+const { logWebhookDelivery } = require('../../shared/webhookLog');
 const service = require('./service');
 
 const router = express.Router();
@@ -27,6 +28,11 @@ router.get('/webhook', (req, res) => {
 
 router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }), (req, res) => {
   const valid = service.verifySignature(req.rawBody, req.headers['x-hub-signature-256']);
+  logWebhookDelivery({
+    channel: 'threads', accountId: req.body?.entry?.[0]?.id || req.body?.target_id || null, objectType: req.body?.topic || req.body?.object || null,
+    fields: req.body?.topic ? [req.body.topic] : [...new Set((req.body?.entry || []).flatMap((e) => (e.changes || []).map((c) => c.field)))],
+    signatureValid: valid, rejectReason: valid ? null : 'bad signature', payload: req.body,
+  });
   if (!valid) return res.sendStatus(403);
   res.sendStatus(200); // ack immediately, Meta retries on non-2xx
 

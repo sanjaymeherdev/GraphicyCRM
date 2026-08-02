@@ -75,6 +75,29 @@ create table if not exists crm_wa_accounts (
 );
 
 -- ---------------------------------------------------------------------
+-- Webhook audit log — every /webhook POST any channel module receives,
+-- valid or signature-rejected, so delivery issues (missed events, bad
+-- signatures, unexpected payload shapes) can be diagnosed after the fact
+-- instead of only via console output. No RLS — only ever written/read by
+-- the service-role client, never exposed to end users. Ported from the
+-- original repo's wb_webhook_logs, generalized from WhatsApp-only to all
+-- four channel modules (whatsapp/facebook/instagram/threads).
+-- ---------------------------------------------------------------------
+create table if not exists crm_webhook_logs (
+  id uuid primary key default uuid_generate_v4(),
+  channel text not null check (channel in ('whatsapp','facebook','instagram','threads')),
+  account_id text,             -- waba_id / Page id / IG account id / Threads account id, whichever the payload carries
+  object_type text,            -- payload.object, e.g. 'whatsapp_business_account' | 'page' | 'instagram'
+  fields text[] default '{}',  -- distinct change.field values seen in this delivery
+  signature_valid boolean not null default true,
+  reject_reason text,
+  payload jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_crm_webhook_logs_created_at on crm_webhook_logs(created_at desc);
+create index if not exists idx_crm_webhook_logs_channel on crm_webhook_logs(channel, created_at desc);
+
+-- ---------------------------------------------------------------------
 -- Sheet watchers — modules/sheets automation engine
 -- watch_type: 'new_row' | 'date_reminder'
 -- ---------------------------------------------------------------------
