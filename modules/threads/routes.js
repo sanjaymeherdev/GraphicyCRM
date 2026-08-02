@@ -2,6 +2,7 @@
 const express = require('express');
 const { requireAuth } = require('../../shared/auth');
 const { logWebhookDelivery } = require('../../shared/webhookLog');
+const { parseState, getConnection } = require('../../shared/metaConnections');
 const service = require('./service');
 
 const router = express.Router();
@@ -22,6 +23,21 @@ router.get('/connect/callback', async (req, res) => {
   } catch (err) {
     const metaBody = err.response?.data;
     console.error('[threads connect] token exchange failed:', metaBody || err.message);
+
+    // Authorization codes are single-use. A duplicate/retried request with
+    // the same code (browser back/forward cache, a proxy retry on the slow
+    // multi-hop exchange below, a double-tap before navigation) hits this
+    // exact Meta error even though the FIRST request already succeeded and
+    // saved the connection. Don't show an error for that — check whether
+    // we're actually connected now before deciding this failed.
+    if (metaBody?.error?.error_subcode === 4279030 || /used_authorization_code/.test(metaBody?.error?.error_user_msg || '')) {
+      try {
+        const { userId, returnTo } = parseState(state);
+        const conn = await getConnection(userId, 'threads').catch(() => null);
+        if (conn) return res.redirect(returnTo || '/');
+      } catch { /* fall through to error response below */ }
+    }
+
     const message = metaBody ? JSON.stringify(metaBody) : err.message;
     res.status(500).send(`Threads connect failed: ${message}`);
   }

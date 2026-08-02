@@ -66,6 +66,20 @@ function parseState(state) {
 }
 
 async function upsertConnection(userId, { platform, account_name, account_id, page_id, access_token, token_expires_at }) {
+  // Enforce one active connection per user+platform. The unique constraint
+  // is (user_id, platform, account_id), which only dedupes when the SAME
+  // account_id reconnects — it does NOT catch switching to a different
+  // account on the same platform (e.g. Instagram auto-linked via a
+  // Facebook Page gets one account_id, then reconnecting Instagram
+  // directly gets a different account_id for a different — or even the
+  // same — account). Without this, the old row is left behind, still
+  // is_connected=true, and both show up as "connected" in the UI/summary.
+  const { error: deactivateErr } = await supabase.from('crm_connections')
+    .update({ is_connected: false, updated_at: new Date().toISOString() })
+    .eq('user_id', userId).eq('platform', platform).eq('is_connected', true)
+    .neq('account_id', account_id);
+  if (deactivateErr) throw deactivateErr;
+
   const patch = {
     user_id: userId,
     platform,
@@ -244,10 +258,16 @@ async function exchangeLinkedInCode(code, redirectUri) {
 // normally exactly one, but nothing stops someone from having reconnected
 // a different Page/account over time, leaving more than one active row).
 async function disconnectConnection(userId, platform) {
-  const { error } = await supabase.from('crm_connections')
+  const { data, error } = await supabase.from('crm_connections')
     .update({ is_connected: false, updated_at: new Date().toISOString() })
-    .eq('user_id', userId).eq('platform', platform).eq('is_connected', true);
+    .eq('user_id', userId).eq('platform', platform).eq('is_connected', true)
+    .select('id');
   if (error) throw error;
+  // Supabase returns success with an empty array (not an error) if RLS
+  // silently blocks the update or no row matched — surface that instead of
+  // assuming the disconnect worked.
+  console.log(`[metaConnections] disconnect ${platform} for user ${userId}: ${data?.length || 0} row(s) deactivated`);
+  if (!data?.length) console.warn(`[metaConnections] disconnect ${platform} affected 0 rows — either already disconnected, or RLS/policy is blocking the update.`);
 }
 
 module.exports = {
