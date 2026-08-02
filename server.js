@@ -66,7 +66,7 @@ app.use('/api/gmail', require('./modules/gmail/routes'));
 app.use('/api/sheets', require('./modules/sheets/routes'));
 app.use('/api/docs', require('./modules/docs/routes'));
 app.use('/api/ai-bot', require('./modules/ai-bot/routes'));
-
+app.use('/api/help-bot', require('./modules/help-bot/routes'));
 // ---------------------------------------------------------------------
 // CRM-layer modules — what js/api.js (GraphicyCRM frontend) actually calls.
 // ---------------------------------------------------------------------
