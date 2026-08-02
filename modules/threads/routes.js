@@ -7,7 +7,11 @@ const service = require('./service');
 const router = express.Router();
 
 router.get('/connect', requireAuth, (req, res) => {
-  res.json({ url: service.getAuthUrl(req.user.id, req.query.return_to) });
+  try {
+    res.json({ url: service.getAuthUrl(req.user.id, req.query.return_to) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 router.get('/connect/callback', async (req, res) => {
   const { code, state, error } = req.query;
@@ -15,7 +19,12 @@ router.get('/connect/callback', async (req, res) => {
   try {
     const { returnTo } = await service.handleOAuthCallback(code, state);
     res.redirect(returnTo || '/');
-  } catch (err) { res.status(500).send(`Threads connect failed: ${err.message}`); }
+  } catch (err) {
+    const metaBody = err.response?.data;
+    console.error('[threads connect] token exchange failed:', metaBody || err.message);
+    const message = metaBody ? JSON.stringify(metaBody) : err.message;
+    res.status(500).send(`Threads connect failed: ${message}`);
+  }
 });
 
 // --- Webhook (replies — public, Meta calls this; Threads has no DM API) ---

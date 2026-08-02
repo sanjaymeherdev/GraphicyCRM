@@ -44,6 +44,7 @@ const OAUTH_CONFIGS = {
 function buildAuthUrl(platform, userId, returnTo) {
   const config = OAUTH_CONFIGS[platform];
   if (!config?.clientId) throw new Error(`${platform} OAuth is not configured (missing client id env var).`);
+  if (!config.clientSecret) throw new Error(`${platform} OAuth is not fully configured (missing client secret env var) — the connect flow will complete the redirect but fail at the token-exchange step.`);
   const redirectUri = `${APP_BASE_URL}/api/${platform}/connect/callback`;
   const state = Buffer.from(JSON.stringify({ userId, returnTo: returnTo || '/' })).toString('base64url');
   const params = new URLSearchParams({
@@ -174,9 +175,28 @@ async function exchangeInstagramCode(code, redirectUri) {
 
 async function exchangeThreadsCode(code, redirectUri) {
   const config = OAUTH_CONFIGS.threads;
-  const tokenRes = await axios.post('https://graph.threads.net/oauth/access_token', new URLSearchParams({
-    client_id: config.clientId, client_secret: config.clientSecret, grant_type: 'authorization_code', redirect_uri: redirectUri, code,
-  }));
+  if (!config.clientId || !config.clientSecret) {
+    throw new Error('Threads OAuth is not configured — TH_APP_ID/TH_SECRET are missing.');
+  }
+  if (/localhost|127\.0\.0\.1/.test(redirectUri)) {
+    // Meta's token endpoint rejects this with a bare 400 and no useful body —
+    // Threads (like Facebook/Instagram Graph OAuth) requires a public HTTPS
+    // redirect_uri registered in the app dashboard; localhost is never valid.
+    console.warn(`[threads] redirect_uri looks local (${redirectUri}) — Meta's OAuth token exchange will reject this. Set APP_BASE_URL to a public HTTPS URL that matches the app dashboard's registered redirect URI.`);
+  }
+  let tokenRes;
+  try {
+    tokenRes = await axios.post('https://graph.threads.net/oauth/access_token', new URLSearchParams({
+      client_id: config.clientId, client_secret: config.clientSecret, grant_type: 'authorization_code', redirect_uri: redirectUri, code,
+    }));
+  } catch (err) {
+    // axios's default "Request failed with status code 400" hides Meta's
+    // actual reason (bad redirect_uri, expired/reused code, wrong app id).
+    // Re-throw with that reason attached so callers/logs see it.
+    const metaMsg = err.response?.data?.error_message || err.response?.data?.error?.message;
+    if (metaMsg) err.message = `${err.message} — ${metaMsg}`;
+    throw err;
+  }
   const longRes = await axios.get('https://graph.threads.net/access_token', {
     params: { grant_type: 'th_exchange_token', client_secret: config.clientSecret, access_token: tokenRes.data.access_token },
   });
