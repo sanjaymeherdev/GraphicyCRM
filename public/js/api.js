@@ -101,6 +101,11 @@ const API = (() => {
           email: 'sarah@acmecorp.com',
           role: 'client',
           channels: ['WhatsApp', 'Instagram', 'Facebook'],
+          connections: [
+            { platform: 'whatsapp', icon: '📱', label: 'WhatsApp', account_name: '+1 555-0100' },
+            { platform: 'instagram', icon: '📷', label: 'Instagram', account_name: '@acmecorp' },
+            { platform: 'facebook', icon: '👥', label: 'Facebook', account_name: 'Acme Corp Page' },
+          ],
         }
       }),
       '/api/client': () => ({

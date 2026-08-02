@@ -29,6 +29,7 @@ create table if not exists crm_oauth_tokens (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users(id) on delete cascade,
   service text not null default 'google',
+  account_email text,            -- Google account email (userinfo.email scope), shown in Profile → Connected accounts
   access_token_enc text not null,
   refresh_token_enc text,
   expires_at timestamptz,

@@ -558,6 +558,18 @@ body {
 .btn-xs { padding: 3px 10px; font-size: 11px; border-radius: 6px; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* "Connected" state for Sources cards — success-tinted, not just a greyed-out disabled button */
+.btn-connected { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); cursor: default; opacity: 1; }
+.conn-account-sub { margin-top: 6px; font-size: 11px; color: var(--text2); text-align: center; }
+
+/* Profile tab — connected accounts list */
+.conn-account-list { display: flex; flex-direction: column; gap: 8px; }
+.conn-account-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.conn-account-icon { font-size: 20px; line-height: 1; }
+.conn-account-info { flex: 1; min-width: 0; }
+.conn-account-platform { font-size: 13px; font-weight: 600; color: var(--text); }
+.conn-account-name { font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ─── CARDS ─── */
 .card {
   background: var(--surface);

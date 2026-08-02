@@ -1,47 +1,81 @@
 // js/modules/sources.js
 const Sources = {
+  // Which platform key (from state.user.connections, see GET /api/profile)
+  // each card's OAuth "Connect" button represents.
+  _connections: [],
+
+  isConnected(platform) {
+    return this._connections.some((c) => c.platform === platform);
+  },
+
+  connectedAccountName(platform) {
+    return this._connections.find((c) => c.platform === platform)?.account_name || '';
+  },
+
+  // Renders a card's action button as either "Connect with X" or a
+  // disabled "✅ Connected" state (with the actual connected account name
+  // underneath, when we have one).
+  connectButton(platform, label, onclick) {
+    if (this.isConnected(platform)) {
+      const acct = this.connectedAccountName(platform);
+      return `
+        <button class="btn btn-connected" style="width:100%;justify-content:center;" disabled>✅ Connected</button>
+        ${acct ? `<div class="conn-account-sub">${escapeHtml(acct)}</div>` : ''}
+      `;
+    }
+    return `<button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="${onclick}">${label}</button>`;
+  },
+
   render(state) {
+    this._connections = state.user?.connections || [];
     const panel = document.getElementById('tab-sources');
+    const waConnected = this.isConnected('whatsapp');
     panel.innerHTML = `
       <div class="page-header"><div><div class="page-title">Sources</div><div class="page-sub">Connect where leads come from</div></div></div>
       <div class="conn-methods">
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📱</span><h3>WhatsApp</h3></div>
-          <p class="m-desc">Connect with System User Token and WABA ID</p>
-          <div class="field"><label>WABA ID</label><input type="text" id="wabaId" placeholder="e.g. 123456789" /></div>
-          <div class="field"><label>Access Token</label><input type="text" id="wabaToken" placeholder="Permanent access token" /></div>
-          <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="Sources.connectWhatsApp()">Connect</button>
-          <div id="wabaNumbers" style="margin-top:10px;"></div>
+          ${waConnected ? `
+            <p class="m-desc">Connected</p>
+            <button class="btn btn-connected" style="width:100%;justify-content:center;" disabled>✅ Connected</button>
+            <div class="conn-account-sub">${escapeHtml(this.connectedAccountName('whatsapp'))}</div>
+          ` : `
+            <p class="m-desc">Connect with System User Token and WABA ID</p>
+            <div class="field"><label>WABA ID</label><input type="text" id="wabaId" placeholder="e.g. 123456789" /></div>
+            <div class="field"><label>Access Token</label><input type="text" id="wabaToken" placeholder="Permanent access token" /></div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="Sources.connectWhatsApp()">Connect</button>
+            <div id="wabaNumbers" style="margin-top:10px;"></div>
+          `}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📷</span><h3>Instagram</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectInstagram()">Connect with Instagram</button>
+          ${this.connectButton('instagram', 'Connect with Instagram', 'Sources.connectInstagram()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">👥</span><h3>Facebook</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectFacebook()">Connect with Facebook</button>
+          ${this.connectButton('facebook', 'Connect with Facebook', 'Sources.connectFacebook()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">🧵</span><h3>Threads</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectThreads()">Connect with Threads</button>
+          ${this.connectButton('threads', 'Connect with Threads', 'Sources.connectThreads()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">💼</span><h3>LinkedIn</h3></div>
           <p class="m-desc">Direct login, or via Facebook if reached through a linked Page</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectLinkedIn()">Connect with LinkedIn</button>
+          ${this.connectButton('linkedin', 'Connect with LinkedIn', 'Sources.connectLinkedIn()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📧</span><h3>Gmail</h3></div>
           <p class="m-desc">Connect via Google OAuth</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectGoogle()">Connect with Google</button>
+          ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📊</span><h3>Google Sheets</h3></div>
           <p class="m-desc">Connect via Google OAuth</p>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.connectGoogle()">Connect with Google</button>
+          ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic">🔗</span><h3>Sheet → Leads mapping</h3></div>
@@ -100,8 +134,8 @@ const Sources = {
     try {
       await API.connectWhatsApp(wabaId, picked.phone_number_id, token);
       showToast(`✅ Connected ${picked.phone_number}`);
-      document.getElementById('wabaNumbers').innerHTML = '';
-      document.getElementById('wabaToken').value = '';
+      if (window.refreshAllData) await window.refreshAllData();
+      else this.render(window.state || {});
     } catch (err) {
       showToast('Failed to connect: ' + err.message, true);
     }

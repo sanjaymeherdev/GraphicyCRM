@@ -71,7 +71,7 @@ async function getValidGoogleAccessToken(userId) {
 // ever connects via the Sheets flow, Gmail calls will fail with a scope
 // error until they also grant the gmail scope (re-running connect adds
 // scopes incrementally since Google merges consent per client+user).
-async function saveGoogleTokens(userId, { access_token, refresh_token, expires_in }) {
+async function saveGoogleTokens(userId, { access_token, refresh_token, expires_in, account_email }) {
   const patch = {
     user_id: userId,
     service: 'google',
@@ -80,6 +80,10 @@ async function saveGoogleTokens(userId, { access_token, refresh_token, expires_i
     updated_at: new Date().toISOString(),
   };
   if (refresh_token) patch.refresh_token_enc = encryptToken(refresh_token);
+  // account_email is only known right after the initial consent screen
+  // (see handleGoogleOAuthCallback below) — don't overwrite it with null
+  // on later token refreshes, which don't re-fetch userinfo.
+  if (account_email) patch.account_email = account_email;
 
   const { data: existing } = await supabase.from('crm_oauth_tokens')
     .select('id').eq('user_id', userId).eq('service', 'google').maybeSingle();
@@ -108,9 +112,20 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
+// This ONE redirect_uri is shared by gmail, sheets, docs, and drive.file —
+// there is no per-module Google callback. If OAuth fails at the very last
+// step (right after picking a Google account, before landing back in the
+// CRM), the almost-always cause is that this exact URL isn't registered
+// (or is registered with a mismatch — http vs https, trailing slash,
+// wrong host) in Google Cloud Console → Credentials → your OAuth client →
+// Authorized redirect URIs.
+function googleRedirectUri() {
+  return `${APP_BASE_URL}/api/google/connect/callback`;
+}
+
 function buildGoogleAuthUrl(userId, returnTo) {
   if (!process.env.GOOGLE_CLIENT_ID) throw new Error('Google OAuth is not configured (missing GOOGLE_CLIENT_ID).');
-  const redirectUri = `${APP_BASE_URL}/api/google/connect/callback`;
+  const redirectUri = googleRedirectUri();
   const state = Buffer.from(JSON.stringify({ userId, returnTo: returnTo || '/' })).toString('base64url');
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
@@ -131,7 +146,7 @@ function parseState(state) {
 
 async function handleGoogleOAuthCallback(code, state) {
   const { userId, returnTo } = parseState(state);
-  const redirectUri = `${APP_BASE_URL}/api/google/connect/callback`;
+  const redirectUri = googleRedirectUri();
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -144,14 +159,38 @@ async function handleGoogleOAuthCallback(code, state) {
     }),
   });
   const tokenData = await tokenRes.json();
-  if (!tokenRes.ok) throw new Error(tokenData.error_description || tokenData.error || 'Google token exchange failed');
+  if (!tokenRes.ok) {
+    // The #1 cause of a failure at this exact step is a redirect_uri that
+    // doesn't byte-for-byte match what's registered in Google Cloud Console
+    // (Credentials → this OAuth client → Authorized redirect URIs). Gmail,
+    // Sheets, Docs and Drive do NOT need — and must NOT have — separate
+    // callback URIs; they all share this single one. Logging it here makes
+    // a mismatch obvious instead of a bare "redirect_uri_mismatch".
+    console.error(`[google-auth] token exchange failed using redirect_uri="${redirectUri}" — ` +
+      'make sure this EXACT URL (scheme, host, no trailing slash) is added under ' +
+      'Google Cloud Console → APIs & Services → Credentials → your OAuth client → Authorized redirect URIs.');
+    throw new Error(tokenData.error_description || tokenData.error || 'Google token exchange failed');
+  }
 
-  await saveGoogleTokens(userId, tokenData);
+  // Fetch which Google account this is so the Profile tab can show it
+  // (userinfo.email is already in GOOGLE_SCOPES). Non-fatal if it fails —
+  // the connection itself already succeeded above.
+  let account_email = null;
+  try {
+    const meRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    if (meRes.ok) account_email = (await meRes.json()).email || null;
+  } catch (err) {
+    console.error('[google-auth] failed to fetch userinfo (non-fatal):', err.message);
+  }
+
+  await saveGoogleTokens(userId, { ...tokenData, account_email });
   return { returnTo };
 }
 
 module.exports = {
   getValidGoogleAccessToken, saveGoogleTokens,
-  buildGoogleAuthUrl, handleGoogleOAuthCallback,
+  buildGoogleAuthUrl, handleGoogleOAuthCallback, googleRedirectUri,
 };
 

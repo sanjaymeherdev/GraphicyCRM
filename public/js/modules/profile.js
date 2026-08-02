@@ -2,7 +2,23 @@
 const Profile = {
   render(state) {
     const panel = document.getElementById('tab-profile');
-    const u = state.user || { name: 'Sarah Mitchell', email: 'sarah@acmecorp.com', channels: ['WhatsApp', 'Instagram', 'Facebook'] };
+    const u = state.user || { name: 'Sarah Mitchell', email: 'sarah@acmecorp.com', connections: [] };
+    const connections = u.connections || [];
+
+    const connectedAccountsHtml = connections.length ? `
+      <div class="conn-account-list">
+        ${connections.map((c) => `
+          <div class="conn-account-row">
+            <span class="conn-account-icon">${c.icon || '🔗'}</span>
+            <div class="conn-account-info">
+              <div class="conn-account-platform">${escapeHtml(c.label || c.platform)}</div>
+              <div class="conn-account-name">${escapeHtml(c.account_name || '')}</div>
+            </div>
+            <span class="badge badge-green">✅ Connected</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : `<div class="empty-state" style="padding:20px 0;"><p>No accounts connected yet — connect sources from the Sources tab.</p></div>`;
 
     panel.innerHTML = `
       <div class="page-header"><div><div class="page-title">Profile</div><div class="page-sub">Your account settings</div></div></div>
@@ -16,12 +32,11 @@ const Profile = {
         <div class="field"><label>Full Name</label><input type="text" id="profileName" value="${escapeHtml(u.name || '')}" /></div>
         <div class="field"><label>Email</label><input type="email" id="profileEmail" value="${escapeHtml(u.email || '')}" /></div>
         <div class="field"><label>New Password</label><input type="password" id="profilePassword" placeholder="Leave blank to keep current" /></div>
-        <div class="field"><label>Connected Channels</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;">
-            ${(u.channels || ['WhatsApp', 'Instagram', 'Facebook']).map(c => `<span class="badge badge-green">✅ ${escapeHtml(c)}</span>`).join('')}
-          </div>
-        </div>
         <button class="btn btn-primary" onclick="Profile.save()">💾 Save Profile</button>
+      </div>
+      <div class="card" style="max-width:600px;margin-top:16px;">
+        <div class="page-header" style="margin-bottom:8px;"><div><div class="page-title" style="font-size:16px;">Connected accounts</div><div class="page-sub">Every source currently linked to your account</div></div></div>
+        ${connectedAccountsHtml}
       </div>
     `;
   },
