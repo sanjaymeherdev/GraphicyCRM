@@ -83,13 +83,13 @@ router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody
       if (value.item !== 'comment' || value.verb !== 'add') continue;
       service.handleCommentEvent({
         pageId, commentId: value.comment_id, text: value.message,
-        senderId: value.from?.id || null, senderName: value.from?.name || null,
+        senderId: value.from?.id || null, senderName: value.from?.name || value.from?.id || null,
       }).catch((err) => console.error('[facebook webhook] failed to record comment:', err.message));
     }
     for (const messaging of entry.messaging || []) {
       if (!messaging.message || messaging.message.is_echo) continue;
       service.handleDmEvent({
-        pageId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null,
+        pageId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null, senderName: messaging.sender?.name || messaging.sender?.id || null,
       }).catch((err) => console.error('[facebook webhook] failed to record DM:', err.message));
     }
   }

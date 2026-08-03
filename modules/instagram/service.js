@@ -20,10 +20,22 @@ const FB_BASE = `https://graph.facebook.com/${FB_VERSION}`;
 const IG_BASE = 'https://graph.instagram.com';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function getHosts(conn) {
-  const primary = conn.page_id ? FB_BASE : IG_BASE;
-  const fallback = conn.page_id ? IG_BASE : FB_BASE;
-  return { primary, fallback };
+function buildGraphRequestCandidates(conn, arg = {}) {
+  const options = typeof arg === 'string' ? { path: arg } : (arg || {});
+  const path = options.path || '';
+  const entityIds = options.entityIds || (conn ? [conn.page_id, conn.account_id] : []);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const hosts = [FB_BASE, IG_BASE];
+  const ids = [...new Set((entityIds || []).filter(Boolean))];
+  const candidates = [];
+  if (!ids.length) {
+    for (const host of hosts) candidates.push(`${host}${normalizedPath}`);
+    return candidates;
+  }
+  for (const host of hosts) {
+    for (const id of ids) candidates.push(`${host}/${id}${normalizedPath}`);
+  }
+  return [...new Set(candidates)];
 }
 
 async function get(url, params, token) { return (await axios.get(url, { params: { ...params, access_token: token } })).data; }
@@ -32,8 +44,8 @@ async function post(url, bodyParams, token) {
   return (await axios.post(`${url}?${query}`)).data;
 }
 
-async function withFallback(hosts, path, params, token, method) {
-  const urls = [`${hosts.primary}${path}`, `${hosts.fallback}${path}`];
+async function withFallback(conn, path, params, token, method, entityIds = []) {
+  const urls = buildGraphRequestCandidates(conn, { path, entityIds });
   let lastError = null;
   for (const url of urls) {
     try {
@@ -65,26 +77,25 @@ async function handleOAuthCallback(code, state) {
 async function publishPost(userId, { caption, mediaUrl }) {
   if (!mediaUrl) throw new Error('Instagram requires an image_url.');
   const conn = await getConnection(userId, 'instagram');
-  const hosts = getHosts(conn);
-  const create = await withFallback(hosts, `/${conn.account_id}/media`, { image_url: mediaUrl, caption: caption || '' }, conn.access_token, 'post');
+  const create = await withFallback(conn, '/media', { image_url: mediaUrl, caption: caption || '' }, conn.access_token, 'post', [conn.page_id, conn.account_id]);
   if (!create.success) throw create.error;
   const creationId = create.data.id;
 
   let statusCode = 'IN_PROGRESS';
   for (let i = 0; i < 5 && statusCode === 'IN_PROGRESS'; i++) {
     await sleep(2000);
-    const statusRes = await withFallback(hosts, `/${creationId}`, { fields: 'status_code' }, conn.access_token, 'get');
+    const statusRes = await withFallback(conn, `/${creationId}`, { fields: 'status_code' }, conn.access_token, 'get');
     if (!statusRes.success) throw statusRes.error;
     statusCode = statusRes.data.status_code;
   }
-  const publish = await withFallback(hosts, `/${conn.account_id}/media_publish`, { creation_id: creationId }, conn.access_token, 'post');
+  const publish = await withFallback(conn, '/media_publish', { creation_id: creationId }, conn.access_token, 'post', [conn.page_id, conn.account_id]);
   if (!publish.success) throw publish.error;
   return publish.data.id;
 }
 
 async function replyToComment(userId, commentId, message) {
   const conn = await getConnection(userId, 'instagram');
-  const result = await withFallback(getHosts(conn), `/${commentId}/replies`, { message }, conn.access_token, 'post');
+  const result = await withFallback(conn, `/${commentId}/replies`, { message }, conn.access_token, 'post');
   if (!result.success) throw result.error;
   return result.data.id;
 }
@@ -93,33 +104,32 @@ async function sendDM(userId, recipientId, text, replyToMid) {
   const conn = await getConnection(userId, 'instagram');
   const bodyParams = { recipient: JSON.stringify({ id: recipientId }), messaging_type: 'RESPONSE', message: JSON.stringify({ text }) };
   if (replyToMid) bodyParams.reply_to = JSON.stringify({ mid: replyToMid });
-  const result = await withFallback(getHosts(conn), `/${conn.account_id}/messages`, bodyParams, conn.access_token, 'post');
+  const result = await withFallback(conn, '/messages', bodyParams, conn.access_token, 'post', [conn.page_id, conn.account_id]);
   if (!result.success) throw result.error;
   return result.data.message_id;
 }
 
 async function sendPrivateReply(userId, commentId, message) {
   const conn = await getConnection(userId, 'instagram');
-  const result = await withFallback(getHosts(conn), `/${conn.account_id}/messages`, { recipient: JSON.stringify({ comment_id: commentId }), message: JSON.stringify({ text: message }) }, conn.access_token, 'post');
+  const result = await withFallback(conn, '/messages', { recipient: JSON.stringify({ comment_id: commentId }), message: JSON.stringify({ text: message }) }, conn.access_token, 'post', [conn.page_id, conn.account_id]);
   if (!result.success) throw result.error;
   return result.data.message_id;
 }
 
 async function listRecentMedia(userId, limit = 25) {
   const conn = await getConnection(userId, 'instagram');
-  const result = await withFallback(getHosts(conn), `/${conn.account_id}/media`, { fields: 'id,caption,timestamp,permalink,media_type,media_url,thumbnail_url', limit }, conn.access_token, 'get');
+  const result = await withFallback(conn, '/media', { fields: 'id,caption,timestamp,permalink,media_type,media_url,thumbnail_url', limit }, conn.access_token, 'get', [conn.page_id, conn.account_id]);
   if (!result.success) throw result.error;
   return result.data.data || [];
 }
 
 async function listRecentComments(userId, postLimit = 10) {
   const conn = await getConnection(userId, 'instagram');
-  const hosts = getHosts(conn);
-  const mediaResult = await withFallback(hosts, `/${conn.account_id}/media`, { fields: 'id', limit: postLimit }, conn.access_token, 'get');
+  const mediaResult = await withFallback(conn, '/media', { fields: 'id', limit: postLimit }, conn.access_token, 'get', [conn.page_id, conn.account_id]);
   if (!mediaResult.success) throw mediaResult.error;
   const mediaIds = (mediaResult.data.data || []).map((m) => m.id);
   const results = await Promise.all(mediaIds.map(async (mediaId) => {
-    const res = await withFallback(hosts, `/${mediaId}/comments`, { fields: 'id,text,username,timestamp,from', order: 'reverse_chronological', limit: 1 }, conn.access_token, 'get');
+    const res = await withFallback(conn, `/${mediaId}/comments`, { fields: 'id,text,username,timestamp,from', order: 'reverse_chronological', limit: 1 }, conn.access_token, 'get');
     if (!res.success) return null;
     const comment = (res.data.data || [])[0];
     if (!comment) return null;
@@ -130,7 +140,7 @@ async function listRecentComments(userId, postLimit = 10) {
 
 async function listConversations(userId, limit = 25) {
   const conn = await getConnection(userId, 'instagram');
-  const res = await withFallback(getHosts(conn), `/${conn.account_id}/conversations`, { platform: 'instagram', fields: 'participants,updated_time,messages.limit(1){message,from,created_time,id}', limit }, conn.access_token, 'get');
+  const res = await withFallback(conn, '/conversations', { platform: 'instagram', fields: 'participants,updated_time,messages.limit(1){message,from,created_time,id}', limit }, conn.access_token, 'get', [conn.page_id, conn.account_id]);
   if (!res.success) throw res.error;
   return (res.data.data || []).map((convo) => {
     const latest = convo.messages?.data?.[0];
@@ -170,11 +180,11 @@ async function handleCommentEvent({ accountId, commentId, text, senderId, sender
   await tryAutoReply({ clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
-async function handleDmEvent({ accountId, mid, text, senderId }) {
+async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
   const conn = await resolveByAccountId('instagram', accountId);
   if (!conn) return console.warn(`[instagram] DM on unknown account ${accountId} — is that account connected here?`);
   const clientId = await resolveClientId(conn.user_id);
-  const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId });
+  const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
   await tryAutoReply({ clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
 }
@@ -203,4 +213,5 @@ module.exports = {
   getAuthUrl, handleOAuthCallback, disconnect,
   publishPost, replyToComment, sendDM, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
   verifySignature, handleCommentEvent, handleDmEvent,
+  buildGraphRequestCandidates,
 };

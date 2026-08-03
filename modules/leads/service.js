@@ -15,19 +15,35 @@ async function listLeads(clientId, { status, source } = {}) {
   return data || [];
 }
 
-async function createLead(clientId, { name, phone, email, source, status, notes }) {
+async function createLead(clientId, { name, phone, email, source, status, notes, whatsapp, instagram, facebook, account_name }) {
+  const normalizedPhone = normalizePhone(phone || whatsapp) || null;
+  const normalizedWhatsapp = normalizePhone(whatsapp) || null;
   const { data, error } = await supabase.from('crm_leads').insert({
-    client_id: clientId, name: name || null, phone: normalizePhone(phone) || null, email: email || null,
-    source: source || 'other', status: status || 'new', notes: notes || null,
+    client_id: clientId,
+    name: name || null,
+    phone: normalizedPhone,
+    whatsapp: normalizedWhatsapp,
+    instagram: instagram || null,
+    facebook: facebook || null,
+    email: email || null,
+    account_name: account_name || null,
+    source: source || 'other',
+    status: status || 'new',
+    notes: notes || null,
   }).select().single();
   if (error) throw new Error(error.message);
   return data;
 }
 
 async function updateLead(clientId, id, patch) {
-  const allowed = ['name', 'phone', 'email', 'source', 'status', 'notes', 'needs_reply'];
+  const allowed = ['name', 'phone', 'email', 'source', 'status', 'notes', 'needs_reply', 'whatsapp', 'instagram', 'facebook', 'account_name'];
   const clean = Object.fromEntries(Object.entries(patch || {}).filter(([k]) => allowed.includes(k)));
-  if (clean.phone) clean.phone = normalizePhone(clean.phone);
+  if (clean.phone !== undefined) clean.phone = normalizePhone(clean.phone) || null;
+  if (clean.whatsapp !== undefined) clean.whatsapp = normalizePhone(clean.whatsapp) || null;
+  if (clean.phone === null && clean.whatsapp) clean.phone = clean.whatsapp;
+  if (clean.name !== undefined && clean.name === '') clean.name = null;
+  if (clean.account_name !== undefined && clean.account_name === '') clean.account_name = null;
+  if (clean.email !== undefined && clean.email === '') clean.email = null;
   clean.updated_at = new Date().toISOString();
   const { data, error } = await supabase.from('crm_leads').update(clean)
     .eq('id', id).eq('client_id', clientId).select().single();

@@ -25,17 +25,47 @@ function normalizePhone(phone) {
  * sources with only an email column, like a sheet watcher with no
  * phone_column configured (dedup on email). Checked in that order.
  */
-async function findOrCreateLead(clientId, source, { phone = null, externalId = null, email = null, name = null } = {}) {
-  phone = normalizePhone(phone);
-  if (!phone && !externalId && !email) throw new Error('findOrCreateLead requires phone, externalId, or email');
-  let query = supabase.from('crm_leads').select('id').eq('client_id', clientId).eq('source', source);
-  query = phone ? query.eq('phone', phone) : externalId ? query.eq('external_id', externalId) : query.eq('email', email);
+async function findOrCreateLead(clientId, source, { phone = null, externalId = null, email = null, name = null, accountName = null, whatsapp = null, instagram = null, facebook = null } = {}) {
+  const normalizedPhone = normalizePhone(phone || whatsapp);
+  if (!normalizedPhone && !externalId && !email) throw new Error('findOrCreateLead requires phone, externalId, or email');
+
+  let query = supabase.from('crm_leads').select('id, name, account_name, phone, whatsapp, instagram, facebook, email').eq('client_id', clientId).eq('source', source);
+  query = normalizedPhone ? query.eq('phone', normalizedPhone) : externalId ? query.eq('external_id', externalId) : query.eq('email', email);
   const { data: existing, error: findErr } = await query.maybeSingle();
   if (findErr) throw new Error(findErr.message);
-  if (existing) return existing.id;
+  if (existing) {
+    const updates = {};
+    if (normalizedPhone && !existing.phone) updates.phone = normalizedPhone;
+    if (whatsapp && !existing.whatsapp) updates.whatsapp = normalizePhone(whatsapp);
+    if (instagram && !existing.instagram) updates.instagram = instagram;
+    if (facebook && !existing.facebook) updates.facebook = facebook;
+    if (email && !existing.email) updates.email = email;
+    if ((name || accountName) && !existing.name && !existing.account_name) {
+      updates.name = name || accountName || null;
+      updates.account_name = accountName || name || null;
+    } else if (accountName && !existing.account_name) {
+      updates.account_name = accountName;
+    }
+    if (Object.keys(updates).length) {
+      const { error: updateErr } = await supabase.from('crm_leads').update(updates).eq('id', existing.id);
+      if (updateErr) throw new Error(updateErr.message);
+    }
+    return existing.id;
+  }
 
   const { data, error } = await supabase.from('crm_leads')
-    .insert({ client_id: clientId, source, phone, external_id: externalId, email, name })
+    .insert({
+      client_id: clientId,
+      source,
+      phone: normalizedPhone || null,
+      whatsapp: normalizePhone(whatsapp) || null,
+      instagram: instagram || null,
+      facebook: facebook || null,
+      external_id: externalId || null,
+      email: email || null,
+      name: name || null,
+      account_name: accountName || name || null,
+    })
     .select('id').single();
   if (error) throw new Error(error.message);
   return data.id;

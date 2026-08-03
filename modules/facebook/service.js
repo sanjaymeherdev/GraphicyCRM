@@ -179,16 +179,16 @@ async function handleCommentEvent({ pageId, commentId, text, senderId, senderNam
   const conn = await resolveByAccountId('facebook', pageId);
   if (!conn) return console.warn(`[facebook] comment on unknown Page ${pageId} — is that Page connected here?`);
   const clientId = await resolveClientId(conn.user_id);
-  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName });
+  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
   await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
-async function handleDmEvent({ pageId, mid, text, senderId }) {
+async function handleDmEvent({ pageId, mid, text, senderId, senderName }) {
   const conn = await resolveByAccountId('facebook', pageId);
   if (!conn) return console.warn(`[facebook] DM on unknown Page ${pageId} — is that Page connected here?`);
   const clientId = await resolveClientId(conn.user_id);
-  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId });
+  const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
   await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
 }

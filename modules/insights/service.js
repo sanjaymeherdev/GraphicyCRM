@@ -130,16 +130,13 @@ async function pollAccountInsights(clientId, connection) {
     followers = metrics.followers_count || 0;
   }
 
-  // One row per (client_id, platform, day) — overwritten within the same
-  // UTC day (so repeated polls/on-demand fetches don't pile up), but a new
-  // day still gets its own row so getSnapshots()'s trend chart keeps real
-  // daily history. See migrations/005_insights_account_upsert.sql for the
-  // unique constraint this relies on.
+  // One row per client/platform/day, overwritten within the same UTC day.
   const now = new Date();
+  const snapshotDate = now.toISOString().slice(0, 10);
   const { error } = await supabase.from('crm_insights_snapshots')
     .upsert({
       client_id: clientId, platform, account_id: pageId, followers, metrics,
-      captured_at: now.toISOString(), snapshot_date: now.toISOString().slice(0, 10),
+      captured_at: now.toISOString(), snapshot_date: snapshotDate,
     }, { onConflict: 'client_id,platform,snapshot_date' });
   if (error) throw new Error(error.message);
 }

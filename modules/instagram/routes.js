@@ -54,13 +54,13 @@ router.post('/webhook', express.json({ verify: (req, _res, buf) => { req.rawBody
       const value = change.value || {};
       service.handleCommentEvent({
         accountId, commentId: value.id, text: value.text,
-        senderId: value.from?.id || null, senderName: value.from?.username || null,
+        senderId: value.from?.id || null, senderName: value.from?.username || value.from?.name || value.from?.id || null,
       }).catch((err) => console.error('[instagram webhook] failed to record comment:', err.message));
     }
     for (const messaging of entry.messaging || []) {
       if (!messaging.message || messaging.message.is_echo) continue;
       service.handleDmEvent({
-        accountId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null,
+        accountId, mid: messaging.message.mid, text: messaging.message.text, senderId: messaging.sender?.id || null, senderName: messaging.sender?.username || messaging.sender?.name || null,
       }).catch((err) => console.error('[instagram webhook] failed to record DM:', err.message));
     }
   }

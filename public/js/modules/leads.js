@@ -56,9 +56,9 @@ const Leads = {
     tbody.innerHTML = leads.map(l => `
       <tr class="clickable" onclick="Leads.openDetail('${l.id}')">
         <td><div style="display:flex;align-items:center;gap:10px;">
-          <div class="lead-avatar">${(l.name || '?').charAt(0).toUpperCase()}</div>
-          <div><div style="font-weight:600;">${escapeHtml(l.name || 'Unnamed')}</div>
-          <div style="font-size:11px;color:var(--text2);">${l.phone || l.email || ''}</div></div>
+          <div class="lead-avatar">${((l.name || l.account_name || '?').charAt(0).toUpperCase())}</div>
+          <div><div style="font-weight:600;">${escapeHtml(l.name || l.account_name || 'Unnamed')}</div>
+          <div style="font-size:11px;color:var(--text2);">${[l.phone, l.whatsapp, l.email].filter(Boolean).join(' • ') || ''}</div></div>
         </div></td>
         <td><span class="source-icon source-${l.source}">${getSourceIcon(l.source)}</span></td>
         <td><span class="badge badge-${getStatusBadgeClass(l.status)}">${l.status || 'new'}</span></td>
@@ -118,12 +118,12 @@ const Leads = {
   async openDetail(id) {
     const lead = this._leads.find(l => l.id === id);
     if (!lead) return;
-    openModal(`Lead: ${lead.name || 'Unnamed'}`, `
+    openModal(`Lead: ${lead.name || lead.account_name || 'Unnamed'}`, `
       <div style="display:flex;gap:12px;margin-bottom:12px;">
-        <div class="lead-avatar" style="width:48px;height:48px;font-size:20px;">${(lead.name || '?').charAt(0).toUpperCase()}</div>
+        <div class="lead-avatar" style="width:48px;height:48px;font-size:20px;">${((lead.name || lead.account_name || '?').charAt(0).toUpperCase())}</div>
         <div>
-          <div style="font-weight:700;font-size:16px;">${escapeHtml(lead.name || 'Unnamed')}</div>
-          <div style="color:var(--text2);">${lead.phone || ''} ${lead.email ? '· ' + lead.email : ''}</div>
+          <div style="font-weight:700;font-size:16px;">${escapeHtml(lead.name || lead.account_name || 'Unnamed')}</div>
+          <div style="color:var(--text2);">${[lead.phone, lead.whatsapp, lead.email].filter(Boolean).join(' • ')}</div>
           <div style="margin-top:4px;"><span class="badge badge-${getStatusBadgeClass(lead.status)}">${lead.status || 'new'}</span></div>
         </div>
       </div>
@@ -131,12 +131,33 @@ const Leads = {
         <span class="source-icon source-${lead.source}">${getSourceIcon(lead.source)}</span>
         <span class="badge badge-gray">${timeAgo(lead.updated_at)}</span>
       </div>
+      <div class="field"><label>Saved name</label><input id="leadName" value="${escapeHtml(lead.name || '')}" /></div>
+      <div class="field"><label>Account name / fallback</label><input id="leadAccountName" value="${escapeHtml(lead.account_name || '')}" /></div>
+      <div class="field"><label>Phone</label><input id="leadPhone" value="${escapeHtml(lead.phone || '')}" /></div>
+      <div class="field"><label>WhatsApp</label><input id="leadWhatsapp" value="${escapeHtml(lead.whatsapp || '')}" /></div>
+      <div class="field"><label>Instagram</label><input id="leadInstagram" value="${escapeHtml(lead.instagram || '')}" /></div>
+      <div class="field"><label>Facebook</label><input id="leadFacebook" value="${escapeHtml(lead.facebook || '')}" /></div>
+      <div class="field"><label>Email</label><input id="leadEmail" value="${escapeHtml(lead.email || '')}" /></div>
+      <div class="field"><label>Status</label><select id="leadStatus">
+        ${STATUS_OPTIONS.map(s => `<option value="${s.value}" ${lead.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+      </select></div>
       <div class="field"><label>Notes</label><textarea rows="3" id="leadNotes">${escapeHtml(lead.notes || '')}</textarea></div>
-    `, 'Update', async () => {
-      const notes = document.getElementById('leadNotes').value;
+      <div style="font-size:12px;color:var(--text2);margin-top:6px;">If no saved name exists, the account name is used as the fallback label for this lead.</div>
+    `, 'Save', async () => {
+      const payload = {
+        name: document.getElementById('leadName').value.trim(),
+        account_name: document.getElementById('leadAccountName').value.trim(),
+        phone: document.getElementById('leadPhone').value.trim(),
+        whatsapp: document.getElementById('leadWhatsapp').value.trim(),
+        instagram: document.getElementById('leadInstagram').value.trim(),
+        facebook: document.getElementById('leadFacebook').value.trim(),
+        email: document.getElementById('leadEmail').value.trim(),
+        status: document.getElementById('leadStatus').value,
+        notes: document.getElementById('leadNotes').value,
+      };
       try {
-        await API.updateLead(id, { notes });
-        showToast('✅ Updated');
+        await API.updateLead(id, payload);
+        showToast('✅ Lead updated');
         refreshAllData();
       } catch (err) {
         showToast('Failed: ' + err.message, true);
