@@ -4,8 +4,6 @@ const { requireAuth } = require('../../shared/auth');
 const { requireClient } = require('../../shared/clientContext');
 const { supabase } = require('../../shared/db');
 const service = require('./service');
-const whatsapp = require('../whatsapp/service');
-const gmail = require('../gmail/service');
 
 const router = express.Router();
 router.use(requireAuth, requireClient);
@@ -44,31 +42,19 @@ router.post('/:id/messages', async (req, res) => {
   if (!channel || !body) return res.status(400).json({ error: 'channel and body required' });
   try {
     const { data: lead, error } = await supabase.from('crm_leads')
-      .select('phone, email').eq('id', req.params.id).eq('client_id', req.clientId).single();
+      .select('id, phone, email, instagram, facebook, external_id').eq('id', req.params.id).eq('client_id', req.clientId).single();
     if (error || !lead) return res.status(404).json({ error: 'Lead not found' });
 
-    let external_id = null, status = 'sent', error_reason = null;
-    try {
-      if (channel === 'whatsapp') {
-        if (!lead.phone) throw new Error('Lead has no phone number on file');
-        const digits = lead.phone.replace(/\D/g, '');
-        const result = await whatsapp.sendMessage(req.user.id, { to: digits, kind: 'text', cfg: { body }, skipCrmLog: true });
-        external_id = result.messageId;
-      } else if (channel === 'gmail') {
-        if (!lead.email) throw new Error('Lead has no email on file');
-        external_id = await gmail.sendEmail(req.user.id, { to: lead.email, subject: 'New message', text: body });
-      }
-      // Other channels (instagram/facebook/threads/webform): recorded only,
-      // no outbound send wired up yet — extend here when the frontend needs it.
-    } catch (sendErr) {
-      status = 'failed'; error_reason = sendErr.message;
-    }
-
-    const message = await service.recordMessage(req.clientId, req.params.id, {
-      channel, body, external_id, status, error_reason, sent_by: req.user.id,
+    const result = await service.sendOutboundMessage({
+      clientId: req.clientId,
+      userId: req.user.id,
+      lead,
+      channel,
+      body,
     });
-    if (status === 'failed') return res.status(502).json({ error: error_reason, message });
-    res.json({ success: true, message });
+
+    if (result.status === 'failed') return res.status(502).json({ error: result.error_reason, message: result.message });
+    res.json({ success: true, message: result.message });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,6 +1,10 @@
 // modules/leads/service.js — GET/POST/PUT/DELETE /api/leads,
 // GET/POST /api/leads/:id/messages
 const { supabase } = require('../../shared/db');
+const whatsapp = require('../whatsapp/service');
+const gmail = require('../gmail/service');
+const instagram = require('../instagram/service');
+const facebook = require('../facebook/service');
 
 function normalizePhone(phone) {
   return phone ? phone.replace(/\D/g, '') : phone;
@@ -90,4 +94,52 @@ async function recordMessage(clientId, leadId, { channel, body, message_type, ex
   return data;
 }
 
-module.exports = { listLeads, createLead, updateLead, deleteLead, getLeadMessages, recordMessage };
+async function sendOutboundMessage({ clientId, userId, lead, channel, body, deps = {} }) {
+  const whatsappSvc = deps.whatsapp || whatsapp;
+  const gmailSvc = deps.gmail || gmail;
+  const instagramSvc = deps.instagram || instagram;
+  const facebookSvc = deps.facebook || facebook;
+  const record = deps.recordMessage || recordMessage;
+
+  let external_id = null;
+  let status = 'sent';
+  let error_reason = null;
+
+  try {
+    if (channel === 'whatsapp') {
+      if (!lead.phone) throw new Error('Lead has no phone number on file');
+      const digits = lead.phone.replace(/\D/g, '');
+      const result = await whatsappSvc.sendMessage(userId, { to: digits, kind: 'text', cfg: { body }, skipCrmLog: true });
+      external_id = result.messageId;
+    } else if (channel === 'gmail') {
+      if (!lead.email) throw new Error('Lead has no email on file');
+      external_id = await gmailSvc.sendEmail(userId, { to: lead.email, subject: 'New message', text: body });
+    } else if (channel === 'instagram') {
+      const recipientId = lead.instagram || lead.external_id || null;
+      if (!recipientId) throw new Error('Lead has no Instagram identifier on file');
+      external_id = await instagramSvc.sendDM(userId, recipientId, body);
+    } else if (channel === 'facebook') {
+      const recipientId = lead.facebook || lead.external_id || null;
+      if (!recipientId) throw new Error('Lead has no Facebook identifier on file');
+      external_id = await facebookSvc.sendDM(userId, recipientId, body);
+    } else {
+      throw new Error(`Channel ${channel} not supported`);
+    }
+  } catch (sendErr) {
+    status = 'failed';
+    error_reason = sendErr.message;
+  }
+
+  const message = await record(clientId, lead.id, {
+    channel,
+    body,
+    external_id,
+    status,
+    error_reason,
+    sent_by: userId,
+  });
+
+  return { status, error_reason, external_id, message };
+}
+
+module.exports = { listLeads, createLead, updateLead, deleteLead, getLeadMessages, recordMessage, sendOutboundMessage };
