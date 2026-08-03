@@ -94,7 +94,7 @@ async function recordMessage(clientId, leadId, { channel, body, message_type, ex
   return data;
 }
 
-async function sendOutboundMessage({ clientId, userId, lead, channel, body, deps = {} }) {
+async function sendOutboundMessage({ clientId, userId, lead, channel, body, replyType = 'dm', replyToExternalId = null, deps = {} }) {
   const whatsappSvc = deps.whatsapp || whatsapp;
   const gmailSvc = deps.gmail || gmail;
   const instagramSvc = deps.instagram || instagram;
@@ -115,13 +115,23 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, deps
       if (!lead.email) throw new Error('Lead has no email on file');
       external_id = await gmailSvc.sendEmail(userId, { to: lead.email, subject: 'New message', text: body });
     } else if (channel === 'instagram') {
-      const recipientId = lead.instagram || lead.external_id || null;
-      if (!recipientId) throw new Error('Lead has no Instagram identifier on file');
-      external_id = await instagramSvc.sendDM(userId, recipientId, body);
+      if (replyType === 'comment') {
+        if (!replyToExternalId) throw new Error('No comment identifier on file');
+        external_id = await instagramSvc.replyToComment(userId, replyToExternalId, body);
+      } else {
+        const recipientId = lead.instagram || lead.external_id || null;
+        if (!recipientId) throw new Error('Lead has no Instagram identifier on file');
+        external_id = await instagramSvc.sendDM(userId, recipientId, body);
+      }
     } else if (channel === 'facebook') {
-      const recipientId = lead.facebook || lead.external_id || null;
-      if (!recipientId) throw new Error('Lead has no Facebook identifier on file');
-      external_id = await facebookSvc.sendDM(userId, recipientId, body);
+      if (replyType === 'comment') {
+        if (!replyToExternalId) throw new Error('No comment identifier on file');
+        external_id = await facebookSvc.replyToComment(userId, replyToExternalId, body);
+      } else {
+        const recipientId = lead.facebook || lead.external_id || null;
+        if (!recipientId) throw new Error('Lead has no Facebook identifier on file');
+        external_id = await facebookSvc.sendDM(userId, recipientId, body);
+      }
     } else {
       throw new Error(`Channel ${channel} not supported`);
     }
@@ -133,6 +143,7 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, deps
   const message = await record(clientId, lead.id, {
     channel,
     body,
+    message_type: replyType === 'comment' ? 'comment' : 'text',
     external_id,
     status,
     error_reason,

@@ -112,6 +112,13 @@ const Inbox = {
       const hoursSinceInbound = lastInbound ? (Date.now() - new Date(lastInbound.created_at).getTime()) / 3600000 : null;
       const replyWindowClosed = channel === 'whatsapp' && (hoursSinceInbound === null || hoursSinceInbound > WHATSAPP_REPLY_WINDOW_HOURS);
 
+      const lastInboundMessage = [...messages].reverse().find(m => m.direction === 'in');
+      const replyContext = lastInboundMessage?.message_type === 'comment'
+        ? 'Comment reply'
+        : (lastInboundMessage?.channel === 'instagram' || lastInboundMessage?.channel === 'facebook')
+          ? 'DM reply'
+          : 'Reply';
+
       pane.innerHTML = `
         <div class="inbox-thread-header">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -125,6 +132,7 @@ const Inbox = {
           ${messages.map(m => `
             <div class="msg-bubble msg-${m.direction}">
               <div class="inbox-msg-channel-tag">${getSourceIcon(m.channel) || ''} ${m.channel}</div>
+              <div class="inbox-msg-kind">${m.message_type === 'comment' ? 'Comment' : 'DM'}</div>
               ${escapeHtml(m.body)}
               <div class="msg-time">${timeAgo(m.created_at)}</div>
             </div>
@@ -138,8 +146,15 @@ const Inbox = {
         </div>
         ` : `
         <div class="inbox-reply-bar">
-          <select id="inboxReplyChannel">
-            ${CHANNEL_OPTIONS.map(c => `<option value="${c.value}" ${c.value === (thread.channel || 'whatsapp') ? 'selected' : ''}>${c.label}</option>`).join('')}
+          <div class="inbox-reply-meta">
+            <div class="inbox-reply-context">${escapeHtml(replyContext)}</div>
+            <select id="inboxReplyChannel">
+              ${CHANNEL_OPTIONS.map(c => `<option value="${c.value}" ${c.value === (thread.channel || 'whatsapp') ? 'selected' : ''}>${c.label}</option>`).join('')}
+            </select>
+          </div>
+          <select id="inboxReplyType" class="inbox-reply-type">
+            <option value="dm">DM</option>
+            <option value="comment">Comment</option>
           </select>
           <textarea id="inboxReplyBox" placeholder="Type a reply..." rows="1"></textarea>
           <button class="btn btn-primary btn-sm" onclick="Inbox.sendReply('${id}')">Send</button>
@@ -154,10 +169,12 @@ const Inbox = {
   async sendReply(id) {
     const box = document.getElementById('inboxReplyBox');
     const channel = document.getElementById('inboxReplyChannel').value;
+    const replyType = document.getElementById('inboxReplyType')?.value || 'dm';
     const body = box.value.trim();
     if (!body) return;
     try {
-      await API.sendMessage(id, { channel, body });
+      const lastInboundMessage = [...(this._threads.find(t => t.id === id)?.messages || [])].reverse().find(m => m.direction === 'in');
+      await API.sendMessage(id, { channel, body, replyType, replyToExternalId: lastInboundMessage?.external_id || null });
       box.value = '';
       showToast('✅ Reply sent');
       this.openThread(id);

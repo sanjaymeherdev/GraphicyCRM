@@ -697,6 +697,7 @@ tr:hover td { background: var(--surface2); }
   width: 18px;
   height: 18px;
   border-radius: 4px;
+  object-fit: contain;
 }
 .inbox-channel-icon img,
 .platform-chip img,
@@ -704,6 +705,7 @@ tr:hover td { background: var(--surface2); }
   width: 14px;
   height: 14px;
   border-radius: 3px;
+  object-fit: contain;
 }
 .channel-option-icon {
   width: 14px;
@@ -712,6 +714,7 @@ tr:hover td { background: var(--surface2); }
   vertical-align: middle;
   margin-right: 6px;
   border-radius: 3px;
+  object-fit: contain;
 }
 .source-whatsapp { background: rgba(34,197,94,0.15); }
 .source-instagram { background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(139,92,246,0.2)); }
@@ -1372,7 +1375,31 @@ tr:hover td { background: var(--surface2); }
   align-items: flex-end;
   flex-shrink: 0;
 }
-.inbox-reply-bar select {
+.inbox-reply-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.inbox-reply-context {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.inbox-reply-bar select,
+.inbox-reply-bar .inbox-reply-type {
+  padding: 10px 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.inbox-reply-bar .inbox-reply-type {
   padding: 10px 8px;
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -1408,6 +1435,7 @@ tr:hover td { background: var(--surface2); }
 .msg-out { align-self: flex-end; background: var(--primary-dim); color: var(--primary); border-bottom-right-radius: 2px; }
 .msg-time { font-size: 10px; color: var(--text3); margin-top: 3px; }
 .inbox-msg-channel-tag { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); margin-bottom: 2px; }
+.inbox-msg-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--primary); margin-bottom: 4px; }
 
 @media (max-width: 860px) {
   .inbox-layout { flex-direction: column; height: auto; }

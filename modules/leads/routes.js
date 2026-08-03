@@ -51,6 +51,8 @@ router.post('/:id/messages', async (req, res) => {
       lead,
       channel,
       body,
+      replyType,
+      replyToExternalId,
     });
 
     if (result.status === 'failed') return res.status(502).json({ error: result.error_reason, message: result.message });
