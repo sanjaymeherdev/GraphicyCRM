@@ -295,7 +295,7 @@ create table if not exists crm_messages (
   contact_id uuid references crm_contacts(id) on delete cascade,
   channel text not null check (channel in ('whatsapp','instagram','facebook','threads','gmail','webform')),
   direction text not null check (direction in ('in','out')),
-  message_type text not null default 'text' check (message_type in ('text','image','video','audio','document','sticker','location','button','list','cta_url','interactive','template','unknown')),
+  message_type text not null default 'text' check (message_type in ('text','image','video','audio','document','sticker','location','button','list','cta_url','interactive','template','unknown','comment','json')),
   body text not null default '',           -- rendered preview text (e.g. "📷 Image" for media, caption if present)
   external_id text,                        -- provider's message id (wamid, Graph message id, Gmail message id...)
   is_read boolean not null default false,  -- unread badge for inbound; app sets true explicitly when inserting outbound rows (they're inherently "read" by the business)
