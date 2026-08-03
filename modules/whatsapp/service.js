@@ -315,6 +315,9 @@ async function handleInboundEvent(event) {
       if (match?.replyType === 'text' && match.text) {
         await sendMessage(ctx.userId, { to: event.from, kind: 'text', cfg: { body: match.text } });
         if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(ctx.clientId, leadId, match.rule);
+      } else if (match?.replyType === 'json' && match.payload) {
+        await sendRawMessage(ctx.userId, { to: event.from, payload: match.payload });
+        if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(ctx.clientId, leadId, match.rule);
       }
     } catch (err) {
       console.error('[whatsapp] auto-reply failed:', err.message);
@@ -398,6 +401,28 @@ async function sendMessage(userId, { to, kind = 'text', cfg, vars, skipCrmLog = 
   return { messageId, phoneNumberId: account.phone_number_id };
 }
 
+/** High-level send of a raw, already-built Meta Cloud API payload — used for
+ * 'json'-format templates (see modules/templates/service.js), where the
+ * template body IS the payload (e.g. a full interactive/media message)
+ * rather than plain text. `payload.to` is overridden with the resolved
+ * recipient so a saved template can't accidentally hardcode a stale one. */
+async function sendRawMessage(userId, { to, payload, skipCrmLog = false }) {
+  validateRecipient(to);
+  const account = await getActiveAccount(userId);
+  const clientId = await resolveClientId(userId);
+  await assertWithinReplyWindow(clientId, to);
+  const finalPayload = { messaging_product: 'whatsapp', ...payload, to };
+  const messageId = await sendRaw(account.phone_number_id, decryptToken(account.access_token_enc), finalPayload);
+  if (!skipCrmLog) {
+    try {
+      await recordMessage(clientId, await findOrCreateLeadByPhone(clientId, to), { direction: 'out', messageType: 'json', body: JSON.stringify(payload), externalId: messageId, status: 'sent', sentBy: userId });
+    } catch (err) {
+      console.error('[whatsapp] sent to Meta but failed to log to CRM:', err.message);
+    }
+  }
+  return { messageId, phoneNumberId: account.phone_number_id };
+}
+
 /** High-level send of an approved template (business-initiated / outside 24h window). */
 async function sendTemplate(userId, { to, name, language, components }) {
   const account = await getActiveAccount(userId);
@@ -465,6 +490,7 @@ module.exports = {
   sendMessage,
   sendTemplate,
   sendRaw,
+  sendRawMessage,
   verifySubscription,
   verifySignature,
   parseInboundEvents,

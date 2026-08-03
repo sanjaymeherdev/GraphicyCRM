@@ -116,6 +116,17 @@ async function sendPrivateReply(userId, commentId, message) {
   return result.data.message_id;
 }
 
+/** Sends a raw Send API `message` object — used for 'json'-format templates,
+ * where the template body IS the payload rather than plain text. */
+async function sendDMRaw(userId, recipientId, payload, replyToMid) {
+  const conn = await getConnection(userId, 'instagram');
+  const bodyParams = { recipient: JSON.stringify({ id: recipientId }), messaging_type: 'RESPONSE', message: JSON.stringify(payload) };
+  if (replyToMid) bodyParams.reply_to = JSON.stringify({ mid: replyToMid });
+  const result = await withFallback(conn, '/messages', bodyParams, conn.access_token, 'post', [conn.page_id, conn.account_id]);
+  if (!result.success) throw result.error;
+  return result.data.message_id;
+}
+
 async function listRecentMedia(userId, limit = 25) {
   const conn = await getConnection(userId, 'instagram');
   const result = await withFallback(conn, '/media', { fields: 'id,caption,timestamp,permalink,media_type,media_url,thumbnail_url', limit }, conn.access_token, 'get', [conn.page_id, conn.account_id]);
@@ -186,7 +197,12 @@ async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
-  await tryAutoReply({ clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
+  await tryAutoReply({
+    clientId, leadId, text,
+    send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),
+    sendJson: (payload) => sendDMRaw(conn.user_id, senderId, payload, mid),
+    replyMessageType: 'text',
+  });
 }
 
 // Matches an active automation against inbound text and, if one fires,
@@ -194,7 +210,7 @@ async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
 // reply or a DM) and logs it + schedules a follow-up. Errors are logged,
 // not thrown — an automation misfiring shouldn't take down the webhook
 // handler that's persisting the inbound message.
-async function tryAutoReply({ clientId, leadId, text, send, replyMessageType }) {
+async function tryAutoReply({ clientId, leadId, text, send, sendJson, replyMessageType }) {
   if (!text) return;
   const automations = require('../automations/service');
   try {
@@ -202,6 +218,10 @@ async function tryAutoReply({ clientId, leadId, text, send, replyMessageType }) 
     if (match?.replyType === 'text' && match.text) {
       const externalId = await send(match.text);
       await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'out', messageType: replyMessageType, body: match.text, externalId });
+      if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
+    } else if (match?.replyType === 'json' && match.payload && sendJson) {
+      const externalId = await sendJson(match.payload);
+      await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'out', messageType: 'json', body: JSON.stringify(match.payload), externalId });
       if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
     }
   } catch (err) {
@@ -211,7 +231,7 @@ async function tryAutoReply({ clientId, leadId, text, send, replyMessageType }) 
 
 module.exports = {
   getAuthUrl, handleOAuthCallback, disconnect,
-  publishPost, replyToComment, sendDM, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
+  publishPost, replyToComment, sendDM, sendDMRaw, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
   verifySignature, handleCommentEvent, handleDmEvent,
   buildGraphRequestCandidates,
 };

@@ -384,6 +384,26 @@ const API = (() => {
     return await get('/api/ai-bot/models');
   }
 
+  async function getChatbotRules() {
+    return await get('/api/ai-bot/rules');
+  }
+
+  async function createChatbotRule(data) {
+    return await post('/api/ai-bot/rules', data);
+  }
+
+  async function updateChatbotRule(id, data) {
+    return await put(`/api/ai-bot/rules/${id}`, data);
+  }
+
+  async function deleteChatbotRule(id) {
+    return await del(`/api/ai-bot/rules/${id}`);
+  }
+
+  async function sendChatbotMessage(messages, options = {}) {
+    return await post('/api/ai-bot/chat', { messages, ...options });
+  }
+
   // ─── SETTINGS ───
   async function getSettings() {
     return await get('/api/settings');
@@ -513,6 +533,11 @@ const API = (() => {
     listSheetHeaders,
     listGoogleDocs,
     getAvailableModels,
+    getChatbotRules,
+    createChatbotRule,
+    updateChatbotRule,
+    deleteChatbotRule,
+    sendChatbotMessage,
 
     // Settings
     getSettings,

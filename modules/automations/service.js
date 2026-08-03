@@ -77,9 +77,22 @@ async function matchRule(clientId, { text }) {
   const sheetLookupValue = sheetLookupResult?.found ? String(sheetLookupResult.value) : '';
 
   if (rule.action_type === 'template' && rule.template_id) {
-    const { data: tpl } = await supabase.from('crm_templates').select('body').eq('id', rule.template_id).single();
-    const body = (tpl?.body || '').split('{{sheet_lookup}}').join(sheetLookupValue);
-    return { rule, replyType: 'text', text: body, sheetLookupResult };
+    const { data: tpl } = await supabase.from('crm_templates').select('body, format').eq('id', rule.template_id).single();
+    const rawBody = (tpl?.body || '').split('{{sheet_lookup}}').join(sheetLookupValue);
+    const format = tpl?.format || 'text';
+
+    if (format === 'json') {
+      try {
+        return { rule, replyType: 'json', payload: JSON.parse(rawBody), sheetLookupResult };
+      } catch (err) {
+        console.error(`[automations] template ${rule.template_id} has format=json but body is not valid JSON:`, err.message);
+        return { rule, replyType: 'none', sheetLookupResult };
+      }
+    }
+    if (format === 'html') {
+      return { rule, replyType: 'html', html: rawBody, sheetLookupResult };
+    }
+    return { rule, replyType: 'text', text: rawBody, sheetLookupResult };
   }
 
   if (rule.action_type === 'ai_reply') {
@@ -122,7 +135,9 @@ async function markFollowUpFired(id) {
 
 /** Sends a follow-up's template body through whichever channel the lead's most
  * recent message was on. WhatsApp needs an approved template for a send this
- * far outside any reply window; Facebook/Instagram DM plain text is fine;
+ * far outside any reply window; Facebook/Instagram DM plain text (or a raw
+ * JSON payload, for format='json' templates) is fine; email sends the body
+ * as HTML when the template's format is 'html', plain text otherwise;
  * Threads has no DM API, so a threads-sourced lead can't get a DM follow-up. */
 async function sendFollowUpMessage(userId, clientId, lead, channel, tpl) {
   const { recordMessage } = require('../../shared/crmMessages');
@@ -130,13 +145,30 @@ async function sendFollowUpMessage(userId, clientId, lead, channel, tpl) {
     const whatsapp = require('../whatsapp/service');
     if (tpl.type === 'whatsapp_template' && tpl.meta_template_name) {
       await whatsapp.sendTemplate(userId, { to: lead.phone, name: tpl.meta_template_name, language: tpl.language || 'en_US', components: [] });
+    } else if (tpl.format === 'json') {
+      try { await whatsapp.sendRawMessage(userId, { to: lead.phone, payload: JSON.parse(tpl.body) }); }
+      catch (err) { console.error(`[automations] follow-up template ${tpl.id} format=json but invalid JSON body:`, err.message); }
     } else {
       await whatsapp.sendMessage(userId, { to: lead.phone, kind: 'text', cfg: { body: tpl.body } });
     }
   } else if ((channel === 'facebook' || channel === 'instagram') && lead.external_id) {
     const svc = require(`../${channel}/service`);
-    const externalId = await svc.sendDM(userId, lead.external_id, tpl.body);
-    await recordMessage(clientId, lead.id, { channel, direction: 'out', messageType: 'text', body: tpl.body, externalId });
+    if (tpl.format === 'json') {
+      try {
+        const externalId = await svc.sendDMRaw(userId, lead.external_id, JSON.parse(tpl.body));
+        await recordMessage(clientId, lead.id, { channel, direction: 'out', messageType: 'json', body: tpl.body, externalId });
+      } catch (err) {
+        console.error(`[automations] follow-up template ${tpl.id} format=json but invalid JSON body:`, err.message);
+      }
+    } else {
+      const externalId = await svc.sendDM(userId, lead.external_id, tpl.body);
+      await recordMessage(clientId, lead.id, { channel, direction: 'out', messageType: 'text', body: tpl.body, externalId });
+    }
+  } else if (channel === 'gmail' && lead.email) {
+    const gmail = require('../gmail/service');
+    const isHtml = tpl.format === 'html';
+    const externalId = await gmail.sendEmail(userId, { to: lead.email, subject: tpl.name || 'Follow-up', ...(isHtml ? { html: tpl.body } : { text: tpl.body }) });
+    await recordMessage(clientId, lead.id, { channel: 'gmail', direction: 'out', messageType: isHtml ? 'html' : 'text', body: tpl.body, externalId });
   } else {
     console.warn(`[automations] follow-up for lead ${lead.id}: no sendable channel/identifier (channel="${channel}")`);
   }

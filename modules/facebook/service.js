@@ -150,6 +150,20 @@ async function sendPrivateReply(userId, commentId, message) {
   return res.message_id;
 }
 
+/** Sends a raw Send API `message` object (e.g. an attachment/generic
+ * template) — used for 'json'-format templates, where the template body IS
+ * the `message` payload rather than plain text. `payload` should already be
+ * shaped like the Send API's `message` field, e.g. { attachment: {...} }. */
+async function sendDMRaw(userId, recipientId, payload, replyToMid) {
+  const conn = await getConnection(userId, 'facebook');
+  const bodyParams = {
+    recipient: JSON.stringify({ id: recipientId }), messaging_type: 'RESPONSE', message: JSON.stringify(payload),
+  };
+  if (replyToMid) bodyParams.reply_to = JSON.stringify({ mid: replyToMid });
+  const res = await post(`${BASE}/${conn.account_id}/messages`, bodyParams, conn.access_token);
+  return res.message_id;
+}
+
 // ---------------------------------------------------------------------
 // Webhook signature verification. Meta signs the raw body with the app
 // secret; without this check, POST /webhook accepted any unsigned request,
@@ -190,7 +204,12 @@ async function handleDmEvent({ pageId, mid, text, senderId, senderName }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
-  await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid), replyMessageType: 'text' });
+  await tryAutoReply({
+    userId: conn.user_id, clientId, leadId, text,
+    send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),
+    sendJson: (payload) => sendDMRaw(conn.user_id, senderId, payload, mid),
+    replyMessageType: 'text',
+  });
 }
 
 // Matches an active automation against inbound text and, if one fires,
@@ -198,7 +217,7 @@ async function handleDmEvent({ pageId, mid, text, senderId, senderName }) {
 // reply or a DM, per the event type) and logs it + schedules a follow-up.
 // Errors here are logged, not thrown — an automation misfiring should never
 // take down the webhook handler that's persisting the inbound message.
-async function tryAutoReply({ userId, clientId, leadId, text, send, replyMessageType }) {
+async function tryAutoReply({ userId, clientId, leadId, text, send, sendJson, replyMessageType }) {
   if (!text) return;
   const automations = require('../automations/service');
   try {
@@ -206,6 +225,13 @@ async function tryAutoReply({ userId, clientId, leadId, text, send, replyMessage
     if (match?.replyType === 'text' && match.text) {
       const externalId = await send(match.text);
       await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'out', messageType: replyMessageType, body: match.text, externalId });
+      if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
+    } else if (match?.replyType === 'json' && match.payload && sendJson) {
+      // JSON-format templates only apply to DMs (a raw payload can't be sent
+      // as a comment reply, which is text-only) — replyMessageType stays
+      // 'comment' for that path, so sendJson is simply not wired there.
+      const externalId = await sendJson(match.payload);
+      await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'out', messageType: 'json', body: JSON.stringify(match.payload), externalId });
       if (match.rule.follow_up?.enabled) await automations.scheduleFollowUp(clientId, leadId, match.rule);
     }
   } catch (err) {
@@ -215,6 +241,6 @@ async function tryAutoReply({ userId, clientId, leadId, text, send, replyMessage
 
 module.exports = {
   getAuthUrl, handleOAuthCallback, selectPage, disconnect,
-  publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendPrivateReply,
+  publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendDMRaw, sendPrivateReply,
   verifySignature, handleCommentEvent, handleDmEvent,
 };

@@ -38,7 +38,7 @@ router.get('/:id/messages', async (req, res) => {
 // add branches here as the frontend starts asking for those channels too),
 // then records it against the lead's thread either way.
 router.post('/:id/messages', async (req, res) => {
-  const { channel, body } = req.body || {};
+  const { channel, body, format, subject, replyType, replyToExternalId } = req.body || {};
   if (!channel || !body) return res.status(400).json({ error: 'channel and body required' });
   try {
     const { data: lead, error } = await supabase.from('crm_leads')
@@ -51,6 +51,8 @@ router.post('/:id/messages', async (req, res) => {
       lead,
       channel,
       body,
+      format,
+      subject,
       replyType,
       replyToExternalId,
     });

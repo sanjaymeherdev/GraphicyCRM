@@ -94,7 +94,7 @@ async function recordMessage(clientId, leadId, { channel, body, message_type, ex
   return data;
 }
 
-async function sendOutboundMessage({ clientId, userId, lead, channel, body, replyType = 'dm', replyToExternalId = null, deps = {} }) {
+async function sendOutboundMessage({ clientId, userId, lead, channel, body, format = 'text', subject = 'New message', replyType = 'dm', replyToExternalId = null, deps = {} }) {
   const whatsappSvc = deps.whatsapp || whatsapp;
   const gmailSvc = deps.gmail || gmail;
   const instagramSvc = deps.instagram || instagram;
@@ -104,16 +104,31 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, repl
   let external_id = null;
   let status = 'sent';
   let error_reason = null;
+  let jsonPayload = null;
+  if (format === 'json') {
+    try { jsonPayload = JSON.parse(body); }
+    catch (err) { status = 'failed'; error_reason = `format is "json" but body is not valid JSON: ${err.message}`; }
+  }
 
   try {
-    if (channel === 'whatsapp') {
+    if (status === 'failed') {
+      // JSON parse already failed above — skip straight to recording it.
+    } else if (channel === 'whatsapp') {
       if (!lead.phone) throw new Error('Lead has no phone number on file');
       const digits = lead.phone.replace(/\D/g, '');
-      const result = await whatsappSvc.sendMessage(userId, { to: digits, kind: 'text', cfg: { body }, skipCrmLog: true });
-      external_id = result.messageId;
+      if (format === 'json') {
+        const result = await whatsappSvc.sendRawMessage(userId, { to: digits, payload: jsonPayload, skipCrmLog: true });
+        external_id = result.messageId;
+      } else {
+        const result = await whatsappSvc.sendMessage(userId, { to: digits, kind: 'text', cfg: { body }, skipCrmLog: true });
+        external_id = result.messageId;
+      }
     } else if (channel === 'gmail') {
       if (!lead.email) throw new Error('Lead has no email on file');
-      external_id = await gmailSvc.sendEmail(userId, { to: lead.email, subject: 'New message', text: body });
+      external_id = await gmailSvc.sendEmail(userId, {
+        to: lead.email, subject,
+        ...(format === 'html' ? { html: body } : { text: body }),
+      });
     } else if (channel === 'instagram') {
       if (replyType === 'comment') {
         if (!replyToExternalId) throw new Error('No comment identifier on file');
@@ -121,7 +136,9 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, repl
       } else {
         const recipientId = lead.instagram || lead.external_id || null;
         if (!recipientId) throw new Error('Lead has no Instagram identifier on file');
-        external_id = await instagramSvc.sendDM(userId, recipientId, body);
+        external_id = format === 'json'
+          ? await instagramSvc.sendDMRaw(userId, recipientId, jsonPayload)
+          : await instagramSvc.sendDM(userId, recipientId, body);
       }
     } else if (channel === 'facebook') {
       if (replyType === 'comment') {
@@ -130,7 +147,9 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, repl
       } else {
         const recipientId = lead.facebook || lead.external_id || null;
         if (!recipientId) throw new Error('Lead has no Facebook identifier on file');
-        external_id = await facebookSvc.sendDM(userId, recipientId, body);
+        external_id = format === 'json'
+          ? await facebookSvc.sendDMRaw(userId, recipientId, jsonPayload)
+          : await facebookSvc.sendDM(userId, recipientId, body);
       }
     } else {
       throw new Error(`Channel ${channel} not supported`);
@@ -143,7 +162,7 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, repl
   const message = await record(clientId, lead.id, {
     channel,
     body,
-    message_type: replyType === 'comment' ? 'comment' : 'text',
+    message_type: replyType === 'comment' ? 'comment' : (format === 'json' ? 'json' : format === 'html' ? 'html' : 'text'),
     external_id,
     status,
     error_reason,
