@@ -412,6 +412,15 @@ const API = (() => {
     return await post('/api/ai-bot/chat', { messages, ...options });
   }
 
+  // ─── HELP ASSISTANT (floating popup — "how do I use this" + dev module Q&A) ───
+  async function getHelpBotModules() {
+    return await get('/api/help-bot/modules');
+  }
+
+  async function sendHelpBotMessage(history, options = {}) {
+    return await post('/api/help-bot/chat', { history, ...options });
+  }
+
   // ─── SETTINGS ───
   async function getSettings() {
     return await get('/api/settings');
@@ -546,6 +555,8 @@ const API = (() => {
     updateChatbotRule,
     deleteChatbotRule,
     sendChatbotMessage,
+    getHelpBotModules,
+    sendHelpBotMessage,
 
     // Settings
     getSettings,

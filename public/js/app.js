@@ -141,7 +141,6 @@
       schedule: loadSchedule,
       insights: loadInsights,
       automation: loadAutomation,
-      chatbot: loadChatbot,
       templates: loadTemplates,
       integrations: loadIntegrations,
       reports: loadReports,
@@ -309,7 +308,6 @@
       schedule: loadSchedule,
       insights: loadInsights,
       automation: loadAutomation,
-      chatbot: loadChatbot,
       templates: loadTemplates,
       integrations: loadIntegrations,
       reports: loadReports,
@@ -366,11 +364,6 @@
   function loadAutomation() {
     if (window.Automation) Automation.render(state);
     else console.warn('Automation module not loaded');
-  }
-
-  function loadChatbot() {
-    if (window.Chatbot) Chatbot.render(state);
-    else console.warn('Chatbot module not loaded');
   }
 
   function loadTemplates() {

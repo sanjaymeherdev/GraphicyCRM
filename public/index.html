@@ -11,6 +11,28 @@
 <body>
 
 <div id="app">
+  <!-- ===== HELP ASSISTANT (floating) ===== -->
+  <div class="assistant-fab" id="assistantFab" onclick="toggleAssistant()" title="Help">🤖</div>
+  <div class="assistant-panel" id="assistantPanel">
+    <div class="assistant-header">
+      <span>🤖 Help Assistant</span>
+      <span style="cursor:pointer;color:var(--text2);" onclick="toggleAssistant()">✕</span>
+    </div>
+    <div class="assistant-module-row">
+      <label for="assistantModuleSelect">Tag a module</label>
+      <select id="assistantModuleSelect">
+        <option value="">None — general question</option>
+      </select>
+    </div>
+    <div class="assistant-body" id="assistantBody">
+      <div class="assistant-msg bot">Hi! Ask me anything about using GraphicyCRM — replying to WhatsApp contacts, templates, automations, connecting channels, and so on. If you're a developer chasing a bug, tag a module above and I'll read its code and can suggest a fix.patch.</div>
+    </div>
+    <div class="assistant-input-row">
+      <textarea id="assistantInput" placeholder="Ask something…" oninput="autoResize(this)"></textarea>
+      <button id="assistantSendBtn" onclick="sendAssistantMessage()">➤</button>
+    </div>
+  </div>
+
   <!-- TOP BAR -->
   <header class="topbar" id="topbar">
     <div class="topbar-left">
@@ -63,7 +85,6 @@
         <div class="nav-section">
           <div class="nav-section-label">Automation</div>
           <button class="nav-item" data-tab="automation"><i class="fas fa-bolt"></i> Automation</button>
-          <button class="nav-item" data-tab="chatbot"><i class="fas fa-robot"></i> Chatbot</button>
           <button class="nav-item" data-tab="templates"><i class="fas fa-copy"></i> Templates</button>
           <button class="nav-item" data-tab="integrations"><i class="fas fa-plug"></i> Integrations</button>
         </div>
@@ -107,7 +128,6 @@
     <div class="tab-panel" id="tab-schedule"></div>
     <div class="tab-panel" id="tab-insights"></div>
     <div class="tab-panel" id="tab-automation"></div>
-    <div class="tab-panel" id="tab-chatbot"></div>
     <div class="tab-panel" id="tab-templates"></div>
     <div class="tab-panel" id="tab-integrations"></div>
     <div class="tab-panel" id="tab-reports"></div>
@@ -146,10 +166,10 @@
 <script src="js/modules/schedule.js"></script>
 <script src="js/modules/insights.js"></script>
 <script src="js/modules/automation.js"></script>
-<script src="js/modules/chatbot.js"></script>
 <script src="js/modules/templates.js"></script>
 <script src="js/modules/integrations.js"></script>
 <script src="js/modules/reports.js"></script>
+<script src="js/modules/help-assistant.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
