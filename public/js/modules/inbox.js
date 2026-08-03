@@ -20,10 +20,10 @@ const Inbox = {
       <div class="card" style="padding:0;overflow:hidden;">
         <div class="seg" id="inboxTabSeg" style="margin:12px 12px 0;">
           <button class="${this._activeChannel === '' ? 'on' : ''}" data-channel="" onclick="Inbox.setChannelTab('')">All</button>
-          <button class="${this._activeChannel === 'whatsapp' ? 'on' : ''}" data-channel="whatsapp" onclick="Inbox.setChannelTab('whatsapp')">📱 WhatsApp</button>
-          <button class="${this._activeChannel === 'instagram' ? 'on' : ''}" data-channel="instagram" onclick="Inbox.setChannelTab('instagram')">📷 IG</button>
-          <button class="${this._activeChannel === 'facebook' ? 'on' : ''}" data-channel="facebook" onclick="Inbox.setChannelTab('facebook')">👥 FB</button>
-          <button class="${this._activeChannel === 'email' ? 'on' : ''}" data-channel="email" onclick="Inbox.setChannelTab('email')">📧 Email</button>
+          <button class="${this._activeChannel === 'whatsapp' ? 'on' : ''}" data-channel="whatsapp" onclick="Inbox.setChannelTab('whatsapp')"><img src="/images/whatsapp.png" alt="WhatsApp" class="channel-option-icon" /> WhatsApp</button>
+          <button class="${this._activeChannel === 'instagram' ? 'on' : ''}" data-channel="instagram" onclick="Inbox.setChannelTab('instagram')"><img src="/images/instagram.png" alt="Instagram" class="channel-option-icon" /> IG</button>
+          <button class="${this._activeChannel === 'facebook' ? 'on' : ''}" data-channel="facebook" onclick="Inbox.setChannelTab('facebook')"><img src="/images/facebook.png" alt="Facebook" class="channel-option-icon" /> FB</button>
+          <button class="${this._activeChannel === 'email' ? 'on' : ''}" data-channel="email" onclick="Inbox.setChannelTab('email')"><img src="/images/gmail.png" alt="Email" class="channel-option-icon" /> Email</button>
         </div>
         <div class="inbox-layout">
           <div class="inbox-list-pane">

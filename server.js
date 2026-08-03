@@ -98,6 +98,8 @@ app.use('/api', require('./modules/profile/routes'));
 // fallback otherwise, which is confusing).
 // ---------------------------------------------------------------------
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const IMAGES_DIR = path.join(__dirname, 'images');
+app.use('/images', express.static(IMAGES_DIR));
 app.use(express.static(PUBLIC_DIR, { index: false }));
 
 app.get('/', (req, res) => {

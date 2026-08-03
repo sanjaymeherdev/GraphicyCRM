@@ -61,7 +61,7 @@ const Sources = {
       <div class="page-header"><div><div class="page-title">Sources</div><div class="page-sub">Connect where leads come from</div></div></div>
       <div class="conn-methods">
         <div class="conn-card">
-          <div class="m-head"><span class="badge-ic">📱</span><h3>WhatsApp</h3></div>
+          <div class="m-head"><span class="badge-ic"><img src="/images/whatsapp.png" alt="WhatsApp" /></span><h3>WhatsApp</h3></div>
           ${waConnected ? `
             <p class="m-desc">Connected</p>
             <button class="btn btn-connected" style="width:100%;justify-content:center;" disabled>✅ Connected</button>
@@ -76,17 +76,17 @@ const Sources = {
           `}
         </div>
         <div class="conn-card">
-          <div class="m-head"><span class="badge-ic">📷</span><h3>Instagram</h3></div>
+          <div class="m-head"><span class="badge-ic"><img src="/images/instagram.png" alt="Instagram" /></span><h3>Instagram</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
           ${this.connectButton('instagram', 'Connect with Instagram', 'Sources.connectInstagram()')}
         </div>
         <div class="conn-card">
-          <div class="m-head"><span class="badge-ic">👥</span><h3>Facebook</h3></div>
+          <div class="m-head"><span class="badge-ic"><img src="/images/facebook.png" alt="Facebook" /></span><h3>Facebook</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
           ${this.connectButton('facebook', 'Connect with Facebook', 'Sources.connectFacebook()')}
         </div>
         <div class="conn-card">
-          <div class="m-head"><span class="badge-ic">🧵</span><h3>Threads</h3></div>
+          <div class="m-head"><span class="badge-ic"><img src="/images/Threads.png" alt="Threads" /></span><h3>Threads</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
           ${this.connectButton('threads', 'Connect with Threads', 'Sources.connectThreads()')}
         </div>
@@ -96,7 +96,7 @@ const Sources = {
           ${this.connectButton('linkedin', 'Connect with LinkedIn', 'Sources.connectLinkedIn()')}
         </div>
         <div class="conn-card">
-          <div class="m-head"><span class="badge-ic">📧</span><h3>Gmail</h3></div>
+          <div class="m-head"><span class="badge-ic"><img src="/images/gmail.png" alt="Gmail" /></span><h3>Gmail</h3></div>
           <p class="m-desc">Connect via Google OAuth</p>
           ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
         </div>

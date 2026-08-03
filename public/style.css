@@ -681,6 +681,37 @@ tr:hover td { background: var(--surface2); }
   height: 26px;
   border-radius: 6px;
   font-size: 13px;
+  overflow: hidden;
+}
+.source-icon img,
+.inbox-channel-icon img,
+.platform-chip img,
+.badge-ic img,
+.channel-option-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.source-icon img {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+.inbox-channel-icon img,
+.platform-chip img,
+.badge-ic img {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+.channel-option-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+  border-radius: 3px;
 }
 .source-whatsapp { background: rgba(34,197,94,0.15); }
 .source-instagram { background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(139,92,246,0.2)); }
