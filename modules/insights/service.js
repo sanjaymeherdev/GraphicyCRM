@@ -130,7 +130,17 @@ async function pollAccountInsights(clientId, connection) {
     followers = metrics.followers_count || 0;
   }
 
-  const { error } = await supabase.from('crm_insights_snapshots').insert({ client_id: clientId, platform, account_id: pageId, followers, metrics });
+  // One row per (client_id, platform, day) — overwritten within the same
+  // UTC day (so repeated polls/on-demand fetches don't pile up), but a new
+  // day still gets its own row so getSnapshots()'s trend chart keeps real
+  // daily history. See migrations/005_insights_account_upsert.sql for the
+  // unique constraint this relies on.
+  const now = new Date();
+  const { error } = await supabase.from('crm_insights_snapshots')
+    .upsert({
+      client_id: clientId, platform, account_id: pageId, followers, metrics,
+      captured_at: now.toISOString(), snapshot_date: now.toISOString().slice(0, 10),
+    }, { onConflict: 'client_id,platform,snapshot_date' });
   if (error) throw new Error(error.message);
 }
 
@@ -206,6 +216,23 @@ async function pollInsights() {
 }
 
 async function getAccountInsights(clientId, platform) {
+  // Load fresh rather than relying solely on the hourly background poller
+  // (server.js's INSIGHTS_POLL_MS) — otherwise an empty/cleared cache row
+  // shows nothing in the UI for up to an hour. Best-effort: if the live
+  // Graph fetch fails (rate limit, expired token, not connected), fall
+  // through and serve whatever's cached instead of failing the tab.
+  try {
+    const { resolveFirstUserId } = require('../../shared/clientContext');
+    const userId = await resolveFirstUserId(clientId);
+    if (userId) {
+      const { data: connection } = await supabase.from('crm_connections')
+        .select('*').eq('user_id', userId).eq('platform', platform).eq('is_connected', true).maybeSingle();
+      if (connection) await pollAccountInsights(clientId, connection);
+    }
+  } catch (err) {
+    console.error(`[insights] on-demand refresh failed for ${platform}:`, err.graphError?.message || err.message);
+  }
+
   const { data, error } = await supabase.from('crm_insights_snapshots')
     .select('*').eq('client_id', clientId).eq('platform', platform)
     .order('captured_at', { ascending: false }).limit(1).maybeSingle();
