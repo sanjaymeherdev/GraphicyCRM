@@ -441,8 +441,8 @@ const API = (() => {
   }
 
   // ─── INSIGHTS ───
-  async function getAccountInsights(platform) {
-    return await get(`/api/insights/account?platform=${platform}`);
+  async function getAccountInsights(platform, fresh) {
+    return await get(`/api/insights/account?platform=${platform}${fresh ? '&fresh=1' : ''}`);
   }
 
   async function getPostInsights(platform) {

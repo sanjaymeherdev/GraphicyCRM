@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(requireAuth, requireClient);
 
 router.get('/account', async (req, res) => {
-  try { res.json(await service.getAccountInsights(req.clientId, req.query.platform || 'instagram')); }
+  try { res.json(await service.getAccountInsights(req.clientId, req.query.platform || 'instagram', { fresh: req.query.fresh === '1' })); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 

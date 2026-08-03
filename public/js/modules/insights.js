@@ -23,15 +23,15 @@ const Insights = {
       </div>
     `;
 
-    this.load();
+    this.load(true); // module entry (navigated in from the main nav) — poll fresh
   },
 
   setPlatform(platform) {
     this._platform = platform;
-    this.load();
+    this.load(false); // switching platform tab inside the module — cache read only, no live poll
   },
 
-  async load() {
+  async load(fresh = false) {
     const statsEl = document.getElementById('insightsStats');
     const chartEl = document.getElementById('insightsTrendChart');
     const postsEl = document.getElementById('insightsPostsTable');
@@ -48,7 +48,7 @@ const Insights = {
 
     try {
       const [account, snapshots, posts] = await Promise.all([
-        API.getAccountInsights(this._platform),
+        API.getAccountInsights(this._platform, fresh),
         API.getInsightsSnapshots(this._platform),
         API.getPostInsights(this._platform),
       ]);

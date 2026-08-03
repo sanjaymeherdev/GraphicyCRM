@@ -215,22 +215,25 @@ async function pollInsights() {
   }
 }
 
-async function getAccountInsights(clientId, platform) {
-  // Load fresh rather than relying solely on the hourly background poller
-  // (server.js's INSIGHTS_POLL_MS) — otherwise an empty/cleared cache row
-  // shows nothing in the UI for up to an hour. Best-effort: if the live
-  // Graph fetch fails (rate limit, expired token, not connected), fall
-  // through and serve whatever's cached instead of failing the tab.
-  try {
-    const { resolveFirstUserId } = require('../../shared/clientContext');
-    const userId = await resolveFirstUserId(clientId);
-    if (userId) {
-      const { data: connection } = await supabase.from('crm_connections')
-        .select('*').eq('user_id', userId).eq('platform', platform).eq('is_connected', true).maybeSingle();
-      if (connection) await pollAccountInsights(clientId, connection);
+async function getAccountInsights(clientId, platform, { fresh = false } = {}) {
+  // Live Graph fetch only when the caller explicitly asks for it (module
+  // entry from the main nav) — NOT on every read, since switching platform
+  // tabs inside the Insights module calls this too and shouldn't spend an
+  // extra Graph API call per click. Best-effort: if the live fetch fails
+  // (rate limit, expired token, not connected), fall through and serve
+  // whatever's cached instead of failing the tab.
+  if (fresh) {
+    try {
+      const { resolveFirstUserId } = require('../../shared/clientContext');
+      const userId = await resolveFirstUserId(clientId);
+      if (userId) {
+        const { data: connection } = await supabase.from('crm_connections')
+          .select('*').eq('user_id', userId).eq('platform', platform).eq('is_connected', true).maybeSingle();
+        if (connection) await pollAccountInsights(clientId, connection);
+      }
+    } catch (err) {
+      console.error(`[insights] on-demand refresh failed for ${platform}:`, err.graphError?.message || err.message);
     }
-  } catch (err) {
-    console.error(`[insights] on-demand refresh failed for ${platform}:`, err.graphError?.message || err.message);
   }
 
   const { data, error } = await supabase.from('crm_insights_snapshots')
