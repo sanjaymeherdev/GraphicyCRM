@@ -32,7 +32,10 @@ const Dashboard = {
               <div style="width:100%;background:var(--surface2);border-radius:4px;height:160px;position:relative;overflow:hidden;">
                 <div style="position:absolute;bottom:0;left:0;right:0;height:${pct}%;background:var(--primary);border-radius:4px 4px 0 0;transition:height 0.4s;"></div>
               </div>
-              <span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">${icon} ${source}</span>
+              <span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">
+                <span class="source-icon source-${source}" style="width:18px;height:18px;border-radius:4px;">${icon}</span>
+                <span>${source}</span>
+              </span>
               <span style="font-size:12px;font-weight:600;">${count}</span>
             </div>`;
           }).join('')}
@@ -44,7 +47,10 @@ const Dashboard = {
           ${leads.slice(0, 5).map(l => `
             <div class="data-row">
               <div><div class="data-row-title">${escapeHtml(l.name || 'Unnamed')}</div>
-              <div class="data-row-sub" style="display:flex;align-items:center;gap:6px;">${getSourceIcon(l.source)} ${l.source} · ${l.status || 'new'} · ${timeAgo(l.updated_at)}</div></div>
+              <div class="data-row-sub" style="display:flex;align-items:center;gap:6px;">
+                <span class="source-icon source-${l.source}" style="width:18px;height:18px;border-radius:4px;">${getSourceIcon(l.source)}</span>
+                <span>${l.source} · ${l.status || 'new'} · ${timeAgo(l.updated_at)}</span>
+              </div></div>
               <span class="badge badge-${getStatusBadgeClass(l.status)}">${l.status || 'new'}</span>
             </div>
           `).join('') || '<div class="empty-state"><p>No recent activity</p></div>'}

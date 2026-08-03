@@ -64,7 +64,7 @@ const Inbox = {
           <div class="inbox-thread-preview">${escapeHtml(truncate(t.last_message || '', 50))}</div>
         </div>
         <div class="inbox-thread-meta">
-          <span class="inbox-channel-icon" title="${t.channel}">${getSourceIcon(t.channel)}</span>
+          <span class="source-icon inbox-channel-icon source-${t.channel}" title="${t.channel}">${getSourceIcon(t.channel)}</span>
           ${t.needs_reply ? '<div class="inbox-needs-reply-dot"></div>' : ''}
         </div>
       </div>
@@ -131,7 +131,10 @@ const Inbox = {
         <div class="inbox-thread-body" id="inboxThreadMessages">
           ${messages.map(m => `
             <div class="msg-bubble msg-${m.direction}">
-              <div class="inbox-msg-channel-tag">${getSourceIcon(m.channel) || ''} ${m.channel}</div>
+              <div class="inbox-msg-channel-tag" style="display:flex;align-items:center;gap:6px;">
+                <span class="source-icon source-${m.channel}" style="width:16px;height:16px;border-radius:4px;">${getSourceIcon(m.channel) || ''}</span>
+                <span>${m.channel}</span>
+              </div>
               <div class="inbox-msg-kind">${m.message_type === 'comment' ? 'Comment' : 'DM'}</div>
               ${escapeHtml(m.body)}
               <div class="msg-time">${timeAgo(m.created_at)}</div>
