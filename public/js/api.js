@@ -54,14 +54,22 @@ const API = (() => {
     else localStorage.removeItem(CLIENT_KEY);
   }
 
-  function logout() {
+  async function logout() {
+    // The dashboard is authenticated by a session cookie (see shared/auth.js),
+    // not the localStorage token below — clearing localStorage alone left
+    // the server-side session (and therefore the logged-in cookie) intact,
+    // so the button appeared to do nothing. POST /api/auth/logout destroys
+    // that session; the redirect below is what actually leaves the page.
+    try {
+      await post('/api/auth/logout');
+    } catch (err) {
+      console.warn('Logout request failed (clearing local session anyway):', err);
+    }
     _token = null;
     _clientId = null;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(CLIENT_KEY);
-    // COMMENTED OUT: Redirect to login for now
-    // window.location.href = '/login.html';
-    console.log('Logout clicked - redirect disabled');
+    window.location.href = '/login';
   }
 
   function getToken() { return _token; }
