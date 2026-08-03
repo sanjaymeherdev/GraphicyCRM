@@ -235,6 +235,10 @@ create table if not exists crm_leads (
   name text,
   phone text,
   email text,
+  whatsapp text,
+  instagram text,
+  facebook text,
+  account_name text,
   -- Platform-native sender id for channels with no phone number (Facebook
   -- PSID, Instagram IGSID, Threads user id) — WhatsApp leads are still
   -- deduped on `phone` directly; this is only populated/queried for the
@@ -250,7 +254,12 @@ create table if not exists crm_leads (
   updated_at timestamptz not null default now()
 );
 alter table crm_leads add column if not exists external_id text;
+alter table crm_leads add column if not exists whatsapp text;
+alter table crm_leads add column if not exists instagram text;
+alter table crm_leads add column if not exists facebook text;
+alter table crm_leads add column if not exists account_name text;
 create index if not exists crm_leads_client_source_external_id_idx on crm_leads(client_id, source, external_id) where external_id is not null;
+create index if not exists idx_crm_leads_account_name on crm_leads(client_id, account_name);
 do $$ begin
   alter table crm_leads drop constraint if exists crm_leads_source_check;
   alter table crm_leads add constraint crm_leads_source_check check (source in ('whatsapp','instagram','facebook','threads','webform','email','sheet','other'));
@@ -540,9 +549,11 @@ create table if not exists crm_insights_snapshots (
   account_id text not null,
   followers int,
   metrics jsonb not null default '{}',   -- everything else from toMetricsMap(): views, likes, replies, reposts, quotes, impressions, reach...
+  snapshot_date date,
   captured_at timestamptz not null default now()
 );
 
+create unique index if not exists idx_crm_insights_snapshots_daily on crm_insights_snapshots(client_id, platform, snapshot_date);
 create index if not exists idx_crm_insights_snapshots_lookup on crm_insights_snapshots(client_id, platform, captured_at desc);
 
 -- ---------------------------------------------------------------------
