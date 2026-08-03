@@ -2,7 +2,7 @@
 const Automation = {
   render(state) {
     const panel = document.getElementById('tab-automation');
-    const rules = state.automations || [];
+    const rules = Array.isArray(state.automations) ? state.automations : [];
     const selectedId = state.selectedRuleId || (rules[0]?.id);
 
     panel.innerHTML = `
@@ -18,6 +18,7 @@ const Automation = {
 
     this._rules = rules;
     this._selectedId = selectedId;
+    this.syncToState();
     this.renderRuleList();
     this.renderEditor(selectedId);
   },
@@ -51,6 +52,10 @@ const Automation = {
     this.renderEditor(id);
   },
 
+  syncToState() {
+    if (window.state) window.state.automations = this._rules || [];
+  },
+
   newRule() {
     const rule = {
       id: 'rule_' + Date.now(),
@@ -68,6 +73,7 @@ const Automation = {
     };
     this._rules.unshift(rule);
     this._selectedId = rule.id;
+    this.syncToState();
     this.renderRuleList();
     this.renderEditor(rule.id);
     // Save to API — capture the server-assigned id (crm_automations.id is a
@@ -636,6 +642,7 @@ const Automation = {
     }
     this._rules = this._rules.filter(r => r.id !== ruleId);
     this._selectedId = this._rules[0]?.id || null;
+    this.syncToState();
     this.renderRuleList();
     this.renderEditor(this._selectedId);
   },

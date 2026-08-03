@@ -13,6 +13,12 @@
     leads: [],
     contacts: [],
     inbox: [],
+    settings: {
+      ai_model: '',
+      system_prompt: '',
+      channels: [],
+      notifications: { email: true, push: false, weekly: true },
+    },
     automations: [],
     templates: [],
     stats: {},
@@ -232,13 +238,16 @@
   async function loadAllData() {
     showLoading();
     try {
-      const [profile, client, leads, contacts, inbox, stats] = await Promise.all([
+      const [profile, client, leads, contacts, inbox, stats, settings, automations, templates] = await Promise.all([
         API.getProfile(),
         API.getMyClient(),
         API.getLeads(),
         API.getContacts(),
         API.getInbox(),
         API.getDashboardStats(),
+        API.getSettings(),
+        API.getAutomations(),
+        API.getTemplates(),
       ]);
 
       state.user = profile.user;
@@ -247,6 +256,14 @@
       state.contacts = contacts.contacts || [];
       state.inbox = inbox.threads || [];
       state.stats = stats;
+      state.settings = settings || {
+        ai_model: '',
+        system_prompt: '',
+        channels: [],
+        notifications: { email: true, push: false, weekly: true },
+      };
+      state.automations = Array.isArray(automations?.automations) ? automations.automations : [];
+      state.templates = Array.isArray(templates?.templates) ? templates.templates : [];
 
       dom.navContactsCount.textContent = state.contacts.length;
       dom.navInboxCount.textContent = state.inbox.filter(t => t.needs_reply).length;

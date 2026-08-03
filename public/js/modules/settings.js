@@ -23,12 +23,32 @@ const Settings = {
   render(state) {
     const panel = document.getElementById('tab-settings');
     const isDark = state.isDark;
+    const settings = state.settings || {};
+    const savedChannels = Array.isArray(settings.channels) ? settings.channels : [];
+    const notifications = settings.notifications || { email: true, push: false, weekly: true };
+    const aiModelValue = settings.ai_model || this._defaultModel || '';
+    const systemPromptValue = settings.system_prompt || 'You are a helpful CRM assistant that helps manage leads and respond to inquiries.';
+    const channelOptions = [
+      { label: 'WhatsApp', value: 'whatsapp' },
+      { label: 'Instagram', value: 'instagram' },
+      { label: 'Facebook', value: 'facebook' },
+      { label: 'Email', value: 'email' },
+    ];
+    const channelMarkup = channelOptions.map((option) => {
+      const isEnabled = savedChannels.some((saved) => saved === option.value || saved === option.label || String(saved).toLowerCase() === option.label.toLowerCase());
+      return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" data-channel="${option.value}" ${isEnabled ? 'checked' : ''} /> ${option.label}</label>`;
+    }).join('');
+    const notificationsMarkup = [
+      { label: 'Email notifications', key: 'email', checked: notifications.email !== false },
+      { label: 'Push notifications', key: 'push', checked: !!notifications.push },
+      { label: 'Weekly reports', key: 'weekly', checked: notifications.weekly !== false },
+    ].map((item) => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" data-notification="${item.key}" ${item.checked ? 'checked' : ''} /> ${item.label}</label>`).join('');
 
     if (!this._modelsList.length && !this._loadingModels) {
       this.loadModelsList().then(() => this.render(state));
     }
     const modelOptions = this._modelsList.length
-      ? this._modelsList.map((m) => `<option value="${m}" ${m === this._defaultModel ? 'selected' : ''}>${m}</option>`).join('')
+      ? this._modelsList.map((m) => `<option value="${m}" ${m === (aiModelValue || this._defaultModel) ? 'selected' : ''}>${m}</option>`).join('')
       : `<option value="">${this._loadingModels ? 'Loading models…' : 'No models available'}</option>`;
 
     panel.innerHTML = `
@@ -41,10 +61,10 @@ const Settings = {
             <div class="block-sub" style="margin-top:4px;">Only models actually enabled on this server's NVIDIA API key are listed. Per-rule overrides are set in Automation → AI message → Model.</div>
           </div>
           <div class="field"><label>System Prompt</label>
-            <textarea id="systemPrompt" rows="3" placeholder="You are a helpful sales assistant...">You are a helpful CRM assistant that helps manage leads and respond to inquiries.</textarea>
+            <textarea id="systemPrompt" rows="3" placeholder="You are a helpful sales assistant...">${escapeHtml(systemPromptValue)}</textarea>
           </div>
           <div class="field"><label>API Key</label>
-            <input type="password" id="aiApiKey" placeholder="Enter API key" value="sk-xxxxxxxxxxxxxxxx" />
+            <input type="password" id="aiApiKey" placeholder="Enter API key" value="" />
           </div>
           <button class="btn btn-primary" onclick="Settings.saveAI()">Save AI Settings</button>
         </div>
@@ -71,19 +91,14 @@ const Settings = {
         <div class="card">
           <div class="card-header"><div class="card-title">📡 Automation Channels</div></div>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" checked /> WhatsApp</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" checked /> Instagram</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" checked /> Facebook</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" /> Email</label>
+            ${channelMarkup}
           </div>
           <button class="btn btn-primary" style="margin-top:12px;" onclick="Settings.saveChannels()">Save Channels</button>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">🔔 Notifications</div></div>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" checked /> Email notifications</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" /> Push notifications</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" checked /> Weekly reports</label>
+            ${notificationsMarkup}
           </div>
           <button class="btn btn-primary" style="margin-top:12px;" onclick="Settings.saveNotifications()">Save Notifications</button>
         </div>
@@ -99,6 +114,13 @@ const Settings = {
     };
     try {
       await API.saveSettings(settings);
+      if (window.state) {
+        window.state.settings = {
+          ...(window.state.settings || {}),
+          ai_model: settings.ai_model,
+          system_prompt: settings.system_prompt,
+        };
+      }
       showToast('✅ AI settings saved');
     } catch (err) {
       showToast('Saved locally (server not running)', false);
@@ -107,11 +129,14 @@ const Settings = {
 
   async saveChannels() {
     const channels = [];
-    document.querySelectorAll('#tab-settings input[type="checkbox"]').forEach(cb => {
-      if (cb.checked) channels.push(cb.parentElement.textContent.trim());
+    document.querySelectorAll('#tab-settings input[data-channel]').forEach(cb => {
+      if (cb.checked) channels.push(cb.dataset.channel);
     });
     try {
       await API.saveSettings({ channels });
+      if (window.state) {
+        window.state.settings = { ...(window.state.settings || {}), channels };
+      }
       showToast('✅ Channels saved');
     } catch (err) {
       showToast('Saved locally (server not running)', false);
@@ -119,7 +144,7 @@ const Settings = {
   },
 
   async saveNotifications() {
-    const checkboxes = document.querySelectorAll('#tab-settings input[type="checkbox"]');
+    const checkboxes = document.querySelectorAll('#tab-settings input[data-notification]');
     const notifications = {
       email: checkboxes[0]?.checked || false,
       push: checkboxes[1]?.checked || false,
@@ -127,6 +152,9 @@ const Settings = {
     };
     try {
       await API.saveSettings({ notifications });
+      if (window.state) {
+        window.state.settings = { ...(window.state.settings || {}), notifications };
+      }
       showToast('✅ Notification settings saved');
     } catch (err) {
       showToast('Saved locally (server not running)', false);
