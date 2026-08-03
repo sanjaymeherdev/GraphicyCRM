@@ -183,9 +183,7 @@ const Inbox = {
         <div class="inbox-reply-bar">
           <div class="inbox-reply-meta">
             <div class="inbox-reply-context">${escapeHtml(replyContext)}</div>
-            <select id="inboxReplyChannel">
-              ${CHANNEL_OPTIONS.map(c => `<option value="${c.value}" ${c.value === (thread.channel || 'whatsapp') ? 'selected' : ''}>${c.label}</option>`).join('')}
-            </select>
+            <div class="inbox-reply-channel-pill">${escapeHtml(thread.channel || 'whatsapp')}</div>
           </div>
           ${showReplyTypeSelector ? `
           <select id="inboxReplyType" class="inbox-reply-type">
@@ -204,7 +202,8 @@ const Inbox = {
 
   async sendReply(id) {
     const box = document.getElementById('inboxReplyBox');
-    const channel = document.getElementById('inboxReplyChannel').value;
+    const thread = this._threads.find(t => t.id === id);
+    const channel = thread?.channel || 'whatsapp';
     const replyType = document.getElementById('inboxReplyType')?.value || 'dm';
     const body = box.value.trim();
     if (!body) return;
