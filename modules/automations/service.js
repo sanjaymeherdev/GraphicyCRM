@@ -1,8 +1,12 @@
-// modules/automations/service.js — CRUD /api/automations (crm_automations),
-// plus matchRule() for wiring inbound webhooks -> automated replies later
-// (channel webhook handlers aren't calling this yet — see modules/*/routes.js
-// webhook handlers, which currently only log; call matchRule() from there
-// when you're ready to go live with auto-replies).
+// modules/automations/service.js — CRUD /api/automations (crm_automations)
+// and matchRule(), the single rule-matching engine for inbound messages.
+// Every channel's webhook handler (modules/whatsapp|facebook|instagram|
+// threads/service.js) calls matchRule() on inbound text. modules/ai-bot's
+// routes.js also delegates its "Chatbot" tab CRUD and rule-testing here
+// (see modules/ai-bot/routes.js), converting to/from that UI's shape — so
+// a rule created from either the Automation tab or the Chatbot tab is the
+// same crm_automations row and fires the same way on a real message.
+// crm_bot_rules is deprecated; see migrations/007_fold_bot_rules_into_automations.sql.
 const { supabase } = require('../../shared/db');
 const { resolveFirstUserId } = require('../../shared/clientContext');
 const aiBot = require('../ai-bot/service');
@@ -42,12 +46,23 @@ async function deleteAutomation(clientId, id) {
   if (error) throw new Error(error.message);
 }
 
+// 'fuzzy' ported from modules/ai-bot/service.js's old matchRule (now removed —
+// this is the one matcher both the Automation and Chatbot tabs use). Was
+// previously a no-op here (fell through to 'contains'), even though the
+// Automation tab's UI already offered a "Fuzzy" button.
+function editDistance(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+  return dp[a.length][b.length];
+}
 function matchesKeyword(text, keywords, matchType) {
   const norm = (text || '').toLowerCase().trim();
   return (keywords || []).some((kw) => {
     const k = kw.toLowerCase().trim();
     if (matchType === 'exact') return norm === k;
-    return norm.includes(k);
+    if (matchType === 'fuzzy') return norm.includes(k) || norm.split(/\s+/).some((word) => editDistance(word, k) <= 1);
+    return norm.includes(k); // contains (default)
   });
 }
 
@@ -105,7 +120,7 @@ async function matchRule(clientId, { text }) {
       const { content } = await aiBot.generateReply([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: text },
-      ]);
+      ], { model: rule.action_config?.model });
       return { rule, replyType: 'text', text: content, sheetLookupResult };
     } catch (err) {
       if (rule.ai_fallback) return { rule, replyType: 'text', text: rule.ai_fallback, sheetLookupResult };

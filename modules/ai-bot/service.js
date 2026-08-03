@@ -61,28 +61,16 @@ async function generateReply(messages, options = {}) {
 function getAvailableModels() { return { models: ALLOWED_MODELS, default_model: DEFAULT_MODEL }; }
 
 // -----------------------------------------------------------------------
-// Rule-based automation matching — `crm_bot_rules` rows keyed by keywords,
-// each optionally grounded by a Sheet lookup and/or a Doc's content before
-// generating the AI reply. This is what a WhatsApp/Facebook/Instagram
-// inbound-message handler calls to decide "does an automation own this
-// message, and if so what should the reply be".
+// Sheet lookup / doc grounding — reused by modules/automations/service.js's
+// matchRule(), the single rule-matching engine (see that file's header
+// comment). This module used to also own a second keyword-matching engine
+// and its own `crm_bot_rules` CRUD, reachable only via /api/ai-bot/rules and
+// /api/ai-bot/match — nothing in the live inbound webhook path ever called
+// it, so saving a rule there didn't affect real messages. That engine has
+// been removed; modules/ai-bot/routes.js now delegates rule CRUD and
+// matching to modules/automations/service.js instead. See
+// migrations/007_fold_bot_rules_into_automations.sql.
 // -----------------------------------------------------------------------
-function matchesKeyword(text, keywords, matchType) {
-  const norm = (text || '').toLowerCase().trim();
-  return (keywords || []).some((kw) => {
-    const k = kw.toLowerCase().trim();
-    if (matchType === 'exact') return norm === k;
-    if (matchType === 'fuzzy') return norm.includes(k) || norm.split(/\s+/).some((word) => editDistance(word, k) <= 1);
-    return norm.includes(k); // contains (default)
-  });
-}
-function editDistance(a, b) {
-  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
-  return dp[a.length][b.length];
-}
-
 async function performSheetLookup(userId, lookupConfig, text) {
   const { spreadsheetId, worksheet, lookupColumn, returnColumn, matchType } = lookupConfig || {};
   if (!spreadsheetId || !worksheet || !lookupColumn || !returnColumn) return { found: false };
@@ -120,69 +108,7 @@ async function getGroundingDocContent(userId, docId) {
   }
 }
 
-/**
- * Finds the first active rule whose keywords match `text`, resolves any
- * sheet-lookup / doc-grounding configured on it, and — if the rule's action
- * is 'ai_reply' — generates the actual reply. Returns null if no rule matches.
- */
-async function matchRule(userId, { contactId, text, replyOptionId }) {
-  const { data: rules, error } = await supabase.from('crm_bot_rules').select('*').eq('user_id', userId).eq('active', true);
-  if (error) { console.error('[ai-bot] failed to load rules:', error.message); return null; }
-
-  const rule = (rules || []).find((r) => matchesKeyword(text, r.keywords, r.match_type));
-  if (!rule) return null;
-
-  const ctx = { reply_option: replyOptionId };
-  const sheetLookupConfig = rule.action_config?.sheet_lookup;
-  if (sheetLookupConfig?.spreadsheetId) {
-    const result = await performSheetLookup(userId, sheetLookupConfig, text);
-    ctx.sheet_lookup = result.found ? result.value : '__not_found__';
-  }
-
-  const docId = rule.action_config?.knowledge_doc?.docId;
-  const docContent = docId ? await getGroundingDocContent(userId, docId) : null;
-
-  if (rule.action_type === 'template') {
-    return { rule, replyType: 'template', templateId: rule.action_config?.template_id, ctx };
-  }
-
-  if (rule.action_type === 'ai_reply') {
-    const systemPrompt = [
-      rule.action_config?.ai_prompt || 'You are a helpful assistant.',
-      docContent ? `\n\nReference material:\n${docContent}` : '',
-      ctx.sheet_lookup && ctx.sheet_lookup !== '__not_found__' ? `\n\nLooked-up value: ${ctx.sheet_lookup}` : '',
-    ].join('');
-    const { content } = await generateReply([{ role: 'system', content: systemPrompt }, { role: 'user', content: text }], {
-      model: rule.action_config?.model,
-    });
-    return { rule, replyType: 'text', text: content, ctx };
-  }
-
-  return { rule, replyType: 'none', ctx };
-}
-
-async function listRules(userId) {
-  const { data, error } = await supabase.from('crm_bot_rules').select('*').eq('user_id', userId);
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-async function createRule(userId, rule) {
-  const { data, error } = await supabase.from('crm_bot_rules').insert({ user_id: userId, active: true, ...rule }).select().single();
-  if (error) throw new Error(error.message);
-  return data;
-}
-async function updateRule(userId, id, patch) {
-  const { data, error } = await supabase.from('crm_bot_rules').update(patch).eq('id', id).eq('user_id', userId).select().single();
-  if (error) throw new Error(error.message);
-  return data;
-}
-async function deleteRule(userId, id) {
-  const { error } = await supabase.from('crm_bot_rules').delete().eq('id', id).eq('user_id', userId);
-  if (error) throw new Error(error.message);
-}
-
 module.exports = {
   generateReply, getAvailableModels, isAllowedModel,
-  matchRule, listRules, createRule, updateRule, deleteRule,
   performSheetLookup, getGroundingDocContent,
 };
