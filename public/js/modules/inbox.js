@@ -18,6 +18,11 @@ const Inbox = {
         <button class="btn btn-ghost btn-sm" onclick="Inbox.refresh()">↻ Refresh</button>
       </div>
       <div class="card" style="padding:0;overflow:hidden;">
+        <div class="seg" id="inboxTypeSeg" style="margin:12px 12px 0;">
+          <button class="${this._activeInboxType === 'all' ? 'on' : ''}" data-type="all" onclick="Inbox.setInboxType('all')">All</button>
+          <button class="${this._activeInboxType === 'dm' ? 'on' : ''}" data-type="dm" onclick="Inbox.setInboxType('dm')">DM</button>
+          <button class="${this._activeInboxType === 'comment' ? 'on' : ''}" data-type="comment" onclick="Inbox.setInboxType('comment')">Comment</button>
+        </div>
         <div class="seg" id="inboxTabSeg" style="margin:12px 12px 0;">
           <button class="${this._activeChannel === '' ? 'on' : ''}" data-channel="" onclick="Inbox.setChannelTab('')">All</button>
           <button class="${this._activeChannel === 'whatsapp' ? 'on' : ''}" data-channel="whatsapp" onclick="Inbox.setChannelTab('whatsapp')"><img src="/images/whatsapp.png" alt="WhatsApp" class="channel-option-icon" /> WhatsApp</button>
@@ -46,6 +51,13 @@ const Inbox = {
   _threads: [],
   _currentId: null,
   _activeChannel: '',
+  _activeInboxType: 'all',
+
+  getThreadConversationType(thread) {
+    const msgs = thread.messages || [];
+    const lastInbound = [...msgs].reverse().find(m => m.direction === 'in');
+    return lastInbound?.message_type === 'comment' ? 'comment' : 'dm';
+  },
 
   renderThreads(threads) {
     const list = document.getElementById('inboxThreadList');
@@ -63,7 +75,8 @@ const Inbox = {
           </div>
           <div class="inbox-thread-preview">${escapeHtml(truncate(t.last_message || '', 50))}</div>
         </div>
-        <div class="inbox-thread-meta">
+        <div class="inbox-thread-meta" style="display:flex;align-items:center;gap:6px;">
+          <span class="inbox-thread-kind" style="font-size:10px;padding:2px 6px;border-radius:999px;background:var(--surface3);color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">${this.getThreadConversationType(t) === 'comment' ? 'Comment' : 'DM'}</span>
           <span class="source-icon inbox-channel-icon source-${t.channel}" title="${t.channel}">${getSourceIcon(t.channel)}</span>
           ${t.needs_reply ? '<div class="inbox-needs-reply-dot"></div>' : ''}
         </div>
@@ -74,10 +87,21 @@ const Inbox = {
   filter() {
     const q = document.getElementById('inboxSearch')?.value?.toLowerCase() || '';
     const channel = this._activeChannel || '';
+    const type = this._activeInboxType || 'all';
     let filtered = this._threads || [];
     if (q) filtered = filtered.filter(t => (t.name || '').toLowerCase().includes(q) || (t.last_message || '').toLowerCase().includes(q));
     if (channel) filtered = filtered.filter(t => t.channel === channel);
+    if (type === 'comment') filtered = filtered.filter(t => this.getThreadConversationType(t) === 'comment');
+    if (type === 'dm') filtered = filtered.filter(t => this.getThreadConversationType(t) === 'dm');
     this.renderThreads(filtered);
+  },
+
+  setInboxType(type) {
+    this._activeInboxType = type;
+    document.querySelectorAll('#inboxTypeSeg button').forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.type === type);
+    });
+    this.filter();
   },
 
   setChannelTab(channel) {
@@ -114,10 +138,18 @@ const Inbox = {
 
       const lastInboundMessage = [...messages].reverse().find(m => m.direction === 'in');
       const replyContext = lastInboundMessage?.message_type === 'comment'
-        ? 'Comment reply'
+        ? 'Comment received — choose how to reply'
         : (lastInboundMessage?.channel === 'instagram' || lastInboundMessage?.channel === 'facebook')
           ? 'DM reply'
           : 'Reply';
+      const isMetaReplyThread = ['instagram', 'facebook'].includes(channel);
+      const replyTypeOptions = (isMetaReplyThread && lastInboundMessage?.message_type === 'comment')
+        ? [
+            { value: 'dm', label: 'Reply in DM' },
+            { value: 'comment', label: 'Reply to comment' }
+          ]
+        : [{ value: 'dm', label: 'Reply in DM' }];
+      const showReplyTypeSelector = isMetaReplyThread && replyTypeOptions.length > 1;
 
       pane.innerHTML = `
         <div class="inbox-thread-header">
@@ -155,10 +187,11 @@ const Inbox = {
               ${CHANNEL_OPTIONS.map(c => `<option value="${c.value}" ${c.value === (thread.channel || 'whatsapp') ? 'selected' : ''}>${c.label}</option>`).join('')}
             </select>
           </div>
+          ${showReplyTypeSelector ? `
           <select id="inboxReplyType" class="inbox-reply-type">
-            <option value="dm">DM</option>
-            <option value="comment">Comment</option>
+            ${replyTypeOptions.map(option => `<option value="${option.value}">${option.label}</option>`).join('')}
           </select>
+          ` : ''}
           <textarea id="inboxReplyBox" placeholder="Type a reply..." rows="1"></textarea>
           <button class="btn btn-primary btn-sm" onclick="Inbox.sendReply('${id}')">Send</button>
         </div>
