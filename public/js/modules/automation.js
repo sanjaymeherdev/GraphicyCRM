@@ -38,7 +38,7 @@ const Automation = {
       <div class="rule-card ${r.id === this._selectedId ? 'selected' : ''}" data-id="${r.id}" onclick="Automation.selectRule('${r.id}')">
         <div class="kw-row">${(r.keywords || []).slice(0, 3).map(k => `<span class="kw-chip">${escapeHtml(k)}</span>`).join('')}${(r.keywords || []).length > 3 ? `<span class="kw-chip">+${r.keywords.length - 3}</span>` : ''}</div>
         <div class="meta">
-          <span>${r.action_type === 'ai' ? '🤖 AI' : '📝 ' + (r.template_name || 'Template')}</span>
+          <span>${r.action_type === 'ai_reply' ? '🤖 AI' : '📝 ' + (r.template_name || 'Template')}</span>
           ${r.follow_up?.enabled ? '<span>⏰ follow-up</span>' : ''}
         </div>
       </div>
@@ -70,8 +70,16 @@ const Automation = {
     this._selectedId = rule.id;
     this.renderRuleList();
     this.renderEditor(rule.id);
-    // Save to API
-    API.createAutomation(rule).catch(() => {});
+    // Save to API — capture the server-assigned id (crm_automations.id is a
+    // uuid) into rule.serverId. Without this, saveRule() falls back to using
+    // the client-generated 'rule_<timestamp>' id, which is not a valid uuid
+    // and never matches a row, so every future Save silently fails the
+    // UPDATE and re-creates a duplicate row instead of updating this one.
+    API.createAutomation(rule).then((result) => {
+      rule.serverId = result.id || result.automation?.id;
+    }).catch((err) => {
+      showToast('Failed to save new rule: ' + err.message, true);
+    });
   },
 
   renderEditor(id) {
@@ -90,7 +98,7 @@ const Automation = {
     if (rule.action_config?.knowledge_doc?.docId !== undefined && !this._docsList.length && !this._loadingDocs) {
       this.loadGoogleDocsList().then(() => this.renderEditor(id));
     }
-    if (rule.action_type === 'ai' && !this._modelsList.length && !this._loadingModels) {
+    if (rule.action_type === 'ai_reply' && !this._modelsList.length && !this._loadingModels) {
       this.loadModelsList().then(() => this.renderEditor(id));
     }
     const sheetLookup = rule.action_config?.sheet_lookup;
@@ -137,12 +145,12 @@ const Automation = {
         </div>
 
         <!-- ACTION -->
-        <div class="block ${rule.action_type === 'ai' ? 'block-ai' : 'block-action'}">
+        <div class="block ${rule.action_type === 'ai_reply' ? 'block-ai' : 'block-action'}">
           <div class="block-head">
-            <div class="block-title"><span class="badge-ic">${rule.action_type === 'ai' ? '🤖' : '📝'}</span>Reply with</div>
+            <div class="block-title"><span class="badge-ic">${rule.action_type === 'ai_reply' ? '🤖' : '📝'}</span>Reply with</div>
             <div class="seg" id="action-seg">
               <button class="${rule.action_type === 'template' ? 'on' : ''}" onclick="Automation.setActionType('${rule.id}','template')">Template</button>
-              <button class="${rule.action_type === 'ai' ? 'on' : ''}" onclick="Automation.setActionType('${rule.id}','ai')">AI message</button>
+              <button class="${rule.action_type === 'ai_reply' ? 'on' : ''}" onclick="Automation.setActionType('${rule.id}','ai_reply')">AI message</button>
             </div>
           </div>
           <div id="action-body">
@@ -241,7 +249,7 @@ const Automation = {
             </div>
             <div class="block-sub" style="margin:2px 0 10px;">The message text is matched against every row's lookup column. Use <code>{{sheet_lookup}}</code> in a template body, or add a condition above on "Sheet lookup" (e.g. equals <code>__not_found__</code> for a no-match branch).</div>
           `; })() : ''}
-          ${rule.action_type === 'ai' ? `
+          ${rule.action_type === 'ai_reply' ? `
             <div class="field">
               <label style="display:flex;align-items:center;gap:8px;">
                 <span class="switch ${rule.action_config?.knowledge_doc?.docId ? 'on' : ''}" onclick="Automation.toggleKnowledgeDoc('${rule.id}')"></span>

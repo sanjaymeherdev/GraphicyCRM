@@ -288,7 +288,17 @@ async function resolveClientByPhoneNumberId(phoneNumberId) {
 /** Called by routes.js for each 'message' webhook event — persists it as an inbound crm_messages row. */
 async function handleInboundEvent(event) {
   const ctx = await resolveClientByPhoneNumberId(event.phoneNumberId);
-  if (!ctx) { console.warn(`[whatsapp] inbound message on unknown phone_number_id ${event.phoneNumberId} — is that account connected here?`); return; }
+  if (!ctx) {
+    // Meta's App Dashboard "Test" button on the webhook subscription sends a
+    // fixed sample payload (metadata.phone_number_id is a dummy value, e.g.
+    // "123456123") that does not correspond to any real WABA number — this
+    // warning is expected in that case, not a sign of a broken connection.
+    // To test for real, send a WhatsApp message to your actual connected
+    // number from a phone, not the dashboard's "Test" button.
+    const { data: known } = await supabase.from('crm_wa_accounts').select('phone_number_id, phone_number').eq('is_active', true);
+    console.warn(`[whatsapp] inbound message on unknown phone_number_id ${event.phoneNumberId} — is that account connected here? Active connected phone_number_id(s): ${(known || []).map((a) => `${a.phone_number_id} (${a.phone_number})`).join(', ') || 'none'}. If you triggered this via Meta's dashboard "Test" button, this is expected — that button sends a fixed sample payload, not a message from your real number.`);
+    return;
+  }
   const leadId = await findOrCreateLeadByPhone(ctx.clientId, event.from);
   const buttonReply = event.interactiveReply?.button_reply?.title;
   const listReply = event.interactiveReply?.list_reply?.title;

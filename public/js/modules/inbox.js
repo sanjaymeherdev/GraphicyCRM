@@ -1,4 +1,12 @@
 // js/modules/inbox.js
+// Free-form WhatsApp replies are only deliverable within Meta's 24h customer
+// service window. This mirrors modules/whatsapp/service.js's REPLY_WINDOW_HOURS
+// (22h, a safety margin under Meta's 24h limit) so the UI stops offering the
+// option before the server would reject it — server-side enforcement in
+// whatsapp/service.js's assertWithinReplyWindow is still the real guard, this
+// is just so the user isn't typing into a box that's guaranteed to fail.
+const WHATSAPP_REPLY_WINDOW_HOURS = 22;
+
 const Inbox = {
   render(state) {
     const panel = document.getElementById('tab-inbox');
@@ -96,6 +104,14 @@ const Inbox = {
       const data = await API.getLeadMessages(id);
       const messages = data.messages || [];
 
+      // WhatsApp only: once 22h have passed since the contact's last inbound
+      // message, disable the free-form reply box entirely instead of letting
+      // the user type a reply that the server will reject anyway.
+      const channel = thread.channel || 'whatsapp';
+      const lastInbound = [...messages].reverse().find(m => m.direction === 'in' && m.channel === 'whatsapp');
+      const hoursSinceInbound = lastInbound ? (Date.now() - new Date(lastInbound.created_at).getTime()) / 3600000 : null;
+      const replyWindowClosed = channel === 'whatsapp' && (hoursSinceInbound === null || hoursSinceInbound > WHATSAPP_REPLY_WINDOW_HOURS);
+
       pane.innerHTML = `
         <div class="inbox-thread-header">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -114,6 +130,13 @@ const Inbox = {
             </div>
           `).join('') || '<div class="empty-state"><p>No messages</p></div>'}
         </div>
+        ${replyWindowClosed ? `
+        <div class="inbox-reply-bar inbox-reply-closed">
+          <div class="empty-state" style="margin:0;padding:10px 4px;">
+            <p>⏳ 24h reply window closed — WhatsApp only allows free-form replies within 24h of the contact's last message${hoursSinceInbound !== null ? ` (last message was ${hoursSinceInbound.toFixed(1)}h ago)` : ''}. Send an approved template to reach out again.</p>
+          </div>
+        </div>
+        ` : `
         <div class="inbox-reply-bar">
           <select id="inboxReplyChannel">
             ${CHANNEL_OPTIONS.map(c => `<option value="${c.value}" ${c.value === (thread.channel || 'whatsapp') ? 'selected' : ''}>${c.label}</option>`).join('')}
@@ -121,6 +144,7 @@ const Inbox = {
           <textarea id="inboxReplyBox" placeholder="Type a reply..." rows="1"></textarea>
           <button class="btn btn-primary btn-sm" onclick="Inbox.sendReply('${id}')">Send</button>
         </div>
+        `}
       `;
     } catch (err) {
       pane.innerHTML = `<div class="empty-state"><p>Failed to load messages: ${err.message}</p></div>`;
