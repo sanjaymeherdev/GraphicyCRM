@@ -254,6 +254,13 @@ async function handleCommentEvent({ pageId, commentId, text, senderId, senderNam
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+  // A reply the Page itself posts (whether from tryAutoReply below, or a
+  // human agent replying manually) is itself a new comment on the post, so
+  // it fires its own feed webhook event right back at this same handler.
+  // Without this check, that self-authored comment would be treated as a
+  // fresh inbound message and re-matched against automations — the AI
+  // replying to its own reply, forever.
+  if (senderId && senderId === pageId) return;
   await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
@@ -263,6 +270,11 @@ async function handleDmEvent({ pageId, mid, text, senderId, senderName }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
+  // Same self-authored guard as handleCommentEvent above. routes.js already
+  // drops Messenger's own `is_echo` events before this is even called, but
+  // that flag isn't guaranteed on every delivery path, so check the sender
+  // id directly too as a second line of defense against an auto-reply loop.
+  if (senderId && senderId === pageId) return;
   await tryAutoReply({
     userId: conn.user_id, clientId, leadId, text,
     send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),

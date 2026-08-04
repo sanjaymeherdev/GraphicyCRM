@@ -188,6 +188,13 @@ async function handleCommentEvent({ accountId, commentId, text, senderId, sender
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
+  // A reply the connected account itself posts (via tryAutoReply below, or
+  // a human agent replying manually) is itself a new comment on the media,
+  // so it fires its own webhook event right back at this same handler.
+  // Without this check, that self-authored comment would be treated as a
+  // fresh inbound message and re-matched against automations — the AI
+  // replying to its own reply, forever.
+  if (senderId && senderId === accountId) return;
   await tryAutoReply({ clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
@@ -197,6 +204,10 @@ async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
+  // Same self-authored guard as handleCommentEvent above — an outbound DM
+  // the account sends can otherwise loop back through the webhook as if it
+  // were a new inbound message from itself.
+  if (senderId && senderId === accountId) return;
   await tryAutoReply({
     clientId, leadId, text,
     send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),
