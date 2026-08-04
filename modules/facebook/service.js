@@ -34,7 +34,11 @@ async function resubscribeWebhooks(userId) {
 async function getWebhookStatus(userId) {
   const conn = await getConnection(userId, 'facebook');
   if (!conn) throw new Error('No Facebook Page connected.');
-  const res = await get(`${BASE}/${conn.account_id}/subscribed_apps`, {}, conn.access_token);
+  // `fields=subscribed_fields` is NOT optional here — without it Graph
+  // returns this edge's default field set (just `id`/`name`), so
+  // subscribed_fields comes back undefined and every field looks "missing"
+  // even right after a successful (re)subscribe.
+  const res = await get(`${BASE}/${conn.account_id}/subscribed_apps`, { fields: 'subscribed_fields' }, conn.access_token);
   const app = (res.data || [])[0];
   const subscribedFields = app?.subscribed_fields || [];
   const expected = ['feed', 'comments', 'messages', 'messaging_postbacks'];
