@@ -256,32 +256,37 @@ function verifySignature(rawBody, sigHeader) {
 // by modules/automations, not here.
 // ---------------------------------------------------------------------
 async function handleCommentEvent({ pageId, commentId, text, senderId, senderName }) {
+  // A reply the Page itself posts (whether from tryAutoReply below, or a
+  // human agent replying manually) is itself a new comment on the post, so
+  // it fires its own feed webhook event right back at this same handler.
+  // Checked first, before any lead/message is created, so a self-authored
+  // comment is never recorded as an inbound message in the first place —
+  // not just excluded from auto-reply matching. Without this early return,
+  // the bot's own reply would (a) get logged as a fake "received" message
+  // from the lead, and (b) still be re-matched against automations, the AI
+  // replying to its own reply, forever.
+  if (senderId && senderId === pageId) return;
   const conn = await resolveByAccountId('facebook', pageId);
   if (!conn) return console.warn(`[facebook] comment on unknown Page ${pageId} — is that Page connected here?`);
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
-  // A reply the Page itself posts (whether from tryAutoReply below, or a
-  // human agent replying manually) is itself a new comment on the post, so
-  // it fires its own feed webhook event right back at this same handler.
-  // Without this check, that self-authored comment would be treated as a
-  // fresh inbound message and re-matched against automations — the AI
-  // replying to its own reply, forever.
-  if (senderId && senderId === pageId) return;
   await tryAutoReply({ userId: conn.user_id, clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
 async function handleDmEvent({ pageId, mid, text, senderId, senderName }) {
+  // Same self-authored guard as handleCommentEvent above, and checked just
+  // as early — before the lead/message is created — so the bot's own DM
+  // isn't recorded as a fake inbound message either. routes.js already
+  // drops Messenger's own `is_echo` events before this is even called, but
+  // that flag isn't guaranteed on every delivery path, so check the sender
+  // id directly too as a second line of defense against an auto-reply loop.
+  if (senderId && senderId === pageId) return;
   const conn = await resolveByAccountId('facebook', pageId);
   if (!conn) return console.warn(`[facebook] DM on unknown Page ${pageId} — is that Page connected here?`);
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'facebook', { externalId: senderId, name: senderName, accountName: senderName });
   await recordMessage(clientId, leadId, { channel: 'facebook', direction: 'in', messageType: 'text', body: text, externalId: mid });
-  // Same self-authored guard as handleCommentEvent above. routes.js already
-  // drops Messenger's own `is_echo` events before this is even called, but
-  // that flag isn't guaranteed on every delivery path, so check the sender
-  // id directly too as a second line of defense against an auto-reply loop.
-  if (senderId && senderId === pageId) return;
   await tryAutoReply({
     userId: conn.user_id, clientId, leadId, text,
     send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),
