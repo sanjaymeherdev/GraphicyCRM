@@ -82,10 +82,13 @@ async function finishPage(userId, page, expiresAt) {
   // signature failure, no error, nothing in the webhook log, the request
   // just never happens. (Compare modules/whatsapp/service.js#connectAccount,
   // which does the WABA equivalent of this — Facebook Pages need their own
-  // call.) `feed` covers Page post comments; `messages`/`messaging_postbacks`
-  // cover Messenger DMs; `comments` is included too since Instagram business
-  // accounts linked through this same Page (see below) are also subscribed
-  // via this Page's subscribed_apps, not a separate call.
+  // call.) `feed` covers Page post comments (as well as new posts/likes/etc);
+  // `messages`/`messaging_postbacks` cover Messenger DMs. Note: `comments` is
+  // NOT a valid Page subscribed_field (Meta's Graph API rejects it with
+  // error #100) — `feed` already includes comment events, so it's redundant
+  // as well as invalid. Instagram comments (for business accounts linked via
+  // this Page) are a separate concern handled by modules/instagram, not by
+  // this Page-level subscribed_apps call.
   await subscribeToPageWebhooks(page.id, page.access_token);
 
   // Auto-link the Page's connected Instagram business account, if any —
@@ -107,7 +110,7 @@ async function finishPage(userId, page, expiresAt) {
 async function subscribeToPageWebhooks(pageId, pageAccessToken) {
   try {
     const res = await post(`${BASE}/${pageId}/subscribed_apps`, {
-      subscribed_fields: 'feed,comments,messages,messaging_postbacks',
+      subscribed_fields: 'feed,messages,messaging_postbacks',
     }, pageAccessToken);
     if (!res.success) {
       console.error(`[facebook] subscribed_apps for Page ${pageId} returned success:false — webhooks will NOT arrive for this Page:`, res);
