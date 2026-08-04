@@ -52,6 +52,22 @@ router.delete('/connect', requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Re-subscribes the already-connected Page to feed/comments/messages
+// webhooks (see service.js's subscribeToPageWebhooks/resubscribeWebhooks) —
+// for Pages connected before that call existed, without a full reconnect.
+router.post('/resubscribe', requireAuth, async (req, res) => {
+  try { res.json({ success: true, ...(await service.resubscribeWebhooks(req.user.id)) }); }
+  catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// Diagnostic: which fields is THIS Page actually subscribed to right now,
+// per Meta (not the App Dashboard's app-wide view). See service.js's
+// getWebhookStatus().
+router.get('/webhook-status', requireAuth, async (req, res) => {
+  try { res.json({ success: true, ...(await service.getWebhookStatus(req.user.id)) }); }
+  catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 // --- Webhook (Page comments/messages — public, Meta calls this) ---
 router.get('/webhook', (req, res) => {
   if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.FB_WEBHOOK_VERIFY_TOKEN) {

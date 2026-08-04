@@ -84,6 +84,11 @@ const Sources = {
           <div class="m-head"><span class="badge-ic"><img src="/images/facebook.png" alt="Facebook" /></span><h3>Facebook</h3></div>
           <p class="m-desc">Connect via Meta OAuth</p>
           ${this.connectButton('facebook', 'Connect with Facebook', 'Sources.connectFacebook()')}
+          ${this.isConnected('facebook') ? `
+            <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-top:8px;" onclick="Sources.resubscribeFacebook()">🔄 Re-subscribe webhooks</button>
+            <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:6px;" onclick="Sources.checkFacebookWebhookStatus()">🔍 Check status</button>
+            <div class="conn-account-sub" id="fbWebhookStatus" style="margin-top:4px;">If comments/messages aren't arriving, re-subscribe is usually the fix — it re-tells Meta to send this Page's events here. Automatic on every new connect; use this for Pages connected before that existed.</div>
+          ` : ''}
         </div>
         <div class="conn-card">
           <div class="m-head"><span class="badge-ic"><img src="/images/Threads.png" alt="Threads" /></span><h3>Threads</h3></div>
@@ -189,6 +194,31 @@ const Sources = {
       window.location.href = data.url;
     } catch (err) {
       showToast('Failed: ' + err.message, true);
+    }
+  },
+
+  async resubscribeFacebook() {
+    try {
+      await API.resubscribeFacebookWebhooks();
+      showToast('✅ Re-subscribed — Meta should deliver new events now');
+    } catch (err) {
+      showToast('Failed: ' + err.message, true);
+    }
+  },
+
+  async checkFacebookWebhookStatus() {
+    const el = document.getElementById('fbWebhookStatus');
+    try {
+      const res = await API.getFacebookWebhookStatus();
+      const have = res.subscribedFields?.length ? res.subscribedFields.join(', ') : '(none)';
+      const missing = res.missingFields?.length ? res.missingFields.join(', ') : null;
+      if (el) {
+        el.innerHTML = `Subscribed: <b>${escapeHtml(have)}</b>` +
+          (missing ? `<br/><span style="color:var(--red);">Missing: ${escapeHtml(missing)} — click Re-subscribe</span>` : `<br/><span style="color:var(--green);">All expected fields subscribed ✅</span>`);
+      }
+    } catch (err) {
+      if (el) el.innerHTML = `<span style="color:var(--red);">Failed to check: ${escapeHtml(err.message)}</span>`;
+      else showToast('Failed: ' + err.message, true);
     }
   },
 

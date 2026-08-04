@@ -345,6 +345,14 @@ const API = (() => {
     return await del(`/api/oauth/${service}`);
   }
 
+  async function resubscribeFacebookWebhooks() {
+    return await post('/api/facebook/resubscribe');
+  }
+
+  async function getFacebookWebhookStatus() {
+    return await get('/api/facebook/webhook-status');
+  }
+
   async function disconnectWhatsAppAccount(id) {
     return await del(`/api/whatsapp/accounts/${id}`);
   }
@@ -539,6 +547,8 @@ const API = (() => {
     connectIntegration,
     getOAuthUrl,
     disconnectOAuth,
+    resubscribeFacebookWebhooks,
+    getFacebookWebhookStatus,
     disconnectWhatsAppAccount,
     getSheetWatchers,
     createSheetWatcher,

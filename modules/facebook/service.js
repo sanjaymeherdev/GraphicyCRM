@@ -15,6 +15,37 @@ const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shar
 
 function disconnect(userId) { return disconnectConnection(userId, 'facebook'); }
 
+/** Re-runs the webhook subscription for an already-connected Page, without a
+ * full OAuth reconnect — for Pages connected before subscribeToPageWebhooks()
+ * existed (see finishPage()), or if a subscription silently lapsed. */
+async function resubscribeWebhooks(userId) {
+  const conn = await getConnection(userId, 'facebook');
+  if (!conn) throw new Error('No Facebook Page connected.');
+  await subscribeToPageWebhooks(conn.account_id, conn.access_token);
+  return { pageId: conn.account_id };
+}
+
+/** Diagnostic: asks Meta directly which fields THIS Page is currently
+ * subscribed to (GET /{page-id}/subscribed_apps), as opposed to the
+ * App Dashboard's webhook config, which only shows what the app is allowed
+ * to receive across every Page — not what any one Page actually has turned
+ * on. This is the per-Page state subscribeToPageWebhooks()/resubscribe
+ * writes to. */
+async function getWebhookStatus(userId) {
+  const conn = await getConnection(userId, 'facebook');
+  if (!conn) throw new Error('No Facebook Page connected.');
+  const res = await get(`${BASE}/${conn.account_id}/subscribed_apps`, {}, conn.access_token);
+  const app = (res.data || [])[0];
+  const subscribedFields = app?.subscribed_fields || [];
+  const expected = ['feed', 'comments', 'messages', 'messaging_postbacks'];
+  return {
+    pageId: conn.account_id,
+    pageName: conn.account_name,
+    subscribedFields,
+    missingFields: expected.filter((f) => !subscribedFields.includes(f)),
+  };
+}
+
 const VERSION = process.env.GRAPH_VERSION || 'v25.0';
 const BASE = `https://graph.facebook.com/${VERSION}`;
 
@@ -41,6 +72,18 @@ async function finishPage(userId, page, expiresAt) {
     page_id: page.id, access_token: page.access_token, token_expires_at: expiresAt,
   });
 
+  // Subscribe this app to the Page's webhooks so inbound feed comments and
+  // Messenger DMs start arriving at POST /api/facebook/webhook. Without
+  // this call, Meta simply never invokes the webhook for this Page — no
+  // signature failure, no error, nothing in the webhook log, the request
+  // just never happens. (Compare modules/whatsapp/service.js#connectAccount,
+  // which does the WABA equivalent of this — Facebook Pages need their own
+  // call.) `feed` covers Page post comments; `messages`/`messaging_postbacks`
+  // cover Messenger DMs; `comments` is included too since Instagram business
+  // accounts linked through this same Page (see below) are also subscribed
+  // via this Page's subscribed_apps, not a separate call.
+  await subscribeToPageWebhooks(page.id, page.access_token);
+
   // Auto-link the Page's connected Instagram business account, if any —
   // this is what lets modules/instagram reuse the same Page token.
   if (page.instagram_business_account) {
@@ -52,6 +95,22 @@ async function finishPage(userId, page, expiresAt) {
     });
   }
   return connection;
+}
+
+// See finishPage() above — logs a clear warning rather than throwing, so a
+// subscription hiccup doesn't block the user from finishing "Connect", but
+// still surfaces loudly in server logs instead of failing silently forever.
+async function subscribeToPageWebhooks(pageId, pageAccessToken) {
+  try {
+    const res = await post(`${BASE}/${pageId}/subscribed_apps`, {
+      subscribed_fields: 'feed,comments,messages,messaging_postbacks',
+    }, pageAccessToken);
+    if (!res.success) {
+      console.error(`[facebook] subscribed_apps for Page ${pageId} returned success:false — webhooks will NOT arrive for this Page:`, res);
+    }
+  } catch (err) {
+    console.error(`[facebook] failed to subscribe Page ${pageId} to webhooks — feed comments/DMs will NOT arrive until this succeeds:`, err.response?.data?.error?.message || err.message);
+  }
 }
 
 async function handleOAuthCallback(code, state) {
@@ -240,7 +299,7 @@ async function tryAutoReply({ userId, clientId, leadId, text, send, sendJson, re
 }
 
 module.exports = {
-  getAuthUrl, handleOAuthCallback, selectPage, disconnect,
+  getAuthUrl, handleOAuthCallback, selectPage, disconnect, resubscribeWebhooks, getWebhookStatus,
   publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendDMRaw, sendPrivateReply,
   verifySignature, handleCommentEvent, handleDmEvent,
 };
