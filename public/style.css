@@ -1676,3 +1676,35 @@ tr:hover td { background: var(--surface2); }
   .assistant-panel { right: 12px; left: 12px; width: auto; bottom: 84px; }
   .assistant-fab { right: 16px; bottom: 16px; }
 }
+
+/* ─── Ported-modules generic CRUD tab styling (flows, interactive
+   templates, follow-up rules, field mappings, bot rules, meetings,
+   billing, API keys) — reuses existing CSS vars, no new palette. ─── */
+.simple-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.simple-table th, .simple-table td { padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+.simple-table th { color: var(--text2); font-weight: 600; background: var(--surface2); }
+.simple-table tr:last-child td { border-bottom: none; }
+.simple-table .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.status-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: capitalize; background: var(--surface3); color: var(--text2); }
+.status-badge.status-active, .status-badge.status-scheduled, .status-badge.status-completed { background: var(--green-dim); color: var(--green); }
+.status-badge.status-cancelled, .status-badge.status-no_show, .status-badge.status-past_due { background: var(--red-dim); color: var(--red); }
+
+.crud-form .form-group { margin-bottom: 14px; }
+.crud-form .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.crud-form .form-group input[type="text"],
+.crud-form .form-group input[type="number"],
+.crud-form .form-group select,
+.crud-form .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; }
+.crud-form .form-group textarea { font-family: monospace; }
+.crud-form .form-check label { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); }
+
+.info-banner { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+.info-banner code { background: var(--surface3); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+.billing-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 420px; }
+.billing-plan { font-size: 22px; font-weight: 700; text-transform: capitalize; }
+.billing-status, .billing-period { font-size: 13px; color: var(--text2); margin-top: 6px; }
+.billing-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.billing-actions select { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+.billing-note { font-size: 11px; color: var(--text3); margin-top: 14px; }

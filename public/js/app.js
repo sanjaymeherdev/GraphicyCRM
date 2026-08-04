@@ -144,6 +144,14 @@
       templates: loadTemplates,
       integrations: loadIntegrations,
       reports: loadReports,
+      flows: () => window.Flows && window.Flows.render(state),
+      'interactive-templates': () => window.InteractiveTemplates && window.InteractiveTemplates.render(state),
+      'bot-builder': () => window.BotBuilder && window.BotBuilder.render(state),
+      followup: () => window.Followup && window.Followup.render(state),
+      'field-mappings': () => window.FieldMappings && window.FieldMappings.render(state),
+      meetings: () => window.Meetings && window.Meetings.render(state),
+      billing: () => window.Billing && window.Billing.render(state),
+      'api-keys': () => window.ApiKeys && window.ApiKeys.render(state),
     };
 
     if (loaders[tab]) loaders[tab]();
@@ -311,6 +319,14 @@
       templates: loadTemplates,
       integrations: loadIntegrations,
       reports: loadReports,
+      flows: () => window.Flows && window.Flows.render(state),
+      'interactive-templates': () => window.InteractiveTemplates && window.InteractiveTemplates.render(state),
+      'bot-builder': () => window.BotBuilder && window.BotBuilder.render(state),
+      followup: () => window.Followup && window.Followup.render(state),
+      'field-mappings': () => window.FieldMappings && window.FieldMappings.render(state),
+      meetings: () => window.Meetings && window.Meetings.render(state),
+      billing: () => window.Billing && window.Billing.render(state),
+      'api-keys': () => window.ApiKeys && window.ApiKeys.render(state),
     };
     if (loaders[tab]) loaders[tab]();
   }
