@@ -50,4 +50,29 @@ function decryptToken(stored) {
   return decrypted.toString('utf8');
 }
 
-module.exports = { encryptToken, decryptToken };
+// ===========================================================
+// Signed media-proxy tokens — lets modules/media's public stream route
+// let Meta's/LinkedIn's servers fetch a user's privately-stored Drive file
+// without that file ever being made public/link-shared on Drive itself.
+// The signature binds userId+fileId+expiry together so a leaked URL can't
+// be edited to point at a different file, and it expires instead of
+// working forever. Ported from sanjayaidev/MetaWhatsappAPI's
+// sm/lib/crypto.js signMediaToken/verifyMediaToken, but reuses this file's
+// existing TOKEN_ENCRYPTION_KEY rather than introducing a second key.
+// ===========================================================
+function signMediaToken(userId, fileId, expiresAt) {
+  const key = getKey();
+  const payload = `${userId}:${fileId}:${expiresAt}`;
+  return crypto.createHmac('sha256', key).update(payload).digest('base64url');
+}
+
+function verifyMediaToken(userId, fileId, expiresAt, signature) {
+  if (!signature || Date.now() > Number(expiresAt)) return false;
+  const expected = signMediaToken(userId, fileId, expiresAt);
+  const expectedBuf = Buffer.from(expected);
+  const givenBuf = Buffer.from(String(signature));
+  if (expectedBuf.length !== givenBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, givenBuf);
+}
+
+module.exports = { encryptToken, decryptToken, signMediaToken, verifyMediaToken };

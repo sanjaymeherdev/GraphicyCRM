@@ -82,6 +82,14 @@ app.use('/api/reports', require('./modules/reports/routes'));
 app.use('/api/webhook', require('./modules/webhook/routes'));
 app.use('/api/schedule', require('./modules/schedule/routes'));
 app.use('/api/insights', require('./modules/insights/routes'));
+// modules/media: two routers sharing the '/api/media' base — .streamRouter
+// is public (Meta/LinkedIn fetch scheduled-post media through it, gated by
+// a signed token instead of auth), .router requires login for the actual
+// upload-to-Drive endpoint. Order doesn't matter between these two since
+// their sub-paths ('/upload' vs '/stream/:userId/:fileId') don't overlap.
+const mediaRoutes = require('./modules/media/routes');
+app.use('/api/media', mediaRoutes.streamRouter);
+app.use('/api/media', mediaRoutes.router);
 // Mounted last and at the generic '/api' prefix (its routes are /profile and
 // /client, not under their own subpath) — registered after every specific
 // /api/<module> mount above so its blanket requireAuth middleware (see
