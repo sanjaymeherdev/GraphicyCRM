@@ -23,6 +23,7 @@ const { supabase } = require('./shared/db');
 const { resolveFirstUserId } = require('./shared/clientContext');
 const sheetsService = require('./modules/sheets/service');
 const scheduleService = require('./modules/schedule/service');
+const followupService = require('./modules/followup/service');
 const insightsService = require('./modules/insights/service');
 const automationsService = require('./modules/automations/service');
 
@@ -90,6 +91,18 @@ app.use('/api/insights', require('./modules/insights/routes'));
 const mediaRoutes = require('./modules/media/routes');
 app.use('/api/media', mediaRoutes.streamRouter);
 app.use('/api/media', mediaRoutes.router);
+// ---------------------------------------------------------------------
+// Ported from sanjaymeherdev/MetaWhatsappAPI (excluding its ecom module),
+// see the module-by-module recommendation given earlier in this chat.
+// ---------------------------------------------------------------------
+app.use('/api/flows', require('./modules/flows/routes'));
+app.use('/api/interactive-templates', require('./modules/interactive-templates/routes'));
+app.use('/api/followup', require('./modules/followup/routes'));
+app.use('/api/field-mappings', require('./modules/field-mappings/routes'));
+app.use('/api/bot-builder', require('./modules/bot-builder/routes'));
+app.use('/api/meetings', require('./modules/meetings/routes'));
+app.use('/api/billing', require('./modules/billing/routes'));
+app.use('/api/api-keys', require('./modules/api-keys/routes'));
 // Mounted last and at the generic '/api' prefix (its routes are /profile and
 // /client, not under their own subpath) — registered after every specific
 // /api/<module> mount above so its blanket requireAuth middleware (see
@@ -138,6 +151,16 @@ setInterval(() => {
   scheduleService.pollDuePosts(resolveFirstUserId)
     .catch((err) => console.error('[schedule] poll tick failed:', err.message));
 }, SCHEDULE_POLL_MS);
+
+// Distinct from modules/automations' checkFollowUps() below (a one-off,
+// due-timestamped follow-up scheduled per triggered automation) — this is
+// a recurring rule that scans ALL leads on a channel for inactivity, so it
+// only needs to run hourly, not every 5 minutes.
+const INACTIVITY_FOLLOWUP_POLL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  followupService.pollDueFollowups(resolveFirstUserId)
+    .catch((err) => console.error('[followup] poll tick failed:', err.message));
+}, INACTIVITY_FOLLOWUP_POLL_MS);
 
 // Graph's /insights edge is rate-limited per app — polling every request
 // (like the original repo did) isn't viable at any real scale, hence the
