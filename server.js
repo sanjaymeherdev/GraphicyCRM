@@ -93,6 +93,14 @@ app.use('/api/insights', require('./modules/insights/routes'));
 const mediaRoutes = require('./modules/media/routes');
 app.use('/api/media', mediaRoutes.streamRouter);
 app.use('/api/media', mediaRoutes.router);
+// Admin-only: connect/rotate the shared owner Google Drive account that
+// modules/media's routes above depend on (see modules/admin-drive/routes.js
+// and public/admin/drive.html). /admin must be mounted before the SPA
+// catch-all further down; /api/admin/drive must be mounted before the
+// generic '/api' profile-routes mount at the bottom of this block.
+const adminDriveRoutes = require('./modules/admin-drive/routes');
+app.use('/admin', adminDriveRoutes.pageRouter());
+app.use('/api/admin/drive', adminDriveRoutes.apiRouter());
 // ---------------------------------------------------------------------
 // Ported from sanjaymeherdev/MetaWhatsappAPI (excluding its ecom module),
 // see the module-by-module recommendation given earlier in this chat.

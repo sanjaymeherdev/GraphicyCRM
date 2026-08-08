@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shared Drive — CRM Backend</title>
+<style>
+  :root{
+    --ink:#0f1720;
+    --ink-2:#161f2b;
+    --paper:#eef1f4;
+    --amber:#e0a458;
+    --amber-dim:#8a6a3f;
+    --line:rgba(238,241,244,0.12);
+    --text-dim:rgba(238,241,244,0.56);
+    --err:#e0765a;
+    --ok:#7fb88f;
+    --font-display: 'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --font-mono: 'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(224,164,88,0.08), transparent 60%),
+      var(--ink);
+    color:var(--paper);
+    font-family:var(--font-mono);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:32px;
+  }
+  .card{ width:100%; max-width:440px; }
+  .brand{ display:flex; align-items:center; gap:10px; margin-bottom:24px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); }
+  .brand-name{ font-family:var(--font-display); font-size:15px; letter-spacing:0.02em; color:var(--paper); }
+
+  .admin-badge{
+    display:inline-flex; align-items:center; gap:6px; background:rgba(224,164,88,0.10); color:var(--amber);
+    border:1px solid rgba(224,164,88,0.25); border-radius:999px; padding:5px 11px;
+    font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:20px;
+  }
+
+  h1{ font-family:var(--font-display); font-weight:400; font-size:26px; margin:0 0 6px; color:var(--paper); }
+  .sub{ color:var(--text-dim); font-size:13px; margin:0 0 24px; line-height:1.6; }
+
+  label{ display:block; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); margin-bottom:7px; }
+  input, textarea{
+    width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:6px;
+    padding:11px 12px; color:var(--paper); font-family:var(--font-mono); font-size:14px; outline:none;
+    transition:border-color 0.15s ease;
+  }
+  input:focus, textarea:focus{ border-color:var(--amber-dim); }
+  input::placeholder, textarea::placeholder{ color:rgba(238,241,244,0.28); }
+  #adminSecret{ border-color:rgba(224,164,88,0.3); margin-bottom:20px; }
+  textarea{ min-height:76px; resize:vertical; margin-top:8px; }
+
+  #status{
+    padding:12px 14px; border-radius:6px; margin-bottom:20px; font-size:12.5px;
+    border:1px solid var(--line);
+  }
+  #status.connected{ background:rgba(127,184,143,0.08); color:var(--ok); border-color:rgba(127,184,143,0.25); }
+  #status.disconnected{ background:rgba(224,118,90,0.08); color:var(--err); border-color:rgba(224,118,90,0.25); }
+  #status.pending{ color:var(--text-dim); }
+
+  .banner{ padding:12px 14px; border-radius:6px; margin-bottom:16px; font-size:12.5px; border:1px solid var(--line); }
+  .banner.ok{ background:rgba(127,184,143,0.08); color:var(--ok); border-color:rgba(127,184,143,0.25); }
+  .banner.err{ background:rgba(224,118,90,0.08); color:var(--err); border-color:rgba(224,118,90,0.25); }
+
+  .connect-btn{
+    display:inline-flex; align-items:center; gap:8px; width:100%; justify-content:center;
+    background:var(--amber); color:#1c130a; border:none; border-radius:6px;
+    padding:12px 16px; font-family:var(--font-mono); font-size:13px; font-weight:600; letter-spacing:0.03em;
+    text-decoration:none; cursor:pointer; transition:filter 0.15s ease, transform 0.1s ease;
+  }
+  .connect-btn:hover{ filter:brightness(1.08); }
+  .connect-btn:active{ transform:translateY(1px); }
+  .connect-btn.disabled{ opacity:0.4; pointer-events:none; }
+
+  hr{ border:none; border-top:1px solid var(--line); margin:26px 0; }
+  details summary{ cursor:pointer; color:var(--text-dim); font-size:12.5px; letter-spacing:0.02em; }
+  details[open] summary{ margin-bottom:10px; }
+  .manual-btn{
+    margin-top:10px; background:var(--ink-2); color:var(--paper); border:1px solid var(--line); border-radius:6px;
+    padding:10px 14px; font-family:var(--font-mono); font-size:12.5px; cursor:pointer;
+  }
+  .manual-btn:hover{ border-color:var(--amber-dim); }
+  .msg{ font-size:12.5px; margin-top:10px; min-height:16px; }
+  .msg.error{ color:var(--err); }
+  .msg.ok{ color:var(--ok); }
+
+  .toggle-row{ margin-top:22px; font-size:12.5px; color:var(--text-dim); text-align:center; }
+  .toggle-row a{ color:var(--amber); text-decoration:none; }
+  .toggle-row a:hover{ text-decoration:underline; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="brand-mark"></span><span class="brand-name">CRM Backend</span></div>
+    <div class="admin-badge">⚠ Admin access only</div>
+    <h1>Shared Google Drive</h1>
+    <p class="sub">Backs media storage for every client's scheduled posts (see modules/schedule). One Google account, connected once here — no per-user Drive access needed.</p>
+
+    <div id="banner"></div>
+
+    <label for="adminSecret">Admin secret</label>
+    <input id="adminSecret" type="password" autocomplete="off" placeholder="••••••••" />
+
+    <div id="status" class="pending">Enter the admin secret to check status…</div>
+
+    <a class="connect-btn disabled" id="connectBtn" href="#">Connect with Google →</a>
+
+    <hr>
+    <details>
+      <summary>Or paste a refresh token manually</summary>
+      <label for="rt" style="margin-top:12px;">Refresh token</label>
+      <textarea id="rt" placeholder="1//0g...refresh token from Google OAuth"></textarea>
+      <button class="manual-btn" onclick="saveToken()">Save &amp; connect</button>
+      <p class="msg" id="result"></p>
+    </details>
+
+    <p class="toggle-row">← <a href="/login">Back to CRM</a></p>
+  </div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const adminSecretInput = document.getElementById('adminSecret');
+  const statusEl = document.getElementById('status');
+  const bannerEl = document.getElementById('banner');
+  const connectBtn = document.getElementById('connectBtn');
+
+  // A key/connected/error may already be in the URL if Google just redirected
+  // back here from /admin/drive/callback.
+  if (params.get('key')) adminSecretInput.value = params.get('key');
+  if (params.get('connected') === '1') {
+    bannerEl.innerHTML = '<div class="banner ok">Connected via Google — refresh token saved.</div>';
+  } else if (params.get('error')) {
+    bannerEl.innerHTML = '<div class="banner err">' + params.get('error').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>';
+  }
+
+  function updateConnectBtn() {
+    const key = adminSecretInput.value.trim();
+    if (!key) {
+      connectBtn.classList.add('disabled');
+      connectBtn.href = '#';
+      return;
+    }
+    connectBtn.classList.remove('disabled');
+    connectBtn.href = '/admin/drive/authorize?key=' + encodeURIComponent(key);
+  }
+
+  async function refreshStatus() {
+    const key = adminSecretInput.value.trim();
+    if (!key) {
+      statusEl.className = 'pending';
+      statusEl.textContent = 'Enter the admin secret to check status…';
+      return;
+    }
+    statusEl.className = 'pending';
+    statusEl.textContent = 'Checking status…';
+    try {
+      const res = await fetch('/api/admin/drive/status', { headers: { 'x-admin-secret': key } });
+      if (res.status === 403) {
+        statusEl.className = 'disconnected';
+        statusEl.textContent = 'Wrong admin secret.';
+        return;
+      }
+      const data = await res.json();
+      if (data.connected) {
+        statusEl.className = 'connected';
+        statusEl.textContent = 'Connected — last updated ' + new Date(data.updatedAt).toLocaleString();
+      } else {
+        statusEl.className = 'disconnected';
+        statusEl.textContent = 'Not connected.';
+      }
+    } catch (err) {
+      statusEl.className = 'disconnected';
+      statusEl.textContent = 'Error checking status: ' + err.message;
+    }
+  }
+
+  async function saveToken() {
+    const key = adminSecretInput.value.trim();
+    const resultEl = document.getElementById('result');
+    if (!key) { resultEl.textContent = 'Enter the admin secret above first.'; resultEl.className = 'msg error'; return; }
+    const refresh_token = document.getElementById('rt').value.trim();
+    resultEl.textContent = 'Saving…';
+    resultEl.className = 'msg';
+    try {
+      const res = await fetch('/api/admin/drive/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': key },
+        body: JSON.stringify({ refresh_token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      resultEl.textContent = 'Connected successfully.';
+      resultEl.className = 'msg ok';
+      document.getElementById('rt').value = '';
+      refreshStatus();
+    } catch (err) {
+      resultEl.textContent = 'Error: ' + err.message;
+      resultEl.className = 'msg error';
+    }
+  }
+
+  adminSecretInput.addEventListener('input', () => { updateConnectBtn(); refreshStatus(); });
+  updateConnectBtn();
+  refreshStatus();
+</script>
+</body>
+</html>
