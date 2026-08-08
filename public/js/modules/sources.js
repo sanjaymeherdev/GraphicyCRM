@@ -272,30 +272,17 @@ const Sources = {
   _watchers: [],
   _watcherDraft: null, // draft object while creating/editing; null = list view
 
-  // Dropdown-picker caches — fetched from Google (via Drive/Sheets APIs) so
-  // the watcher form can offer "pick a spreadsheet / pick a tab / pick a
-  // column" dropdowns instead of asking the user to paste IDs by hand.
-  _sheetsList: [],
-  _loadingSheets: false,
+  // Dropdown-picker caches — tabs/headers fetched from Google (Sheets API,
+  // approved `spreadsheets` scope) once the user pastes in a spreadsheet ID
+  // directly. There's no more "pick your spreadsheet from a list" dropdown
+  // — that needed the `drive` scope, which isn't approved for this OAuth
+  // client (see shared/googleAuth.js's GOOGLE_SCOPES).
   _tabsCache: {},   // spreadsheetId -> string[]
   _loadingTabs: {}, // spreadsheetId -> bool
   _headersCache: {},   // "spreadsheetId::worksheet" -> string[]
   _loadingHeaders: {}, // "spreadsheetId::worksheet" -> bool
 
   headersKey(spreadsheetId, worksheet) { return `${spreadsheetId}::${worksheet}`; },
-
-  async loadGoogleSheetsList() {
-    if (this._sheetsList.length || this._loadingSheets) return;
-    this._loadingSheets = true;
-    try {
-      const data = await API.listGoogleSheets();
-      this._sheetsList = data.spreadsheets || [];
-    } catch (err) {
-      showToast('Failed to load your Google Sheets: ' + err.message, true);
-    } finally {
-      this._loadingSheets = false;
-    }
-  },
 
   async loadTabsFor(spreadsheetId) {
     if (!spreadsheetId || this._tabsCache[spreadsheetId] || this._loadingTabs[spreadsheetId]) return;
@@ -377,11 +364,10 @@ const Sources = {
     if (this._watcherDraft) { this.renderWatcherForm(); return; }
 
     const rows = this._watchers.map(w => {
-      const sheetName = this._sheetsList.find((s) => s.id === w.spreadsheet_id)?.name;
       return `
       <div class="rule-card" style="cursor:default;">
         <div class="meta" style="justify-content:space-between;">
-          <span><strong>${escapeHtml(w.worksheet)}</strong> in ${sheetName ? escapeHtml(sheetName) : `<code>${escapeHtml(w.spreadsheet_id.slice(0, 18))}…</code>`}</span>
+          <span><strong>${escapeHtml(w.worksheet)}</strong> in <code>${escapeHtml(w.spreadsheet_id.slice(0, 18))}…</code></span>
           <span class="badge ${w.active ? 'badge-green' : ''}">${w.active ? 'Active' : 'Paused'}</span>
         </div>
         <div class="block-sub" style="margin:4px 0;">
@@ -413,7 +399,6 @@ const Sources = {
       channel: 'whatsapp', template_id: null, message_template: '', placeholder_mapping: {}, active: true,
     };
     this.renderWatcherForm();
-    this.loadGoogleSheetsList().then(() => this.renderWatcherForm());
   },
 
   async editWatcher(id) {
@@ -421,7 +406,6 @@ const Sources = {
     if (!w) return;
     this._watcherDraft = { ...w, placeholder_mapping: { ...(w.placeholder_mapping || {}) } };
     this.renderWatcherForm();
-    await this.loadGoogleSheetsList();
     if (this._watcherDraft.spreadsheet_id) await this.loadTabsFor(this._watcherDraft.spreadsheet_id);
     if (this._watcherDraft.spreadsheet_id && this._watcherDraft.worksheet) {
       await this.loadHeadersFor(this._watcherDraft.spreadsheet_id, this._watcherDraft.worksheet);
@@ -511,12 +495,10 @@ const Sources = {
           <div class="block-head"><div class="block-title"><span class="badge-ic">📊</span>Sheet</div></div>
           <div class="field-row">
             <div class="field">
-              <label>Spreadsheet</label>
-              <select onchange="Sources.onSpreadsheetChange(this.value)">
-                <option value="">${this._loadingSheets ? 'Loading your Google Sheets…' : '— Select a spreadsheet —'}</option>
-                ${this._sheetsList.map((s) => `<option value="${s.id}" ${s.id === d.spreadsheet_id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
-                ${d.spreadsheet_id && !this._sheetsList.some((s) => s.id === d.spreadsheet_id) ? `<option value="${escapeHtml(d.spreadsheet_id)}" selected>${escapeHtml(d.spreadsheet_id)} (not found — check Google connection)</option>` : ''}
-              </select>
+              <label>Spreadsheet ID</label>
+              <input type="text" placeholder="Paste the spreadsheet ID (from its Google Sheets URL)" value="${escapeHtml(d.spreadsheet_id)}"
+                onchange="Sources.onSpreadsheetChange(this.value.trim())" />
+              <div class="block-sub">Open the sheet in Google Sheets and copy the ID out of its URL: docs.google.com/spreadsheets/d/<code>THIS_PART</code>/edit</div>
             </div>
             <div class="field">
               <label>Worksheet (tab)</label>

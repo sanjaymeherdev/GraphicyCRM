@@ -191,18 +191,6 @@ const API = (() => {
           metrics: { views: 2000 + i * 300, likes: 100 + i * 15 },
         }))
       }),
-      '/api/sheets/list': () => ({
-        spreadsheets: [
-          { id: 'mock_sheet_1', name: 'Leads 2026', modifiedTime: new Date().toISOString() },
-          { id: 'mock_sheet_2', name: 'Event RSVPs', modifiedTime: new Date().toISOString() },
-        ]
-      }),
-      '/api/docs/list': () => ({
-        docs: [
-          { id: 'mock_doc_1', name: 'FAQ — Support', modifiedTime: new Date().toISOString() },
-          { id: 'mock_doc_2', name: 'Product one-pager', modifiedTime: new Date().toISOString() },
-        ]
-      }),
       '/api/ai-bot/models': () => ({
         models: [
           'meta/llama-3.1-70b-instruct', 'meta/llama-3.1-8b-instruct',
@@ -378,21 +366,15 @@ const API = (() => {
     return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/rows`);
   }
 
-  // ─── DROPDOWN PICKERS (Google Sheets / Docs, via Drive) ───
-  async function listGoogleSheets() {
-    return await get('/api/sheets/list');
-  }
-
+  // ─── DROPDOWN PICKERS (Google Sheets tabs/headers — spreadsheet itself is
+  // now referenced by a pasted ID, not a Drive-backed list; see
+  // shared/googleAuth.js's GOOGLE_SCOPES for why) ───
   async function listSheetTabs(spreadsheetId) {
     return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/tabs`);
   }
 
   async function listSheetHeaders(spreadsheetId, worksheet) {
     return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/headers`);
-  }
-
-  async function listGoogleDocs() {
-    return await get('/api/docs/list');
   }
 
   // ─── AI BOT ───
@@ -555,10 +537,8 @@ const API = (() => {
     updateSheetWatcher,
     deleteSheetWatcher,
     getSheetRows,
-    listGoogleSheets,
     listSheetTabs,
     listSheetHeaders,
-    listGoogleDocs,
     getAvailableModels,
     getChatbotRules,
     createChatbotRule,

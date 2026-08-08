@@ -6,14 +6,11 @@ const service = require('./service');
 const router = express.Router();
 router.use(requireAuth);
 
-// --- Dropdown pickers (Sheet→Leads watcher UI) — registered first since
-// '/list' would otherwise be swallowed by the '/:spreadsheetId/...' routes
-// below if Express matched by segment count alone; being explicit here
-// keeps route order obviously correct either way. ---
-router.get('/list', async (req, res) => {
-  try { res.json({ success: true, spreadsheets: await service.listSpreadsheets(req.user.id) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
+// GET /list (a Drive-backed "pick your spreadsheet" dropdown) was removed
+// — it needed the `drive` scope, which isn't in this app's approved OAuth
+// scopes. The Sheet→Leads watcher UI now takes a pasted spreadsheetId/URL
+// directly; '/:spreadsheetId/tabs' etc. below still work off that pasted ID
+// since they only need the `spreadsheets` scope.
 
 router.get('/:spreadsheetId/tabs', async (req, res) => {
   try { res.json({ success: true, tabs: await service.listTabs(req.user.id, req.params.spreadsheetId) }); }

@@ -6,12 +6,10 @@ const service = require('./service');
 const router = express.Router();
 router.use(requireAuth);
 
-// Registered before '/:documentId' below — otherwise a request to
-// GET /api/docs/list would match documentId="list" instead.
-router.get('/list', async (req, res) => {
-  try { res.json({ success: true, docs: await service.listDocs(req.user.id) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
+// GET /list and POST /:documentId/copy were removed — both needed the
+// Drive API (`drive` scope), which isn't in this app's approved OAuth
+// scopes. Docs are now referenced by pasting a documentId/URL directly
+// instead of picking one from a "your Google Docs" dropdown.
 
 router.post('/', async (req, res) => {
   try { res.json({ success: true, doc: await service.createDoc(req.user.id, req.body || {}) }); }
@@ -32,11 +30,6 @@ router.post('/:documentId/replace', async (req, res) => {
   const { replacements } = req.body || {};
   if (!replacements || typeof replacements !== 'object') return res.status(400).json({ error: 'replacements object required, e.g. {"{{name}}": "Alice"}' });
   try { res.json(await service.replaceText(req.user.id, req.params.documentId, replacements)); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.post('/:documentId/copy', async (req, res) => {
-  try { res.json({ success: true, doc: await service.copyDoc(req.user.id, req.params.documentId, req.body?.title || 'Untitled document') }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 

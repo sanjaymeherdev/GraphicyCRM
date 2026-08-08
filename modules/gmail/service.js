@@ -1,8 +1,21 @@
-// modules/gmail/service.js — send, list, read, and search Gmail messages
-// via the Gmail REST API, using the shared Google OAuth token (refreshed
-// automatically by shared/googleAuth.js). Ported from the original repo's
-// src/channel-send.js sendEmail() function, extended to cover full Gmail
-// read/list/search functionality the CRM's automations rely on.
+// modules/gmail/service.js — sends Gmail messages via the Gmail REST API,
+// using the shared Google OAuth token (refreshed automatically by
+// shared/googleAuth.js). Ported from the original repo's
+// src/channel-send.js sendEmail() function.
+//
+// Send-only: this app's approved OAuth scopes include gmail.send but NOT
+// gmail.readonly, so listMessages()/getMessage()/searchMessages() (inbox
+// read/list/search) have been removed — see the TODO below.
+//
+// TODO(lead-capture-from-mail, unapproved-scope): the CRM previously had
+// room to grow a "new lead when an email comes in" feature (list/search the
+// inbox, parse a matching message into a lead) using the functions removed
+// from this file. That needs the gmail.readonly (or gmail.modify) scope,
+// which isn't approved for this OAuth client. Leaving this as a TODO —
+// re-add listMessages/getMessage/searchMessages here (see git history) once
+// that scope is requested and approved, then wire it into
+// modules/leads/service.js the same way modules/sheets' sendForMatch()
+// creates leads from matched sheet rows.
 const fetch = require('node-fetch');
 const { getValidGoogleAccessToken } = require('../../shared/googleAuth');
 
@@ -27,58 +40,4 @@ async function sendEmail(userId, { to, subject, text, html }) {
   return data.id;
 }
 
-/** Lists message ids/snippets matching an optional Gmail search query (e.g. "is:unread from:x@y.com"). */
-async function listMessages(userId, { query = '', maxResults = 20 } = {}) {
-  const accessToken = await getValidGoogleAccessToken(userId);
-  const params = new URLSearchParams({ maxResults: String(maxResults) });
-  if (query) params.set('q', query);
-
-  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `Gmail API ${res.status}`);
-  return data.messages || [];
-}
-
-function decodeBody(payload) {
-  if (!payload) return '';
-  const findPart = (part) => {
-    if (part.mimeType === 'text/plain' && part.body?.data) return part.body.data;
-    if (part.parts) {
-      for (const p of part.parts) {
-        const found = findPart(p);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-  const data = payload.body?.data || findPart(payload);
-  if (!data) return '';
-  return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-}
-
-/** Fetches a single message's headers + decoded plain-text body. */
-async function getMessage(userId, messageId) {
-  const accessToken = await getValidGoogleAccessToken(userId);
-  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `Gmail API ${res.status}`);
-
-  const headers = Object.fromEntries((data.payload?.headers || []).map((h) => [h.name.toLowerCase(), h.value]));
-  return {
-    id: data.id, threadId: data.threadId, snippet: data.snippet,
-    from: headers.from, to: headers.to, subject: headers.subject, date: headers.date,
-    body: decodeBody(data.payload),
-  };
-}
-
-/** Convenience: list + fetch full bodies in one call (bounded by maxResults — Gmail rate-limits per-message reads). */
-async function searchMessages(userId, { query, maxResults = 10 } = {}) {
-  const list = await listMessages(userId, { query, maxResults });
-  return Promise.all(list.map((m) => getMessage(userId, m.id)));
-}
-
-module.exports = { sendEmail, listMessages, getMessage, searchMessages };
+module.exports = { sendEmail };

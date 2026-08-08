@@ -98,26 +98,31 @@ async function saveGoogleTokens(userId, { access_token, refresh_token, expires_i
 const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 // One shared Google OAuth app (Cloud Console project) covers gmail/sheets/docs
-// scopes together — requesting all three up front means connecting once in
-// the CRM lights up every Google module, no separate "connect" per module.
+// scopes together — requesting all up front means connecting once in the CRM
+// lights up every Google module, no separate "connect" per module.
+//
+// IMPORTANT: this list must exactly match what's approved on the OAuth
+// consent screen (Cloud Console → APIs & Services → OAuth consent screen →
+// verification). As of the latest verification for project 779396319713
+// (turing-audio-462303-i7), ONLY the scopes below are approved. Do not add
+// any other scope here without re-submitting for verification first —
+// Google will reject the consent request (or cap the app at ~100 test
+// users) for any scope outside the approved list.
+//
+// Notably NOT approved / NOT included: gmail.readonly (inbox read/search —
+// see modules/gmail), drive / drive.file (file listing/copy — see
+// modules/docs, modules/sheets, modules/media; those flows now take a
+// pasted Google Doc/Sheet ID instead of a "pick from Drive" dropdown), and
+// userinfo.email (Profile tab now just shows "Google account" instead of
+// the actual connected address).
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/documents',
-  // Full drive scope (not drive.file) — needed so Drive's files.list can see
-  // *any* of the user's spreadsheets/docs for the "pick a sheet" / "pick a
-  // doc" dropdowns (modules/sheets, modules/docs, via shared/googleDrive.js).
-  // drive.file only ever returns files this app itself created or that the
-  // user opened through a Picker, which is why those dropdowns used to come
-  // back with just zero/one file. drive.readonly alone would fix the listing
-  // but isn't enough for modules/docs' copyDoc() (Drive API file-copy) to
-  // create a copy of a doc this app didn't create, so this needs write
-  // access too. This is a restricted/sensitive scope — a production OAuth
-  // client needs Google's verification review to use it outside the ~100
-  // test-user cap.
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/forms.body',
+  'https://www.googleapis.com/auth/forms.responses.readonly',
 ].join(' ');
 
 // This ONE redirect_uri is shared by gmail, sheets, docs, and drive.file —
@@ -180,20 +185,12 @@ async function handleGoogleOAuthCallback(code, state) {
     throw new Error(tokenData.error_description || tokenData.error || 'Google token exchange failed');
   }
 
-  // Fetch which Google account this is so the Profile tab can show it
-  // (userinfo.email is already in GOOGLE_SCOPES). Non-fatal if it fails —
-  // the connection itself already succeeded above.
-  let account_email = null;
-  try {
-    const meRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
-    if (meRes.ok) account_email = (await meRes.json()).email || null;
-  } catch (err) {
-    console.error('[google-auth] failed to fetch userinfo (non-fatal):', err.message);
-  }
-
-  await saveGoogleTokens(userId, { ...tokenData, account_email });
+  // NOTE: we used to fetch the connected Google account's email here (via
+  // userinfo.email) so the Profile tab could show it. That scope isn't in
+  // the approved list (see GOOGLE_SCOPES above), so we no longer request it
+  // or call this endpoint — the token exchange above succeeds without it,
+  // we just don't learn *which* Google account was connected.
+  await saveGoogleTokens(userId, { ...tokenData, account_email: null });
   return { returnTo };
 }
 

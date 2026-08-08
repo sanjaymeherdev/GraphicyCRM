@@ -19,9 +19,10 @@ const PLATFORM_META = {
   instagram: { icon: '📷', label: 'Instagram' },
   threads: { icon: '🧵', label: 'Threads' },
   linkedin: { icon: '💼', label: 'LinkedIn' },
-  // One Google connection (shared/googleAuth.js) lights up Gmail, Sheets,
-  // Docs, and Drive together — see shared/googleAuth.js's GOOGLE_SCOPES.
-  google: { icon: '📧', label: 'Google (Gmail, Sheets, Docs, Drive)' },
+  // One Google connection (shared/googleAuth.js) lights up Gmail (send-only),
+  // Sheets, Docs, Calendar, and Forms together — see shared/googleAuth.js's
+  // GOOGLE_SCOPES. Drive is NOT included (unapproved scope — see that file).
+  google: { icon: '📧', label: 'Google (Gmail send, Sheets, Docs, Calendar, Forms)' },
 };
 
 // Returns one row per connected account, e.g.:
@@ -65,6 +66,9 @@ async function getConnectionsSummary(userId) {
   if (googleRes.data) {
     list.push({
       platform: 'google', ...PLATFORM_META.google,
+      // account_email is no longer fetched (userinfo.email isn't an
+      // approved scope — see shared/googleAuth.js), so this always falls
+      // back to the generic label now.
       account_name: googleRes.data.account_email || 'Google account',
       connected_at: googleRes.data.updated_at,
     });

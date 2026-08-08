@@ -5,15 +5,15 @@
 // src/routes/sheet-watchers.js.
 const fetch = require('node-fetch');
 const { getValidGoogleAccessToken } = require('../../shared/googleAuth');
-const { listDriveFiles } = require('../../shared/googleDrive');
 const { supabase } = require('../../shared/db');
 
 const valueRange = (worksheet, a1 = 'A1:ZZ5000') => `${worksheet}!${a1}`;
 
-/** Lists the user's Google Sheets (id, name, modifiedTime) for the "pick a spreadsheet" dropdown. */
-async function listSpreadsheets(userId) {
-  return listDriveFiles(userId, 'spreadsheet');
-}
+// listSpreadsheets() (a Drive files.list "pick your spreadsheet" dropdown)
+// was removed — it needed the `drive` scope, which isn't in this app's
+// approved OAuth scopes. Spreadsheets are now referenced by pasting a
+// spreadsheetId/URL directly; listTabs()/getHeaders() below still work
+// fine off a pasted ID since they only need the `spreadsheets` scope.
 
 /** Lists a spreadsheet's tabs (worksheet names) for the "pick a worksheet" dropdown. */
 async function listTabs(userId, spreadsheetId) {
@@ -265,6 +265,6 @@ async function sendForMatch(watcher, row) {
 
 module.exports = {
   getValues, getRows, updateRange, appendRows, getColumnName,
-  listSpreadsheets, listTabs, getHeaders,
+  listTabs, getHeaders,
   createWatcher, listWatchers, updateWatcher, deleteWatcher, pollWatchers, sendForMatch,
 };

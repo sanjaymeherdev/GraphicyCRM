@@ -5,17 +5,19 @@
 // clean implementation of the standard Docs API against that same token,
 // covering the operations a CRM's document-generation flows need (contract/
 // proposal docs, meeting notes, generated reports).
+//
+// ID-based linking only: the "documents" OAuth scope is enough to create,
+// read, and edit a doc once you already have its documentId, but listing
+// *which* docs the user has (for a "pick a doc" dropdown) or copying an
+// existing doc both require the Drive API, which needs the `drive` scope.
+// That scope isn't in this app's approved OAuth verification (see
+// shared/googleAuth.js's GOOGLE_SCOPES), so those two operations are gone —
+// callers now paste in a Google Doc's ID/URL directly instead of picking
+// one from a list.
 const fetch = require('node-fetch');
 const { getValidGoogleAccessToken } = require('../../shared/googleAuth');
-const { listDriveFiles } = require('../../shared/googleDrive');
 
 const DOCS_API = 'https://docs.googleapis.com/v1/documents';
-const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
-
-/** Lists the user's Google Docs (id, name, modifiedTime) — powers the AI bot's "knowledge doc" dropdown. */
-async function listDocs(userId) {
-  return listDriveFiles(userId, 'document');
-}
 
 async function apiFetch(url, accessToken, options = {}) {
   const res = await fetch(url, {
@@ -74,11 +76,12 @@ async function replaceText(userId, documentId, replacements) {
   return { success: true };
 }
 
-/** Copies an existing doc (e.g. a saved template) into a new one via the Drive API. */
-async function copyDoc(userId, documentId, newTitle) {
-  const accessToken = await getValidGoogleAccessToken(userId);
-  const copy = await apiFetch(`${DRIVE_API}/${documentId}/copy`, accessToken, { method: 'POST', body: JSON.stringify({ name: newTitle }) });
-  return { documentId: copy.id, url: `https://docs.google.com/document/d/${copy.id}/edit` };
-}
+// TODO(unapproved-scope): copyDoc() used to duplicate an existing doc (e.g.
+// a saved template) via the Drive API's files.copy — that needs the `drive`
+// (or at minimum `drive.file`) scope, which isn't approved. If we need
+// "copy a template doc" again, either request drive.file verification, or
+// reimplement as create-blank-doc + getDoc(source) + insert the same text/
+// structure via the Docs API alone (documents scope only — no Drive call).
+// Removed for now.
 
-module.exports = { createDoc, getDoc, appendText, replaceText, copyDoc, listDocs };
+module.exports = { createDoc, getDoc, appendText, replaceText };

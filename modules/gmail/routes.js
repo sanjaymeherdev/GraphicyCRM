@@ -14,19 +14,8 @@ router.post('/send', async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/messages', async (req, res) => {
-  try { res.json({ success: true, messages: await service.listMessages(req.user.id, { query: req.query.q, maxResults: Number(req.query.max) || 20 }) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/messages/:id', async (req, res) => {
-  try { res.json({ success: true, message: await service.getMessage(req.user.id, req.params.id) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/search', async (req, res) => {
-  try { res.json({ success: true, messages: await service.searchMessages(req.user.id, { query: req.query.q, maxResults: Number(req.query.max) || 10 }) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
+// GET /messages, /messages/:id, and /search were removed — they needed the
+// gmail.readonly scope, which isn't approved. See the TODO in
+// modules/gmail/service.js (lead-capture-from-mail).
 
 module.exports = router;

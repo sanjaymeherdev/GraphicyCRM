@@ -101,16 +101,10 @@ const Automation = {
       `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
     ).join('');
 
-    if (rule.action_config?.knowledge_doc?.docId !== undefined && !this._docsList.length && !this._loadingDocs) {
-      this.loadGoogleDocsList().then(() => this.renderEditor(id));
-    }
     if (rule.action_type === 'ai_reply' && !this._modelsList.length && !this._loadingModels) {
       this.loadModelsList().then(() => this.renderEditor(id));
     }
     const sheetLookup = rule.action_config?.sheet_lookup;
-    if (sheetLookup?.spreadsheetId !== undefined && !this._sheetsList.length && !this._loadingSheets) {
-      this.loadGoogleSheetsList().then(() => this.renderEditor(id));
-    }
     if (sheetLookup?.spreadsheetId && !this._tabsCache[sheetLookup.spreadsheetId] && !this._loadingTabs[sheetLookup.spreadsheetId]) {
       this.loadTabsFor(sheetLookup.spreadsheetId).then(() => this.renderEditor(id));
     }
@@ -220,12 +214,10 @@ const Automation = {
             return `
             <div class="field-row">
               <div class="field">
-                <label>Spreadsheet</label>
-                <select onchange="Automation.onSheetLookupSpreadsheetChange('${rule.id}', this.value)">
-                  <option value="">${this._loadingSheets ? 'Loading your Google Sheets…' : '— Select a spreadsheet —'}</option>
-                  ${this._sheetsList.map((s) => `<option value="${s.id}" ${s.id === sl.spreadsheetId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
-                  ${sl.spreadsheetId && !this._sheetsList.some((s) => s.id === sl.spreadsheetId) ? `<option value="${escapeHtml(sl.spreadsheetId)}" selected>${escapeHtml(sl.spreadsheetId)} (not found — check Google connection)</option>` : ''}
-                </select>
+                <label>Spreadsheet ID</label>
+                <input type="text" placeholder="Paste the spreadsheet ID (from its Google Sheets URL)" value="${escapeHtml(sl.spreadsheetId)}"
+                  onchange="Automation.onSheetLookupSpreadsheetChange('${rule.id}', this.value.trim())" />
+                <div class="block-sub">Open the sheet in Google Sheets and copy the ID out of its URL: docs.google.com/spreadsheets/d/<code>THIS_PART</code>/edit</div>
               </div>
               <div class="field">
                 <label>Worksheet (tab name)</label>
@@ -265,12 +257,10 @@ const Automation = {
             ${rule.action_config?.knowledge_doc?.docId !== undefined ? `
               <div class="field-row">
                 <div class="field">
-                  <label>Google Doc</label>
-                  <select onchange="Automation.onKnowledgeDocChange('${rule.id}', this.value)">
-                    <option value="">${this._loadingDocs ? 'Loading your Google Docs…' : '— Select a doc —'}</option>
-                    ${this._docsList.map((doc) => `<option value="${doc.id}" ${doc.id === rule.action_config?.knowledge_doc?.docId ? 'selected' : ''}>${escapeHtml(doc.name)}</option>`).join('')}
-                    ${rule.action_config?.knowledge_doc?.docId && !this._docsList.some((doc) => doc.id === rule.action_config.knowledge_doc.docId) ? `<option value="${escapeHtml(rule.action_config.knowledge_doc.docId)}" selected>${escapeHtml(rule.action_config.knowledge_doc.docName || rule.action_config.knowledge_doc.docId)} (not found — check Google connection)</option>` : ''}
-                  </select>
+                  <label>Google Doc ID</label>
+                  <input type="text" placeholder="Paste the document ID (from its Google Docs URL)" value="${escapeHtml(rule.action_config?.knowledge_doc?.docId || '')}"
+                    onchange="Automation.onKnowledgeDocChange('${rule.id}', this.value.trim())" />
+                  <div class="block-sub">Open the doc in Google Docs and copy the ID out of its URL: docs.google.com/document/d/<code>THIS_PART</code>/edit</div>
                 </div>
               </div>
               <div class="block-sub" style="margin:2px 0 10px;">Fetched text is cached for 5 minutes and capped at 8,000 characters so the AI prompt stays bounded.</div>
@@ -479,33 +469,17 @@ const Automation = {
     } else {
       rule.action_config.sheet_lookup = { spreadsheetId: '', worksheet: '', lookupColumn: '', returnColumn: '', matchType: 'contains' };
       this.renderEditor(ruleId);
-      this.loadGoogleSheetsList().then(() => this.renderEditor(ruleId));
     }
   },
 
-  // Sheet lookup dropdown pickers — spreadsheet/tabs/headers, fetched from
-  // Google via the same /api/sheets endpoints (and same caches-by-id shape)
-  // as the Sheet→Leads watcher picker in sources.js, so a spreadsheet's tabs
-  // or a worksheet's headers only ever get fetched once per id.
-  _sheetsList: [],
-  _loadingSheets: false,
+  // Sheet lookup pickers — tabs/headers fetched from Google via /api/sheets
+  // once the user has pasted in a spreadsheet ID directly (there's no more
+  // "pick your spreadsheet from a list" dropdown — that needed the `drive`
+  // scope, which isn't approved; see shared/googleAuth.js).
   _tabsCache: {},    // spreadsheetId -> string[]
   _loadingTabs: {},  // spreadsheetId -> bool
   _headersCache: {},   // "spreadsheetId::worksheet" -> string[]
   _loadingHeaders: {}, // "spreadsheetId::worksheet" -> bool
-
-  async loadGoogleSheetsList() {
-    if (this._sheetsList.length || this._loadingSheets) return;
-    this._loadingSheets = true;
-    try {
-      const data = await API.listGoogleSheets();
-      this._sheetsList = data.spreadsheets || [];
-    } catch (err) {
-      showToast('Failed to load your Google Sheets: ' + err.message, true);
-    } finally {
-      this._loadingSheets = false;
-    }
-  },
 
   async loadTabsFor(spreadsheetId) {
     if (!spreadsheetId || this._tabsCache[spreadsheetId] || this._loadingTabs[spreadsheetId]) return;
@@ -572,34 +546,17 @@ const Automation = {
     } else {
       rule.action_config.knowledge_doc = { docId: '', docName: '' };
       this.renderEditor(ruleId);
-      this.loadGoogleDocsList().then(() => this.renderEditor(ruleId));
     }
   },
 
-  // Google Docs dropdown (AI bot "knowledge doc" picker) — fetched once via
-  // Drive API and cached; picking one auto-fills docName from the doc's
-  // actual title instead of the user typing both an ID and a label.
-  _docsList: [],
-  _loadingDocs: false,
-  async loadGoogleDocsList() {
-    if (this._docsList.length || this._loadingDocs) return;
-    this._loadingDocs = true;
-    try {
-      const data = await API.listGoogleDocs();
-      this._docsList = data.docs || [];
-    } catch (err) {
-      showToast('Failed to load your Google Docs: ' + err.message, true);
-    } finally {
-      this._loadingDocs = false;
-    }
-  },
-
+  // No more "pick from your Google Docs" list — that needed the `drive`
+  // scope, which isn't approved (see shared/googleAuth.js). The doc is now
+  // referenced purely by the pasted documentId.
   onKnowledgeDocChange(ruleId, docId) {
     const rule = this._rules.find(r => r.id === ruleId);
     if (!rule) return;
-    const doc = this._docsList.find((d) => d.id === docId);
     rule.action_config = rule.action_config || {};
-    rule.action_config.knowledge_doc = { docId, docName: doc?.name || '' };
+    rule.action_config.knowledge_doc = { docId, docName: '' };
     this.renderEditor(ruleId);
   },
 
