@@ -22,6 +22,7 @@ const frontendAdapters = require('./shared/frontendAdapters');
 const { supabase } = require('./shared/db');
 const { resolveFirstUserId } = require('./shared/clientContext');
 const sheetsService = require('./modules/sheets/service');
+const mailCaptureService = require('./modules/mail-capture/service');
 const scheduleService = require('./modules/schedule/service');
 const followupService = require('./modules/followup/service');
 const insightsService = require('./modules/insights/service');
@@ -64,6 +65,7 @@ app.use('/api/instagram', require('./modules/instagram/routes'));
 app.use('/api/threads', require('./modules/threads/routes'));
 app.use('/api/linkedin', require('./modules/linkedin/routes'));
 app.use('/api/gmail', require('./modules/gmail/routes'));
+app.use('/api/mail-capture', require('./modules/mail-capture/routes'));
 app.use('/api/sheets', require('./modules/sheets/routes'));
 app.use('/api/docs', require('./modules/docs/routes'));
 app.use('/api/ai-bot', require('./modules/ai-bot/routes'));
@@ -145,6 +147,16 @@ setInterval(() => {
   sheetsService.pollWatchers((watcher, row) => sheetsService.sendForMatch(watcher, row))
     .catch((err) => console.error('[sheets] poll tick failed:', err.message));
 }, SHEET_POLL_MS);
+
+// Polls each connected user's deployed Apps Script (see modules/mail-capture)
+// for new Gmail messages matching their from/keyword rules — a workaround
+// for gmail.readonly not being an approved OAuth scope (see
+// shared/googleAuth.js's GOOGLE_SCOPES).
+const MAIL_CAPTURE_POLL_MS = 60 * 1000;
+setInterval(() => {
+  mailCaptureService.pollAll((watcher, msg) => mailCaptureService.captureMatch(watcher, msg))
+    .catch((err) => console.error('[mail-capture] poll tick failed:', err.message));
+}, MAIL_CAPTURE_POLL_MS);
 
 const SCHEDULE_POLL_MS = 60 * 1000;
 setInterval(() => {

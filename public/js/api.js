@@ -366,6 +366,28 @@ const API = (() => {
     return await get(`/api/sheets/${encodeURIComponent(spreadsheetId)}/${encodeURIComponent(worksheet)}/rows`);
   }
 
+  // ─── MAIL CAPTURE (Sources → Capture Mail, Apps-Script-based Gmail
+  // polling — see modules/mail-capture) ───
+  async function getMailCaptureScript() {
+    return await get('/api/mail-capture/script');
+  }
+
+  async function getMailCaptureConfig() {
+    return await get('/api/mail-capture');
+  }
+
+  async function saveMailCaptureConfig(data) {
+    return await post('/api/mail-capture', data);
+  }
+
+  async function deleteMailCaptureConfig() {
+    return await del('/api/mail-capture');
+  }
+
+  async function testMailCaptureNow() {
+    return await post('/api/mail-capture/poll-now');
+  }
+
   // ─── DROPDOWN PICKERS (Google Sheets tabs/headers — spreadsheet itself is
   // now referenced by a pasted ID, not a Drive-backed list; see
   // shared/googleAuth.js's GOOGLE_SCOPES for why) ───
@@ -539,6 +561,11 @@ const API = (() => {
     getSheetRows,
     listSheetTabs,
     listSheetHeaders,
+    getMailCaptureScript,
+    getMailCaptureConfig,
+    saveMailCaptureConfig,
+    deleteMailCaptureConfig,
+    testMailCaptureNow,
     getAvailableModels,
     getChatbotRules,
     createChatbotRule,

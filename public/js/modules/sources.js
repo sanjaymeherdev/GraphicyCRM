@@ -111,6 +111,11 @@ const Sources = {
           ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
         </div>
         <div class="conn-card">
+          <div class="m-head"><span class="badge-ic">📥</span><h3>Capture Mail</h3></div>
+          <p class="m-desc">New leads from incoming Gmail — via a small script you deploy in your own Google account (Gmail read access isn't part of this app's Google connection; see setup steps)</p>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="Sources.toggleMailCapturePanel()">Set up Capture Mail</button>
+        </div>
+        <div class="conn-card">
           <div class="m-head"><span class="badge-ic">📄</span><h3>Google Docs</h3></div>
           <p class="m-desc">Same Google connection as Gmail/Sheets above — connecting or disconnecting any one of these three connects/disconnects all of them together. Used as an info source for the AI bot (Automation → Advanced grounding → Knowledge doc).</p>
           ${this.connectButton('google', 'Connect with Google', 'Sources.connectGoogle()')}
@@ -133,6 +138,7 @@ const Sources = {
         </div>
       </div>
       <div id="sheetWatcherPanel" style="display:none;margin-top:20px;"></div>
+      <div id="mailCapturePanel" style="display:none;margin-top:20px;"></div>
     `;
   },
 
@@ -596,6 +602,182 @@ const Sources = {
       await this.loadWatchers();
     } catch (err) {
       showToast('Failed: ' + err.message, true);
+    }
+  },
+
+  // ─── CAPTURE MAIL ───
+  // Works around Gmail read access not being part of this app's approved
+  // Google OAuth scopes (see shared/googleAuth.js's GOOGLE_SCOPES —
+  // gmail.readonly isn't approved) by having the user deploy a small script
+  // under their OWN Google account instead (Google Apps Script), which gets
+  // its own separate per-user consent. Our server just polls the URL they
+  // deploy. See modules/mail-capture for the backend half of this.
+  _mailConfig: null,       // null = not connected yet
+  _mailScriptData: null,   // { secret, script } — fetched once, reused across re-renders until saved
+  _mailDraft: null,        // form state while setting up / editing
+
+  async toggleMailCapturePanel() {
+    const panel = document.getElementById('mailCapturePanel');
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) await this.loadMailCapture();
+  },
+
+  async loadMailCapture() {
+    const panel = document.getElementById('mailCapturePanel');
+    panel.innerHTML = `<div class="empty-state"><p>Loading…</p></div>`;
+    try {
+      this._mailConfig = await API.getMailCaptureConfig();
+    } catch (err) {
+      this._mailConfig = null;
+      showToast('Failed to load Capture Mail status: ' + err.message, true);
+    }
+    if (!this._mailConfig && !this._mailScriptData) {
+      try {
+        this._mailScriptData = await API.getMailCaptureScript();
+      } catch (err) {
+        showToast('Failed to generate setup script: ' + err.message, true);
+      }
+    }
+    if (!this._mailDraft) {
+      this._mailDraft = this._mailConfig
+        ? { scriptUrl: this._mailConfig.script_url, fromFilter: this._mailConfig.from_filter || '', keywordFilter: this._mailConfig.keyword_filter || '', pollIntervalMinutes: this._mailConfig.poll_interval_minutes || 5, active: this._mailConfig.active !== false }
+        : { scriptUrl: '', fromFilter: '', keywordFilter: '', pollIntervalMinutes: 5, active: true };
+    }
+    this.renderMailCapturePanel();
+  },
+
+  updateMailDraft(field, value) {
+    if (this._mailDraft) this._mailDraft[field] = value;
+  },
+
+  async copyMailScript() {
+    if (!this._mailScriptData) return;
+    try {
+      await navigator.clipboard.writeText(this._mailScriptData.script);
+      showToast('Script copied');
+    } catch {
+      showToast('Copy failed — select the code and copy manually', true);
+    }
+  },
+
+  renderMailCapturePanel() {
+    const panel = document.getElementById('mailCapturePanel');
+    const d = this._mailDraft;
+    const connected = !!this._mailConfig;
+
+    const setupSteps = this._mailScriptData ? `
+      <div class="block-sub" style="margin-bottom:10px;">
+        This runs a script under <strong>your own Google account</strong> (not this app's Google connection) so the CRM can read matching emails without needing broader Gmail access approved on our end.
+      </div>
+      <ol style="margin:0 0 14px 18px;padding:0;line-height:1.7;">
+        <li>Open <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <strong>New project</strong>.</li>
+        <li>Delete the placeholder code and paste in the script below.</li>
+        <li><strong>Deploy → New deployment</strong> → click the gear icon next to "Select type" → choose <strong>Web app</strong>.</li>
+        <li>Execute as: <strong>Me</strong>. Who has access: <strong>Anyone</strong>. Click <strong>Deploy</strong>.</li>
+        <li>Google will ask you to authorize it — this is normal for your own script. Choose your account → <strong>Advanced</strong> → <strong>Go to (unsafe)</strong> → <strong>Allow</strong>.</li>
+        <li>Copy the <strong>Web app URL</strong> it gives you and paste it below.</li>
+      </ol>
+      <div class="field">
+        <label>Apps Script code — paste this into script.google.com</label>
+        <textarea readonly rows="10" style="font-family:monospace;font-size:12px;" onclick="this.select()">${escapeHtml(this._mailScriptData.script)}</textarea>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="Sources.copyMailScript()">📋 Copy code</button>
+      </div>
+    ` : `<div class="block-sub">Failed to generate the setup script — try reopening this panel.</div>`;
+
+    panel.innerHTML = `
+      <div class="page-header">
+        <div><div class="page-title" style="font-size:16px;">Capture Mail</div><div class="page-sub">${connected ? 'Connected — new matching emails become leads' : 'Not connected yet'}</div></div>
+      </div>
+      <div class="chain">
+        <div class="block block-trigger">
+          ${connected ? '' : setupSteps}
+          <div class="field">
+            <label>Web app URL${connected ? '' : ' (from step 6 above)'}</label>
+            <input type="text" placeholder="https://script.google.com/macros/s/…/exec" value="${escapeHtml(d.scriptUrl)}"
+              onchange="Sources.updateMailDraft('scriptUrl', this.value.trim())" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Only from (optional)</label>
+              <input type="text" placeholder="e.g. orders@shopify.com" value="${escapeHtml(d.fromFilter)}"
+                onchange="Sources.updateMailDraft('fromFilter', this.value.trim())" />
+            </div>
+            <div class="field">
+              <label>Only containing keyword (optional)</label>
+              <input type="text" placeholder="e.g. new order" value="${escapeHtml(d.keywordFilter)}"
+                onchange="Sources.updateMailDraft('keywordFilter', this.value.trim())" />
+            </div>
+          </div>
+          <div class="block-sub" style="margin:2px 0 10px;">Leave both blank to capture every incoming email. Set both to require a match on each.</div>
+          <div class="field">
+            <label>Check every</label>
+            <select onchange="Sources.updateMailDraft('pollIntervalMinutes', Number(this.value))">
+              ${[5, 10, 15, 30, 60].map((m) => `<option value="${m}" ${d.pollIntervalMinutes === m ? 'selected' : ''}>${m} minutes</option>`).join('')}
+            </select>
+          </div>
+          ${connected ? `
+            <div class="field">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <span class="switch ${d.active ? 'on' : ''}" onclick="Sources.updateMailDraft('active', ${!d.active}); Sources.renderMailCapturePanel();"></span>
+                Active
+              </label>
+            </div>
+          ` : ''}
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-primary" onclick="Sources.saveMailCapture()">${connected ? 'Save changes' : 'Connect'}</button>
+            ${connected ? `
+              <button class="btn btn-secondary" onclick="Sources.testMailCapture()">Check now</button>
+              <button class="btn btn-danger" onclick="Sources.disconnectMailCapture()">Disconnect</button>
+            ` : ''}
+          </div>
+          ${connected && this._mailConfig.last_error ? `<div class="block-sub" style="color:#e5484d;margin-top:8px;">⚠ Last check failed: ${escapeHtml(this._mailConfig.last_error)}</div>` : ''}
+          ${connected && this._mailConfig.last_polled_at ? `<div class="block-sub" style="margin-top:4px;">Last checked: ${new Date(this._mailConfig.last_polled_at).toLocaleString()}</div>` : ''}
+        </div>
+      </div>
+    `;
+  },
+
+  async saveMailCapture() {
+    const d = this._mailDraft;
+    if (!d.scriptUrl) return showToast('Paste the deployed Web app URL first', true);
+    if (!this._mailConfig && !this._mailScriptData) return showToast('Setup script not loaded — reopen this panel and try again', true);
+    try {
+      this._mailConfig = await API.saveMailCaptureConfig({
+        scriptUrl: d.scriptUrl,
+        secret: this._mailConfig ? undefined : this._mailScriptData.secret, // only sent on first connect — see modules/mail-capture/service.js's saveConfig
+        fromFilter: d.fromFilter, keywordFilter: d.keywordFilter,
+        pollIntervalMinutes: d.pollIntervalMinutes, active: d.active,
+      });
+      showToast('Capture Mail connected');
+      this.renderMailCapturePanel();
+    } catch (err) {
+      showToast('Failed to save: ' + err.message, true);
+    }
+  },
+
+  async testMailCapture() {
+    try {
+      await API.testMailCaptureNow();
+      showToast('Checked — any matching new emails were added as leads');
+      this._mailConfig = await API.getMailCaptureConfig();
+      this.renderMailCapturePanel();
+    } catch (err) {
+      showToast('Check failed: ' + err.message, true);
+    }
+  },
+
+  async disconnectMailCapture() {
+    if (!confirm('Disconnect Capture Mail? You can reconnect later, but you\'ll need to paste the Web app URL again.')) return;
+    try {
+      await API.deleteMailCaptureConfig();
+      this._mailConfig = null;
+      this._mailScriptData = null;
+      this._mailDraft = null;
+      showToast('Disconnected');
+      await this.loadMailCapture();
+    } catch (err) {
+      showToast('Failed to disconnect: ' + err.message, true);
     }
   },
 };
