@@ -489,6 +489,48 @@ const API = (() => {
     return await post(`/api/schedule/posts/${id}/publish`);
   }
 
+  // Uploads a file to the shared owner Google Drive (see modules/media) and
+  // returns { google_drive_file_id, filename, media_url } — media_url is a
+  // signed, long-lived proxy link Meta/LinkedIn can fetch directly. Can't
+  // reuse request()/post() above: those always JSON.stringify the body and
+  // force Content-Type: application/json, which breaks a multipart upload.
+  // The browser needs to set Content-Type itself (with the multipart
+  // boundary) when the body is a FormData, so only Authorization/client
+  // headers are sent explicitly here.
+  async function uploadMedia(file, onProgress) {
+    const form = new FormData();
+    form.append('file', file);
+
+    const headers = {};
+    if (_token) headers['Authorization'] = `Bearer ${_token}`;
+    if (_clientId) headers['X-Client-ID'] = _clientId;
+
+    // Plain fetch has no upload-progress event, so use XHR when the caller
+    // wants progress callbacks (e.g. a progress bar for large video files);
+    // fall back to fetch otherwise for simplicity.
+    if (typeof onProgress === 'function') {
+      return await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/media/upload');
+        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+        xhr.onload = () => {
+          let data = {};
+          try { data = JSON.parse(xhr.responseText || '{}'); } catch { /* non-JSON error body */ }
+          if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+          else reject(new Error(data.error || `Upload failed (${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error('Upload failed — network error'));
+        xhr.send(form);
+      });
+    }
+
+    const res = await fetch('/api/media/upload', { method: 'POST', headers, body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+    return data;
+  }
+
   // ─── INSIGHTS ───
   async function getAccountInsights(platform, fresh) {
     return await get(`/api/insights/account?platform=${platform}${fresh ? '&fresh=1' : ''}`);
@@ -598,6 +640,7 @@ const API = (() => {
     updateScheduledPost,
     deleteScheduledPost,
     publishPostNow,
+    uploadMedia,
 
     // Insights
     getAccountInsights,

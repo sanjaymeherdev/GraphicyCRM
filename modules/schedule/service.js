@@ -7,8 +7,6 @@ const PLATFORM_SERVICES = {
   facebook: () => require('../facebook/service'),
   instagram: () => require('../instagram/service'),
   threads: () => require('../threads/service'),
-  // LinkedIn is caption-only (see crm_scheduled_posts.media_url comment in
-  // migrations/schema_full.sql) — publishPost below ignores media_url for it.
   linkedin: () => require('../linkedin/service'),
 };
 

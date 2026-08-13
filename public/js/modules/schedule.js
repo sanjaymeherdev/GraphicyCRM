@@ -104,7 +104,7 @@ const Schedule = {
 
   openComposer(post) {
     const isEdit = !!post;
-    const p = post || { id: null, title: '', caption: '', hook: '', platforms: [], media_url: '', scheduled_date: null, status: 'draft' };
+    const p = post || { id: null, title: '', caption: '', hook: '', platforms: [], media_url: '', google_drive_file_id: '', scheduled_date: null, status: 'draft' };
     const dt = p.scheduled_date ? new Date(p.scheduled_date) : null;
     const dateVal = dt ? dt.toISOString().slice(0, 10) : '';
     const timeVal = dt ? dt.toTimeString().slice(0, 5) : '';
@@ -134,8 +134,17 @@ const Schedule = {
         <textarea id="postCaption" rows="4" placeholder="Write your post…">${escapeHtml(p.caption || '')}</textarea>
       </div>
       <div class="field">
-        <label>Media URL <span style="color:var(--text3);font-weight:400;">(image/video — ignored for LinkedIn, text-only there)</span></label>
-        <input type="text" id="postMediaUrl" value="${escapeHtml(p.media_url || '')}" placeholder="https://…" />
+        <label>Media <span style="color:var(--text3);font-weight:400;">(image/video — ignored for LinkedIn text-only posts, supported with media)</span></label>
+        <div class="media-upload-row" style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="postMediaUrl" value="${escapeHtml(p.media_url || '')}" placeholder="https://… or upload a file" style="flex:1;" oninput="Schedule.clearUploadedFileId()" />
+          <label class="btn btn-secondary btn-xs" style="cursor:pointer;white-space:nowrap;margin:0;">
+            <i class="fas fa-cloud-arrow-up"></i> Upload
+            <input type="file" id="postMediaFile" accept="image/*,video/*" style="display:none;" onchange="Schedule.handleFileUpload(this)" />
+          </label>
+        </div>
+        <input type="hidden" id="postDriveFileId" value="${escapeHtml(p.google_drive_file_id || '')}" />
+        <div id="postUploadStatus" style="font-size:11.5px;color:var(--text2);margin-top:6px;"></div>
+        <div id="postMediaPreview">${p.media_url ? `<img src="${escapeHtml(p.media_url)}" alt="" style="max-height:120px;border-radius:6px;margin-top:6px;" onerror="this.style.display='none'" />` : ''}</div>
       </div>
       <div class="field-row">
         <div class="field">
@@ -157,11 +166,61 @@ const Schedule = {
     input.closest('.platform-check').classList.toggle('checked', input.checked);
   },
 
+  // Fires on file select in the composer's "Upload" button — uploads
+  // straight to the shared owner Google Drive via POST /api/media/upload
+  // (see modules/media/routes.js) and fills in the Media URL field with the
+  // signed proxy link that comes back, so the rest of the form (and
+  // publishPost on every platform) doesn't need to know the file came from
+  // an upload rather than a pasted URL.
+  async handleFileUpload(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const status = document.getElementById('postUploadStatus');
+    const urlField = document.getElementById('postMediaUrl');
+    const driveIdField = document.getElementById('postDriveFileId');
+    const preview = document.getElementById('postMediaPreview');
+
+    status.textContent = `Uploading ${file.name}… 0%`;
+    input.disabled = true;
+
+    try {
+      const result = await API.uploadMedia(file, (pct) => {
+        status.textContent = `Uploading ${file.name}… ${Math.round(pct * 100)}%`;
+      });
+      urlField.value = result.media_url || '';
+      driveIdField.value = result.google_drive_file_id || '';
+      status.textContent = `✅ Uploaded ${result.filename || file.name}`;
+      if (preview) {
+        preview.innerHTML = result.media_url
+          ? `<img src="${escapeHtml(result.media_url)}" alt="" style="max-height:120px;border-radius:6px;margin-top:6px;" onerror="this.style.display='none'" />`
+          : '';
+      }
+    } catch (err) {
+      status.textContent = '';
+      showToast('Upload failed: ' + err.message, true);
+    } finally {
+      input.disabled = false;
+      input.value = ''; // allow re-selecting the same file later
+    }
+  },
+
+  // A previously-uploaded file's Drive id is only valid for whatever URL is
+  // currently in the Media URL field — if the person hand-edits that field
+  // after uploading, the stale google_drive_file_id must be cleared so we
+  // don't save a post whose media_url and google_drive_file_id point at two
+  // different files.
+  clearUploadedFileId() {
+    const driveIdField = document.getElementById('postDriveFileId');
+    if (driveIdField) driveIdField.value = '';
+  },
+
   async savePost(id) {
     const title = document.getElementById('postTitle').value.trim();
     const hook = document.getElementById('postHook').value.trim();
     const caption = document.getElementById('postCaption').value.trim();
     const media_url = document.getElementById('postMediaUrl').value.trim();
+    const google_drive_file_id = document.getElementById('postDriveFileId').value.trim() || null;
     const date = document.getElementById('postDate').value;
     const time = document.getElementById('postTime').value;
     const platforms = Array.from(document.querySelectorAll('.platform-check input:checked')).map(el => el.value);
@@ -171,7 +230,7 @@ const Schedule = {
 
     const scheduled_date = (date && time) ? new Date(`${date}T${time}:00`).toISOString() : null;
     const status = scheduled_date ? 'scheduled' : 'draft';
-    const payload = { title, hook, caption, media_url, platforms, scheduled_date, status };
+    const payload = { title, hook, caption, media_url, google_drive_file_id, platforms, scheduled_date, status };
 
     try {
       if (id) {

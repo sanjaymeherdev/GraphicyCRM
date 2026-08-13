@@ -524,7 +524,7 @@ create table if not exists crm_scheduled_posts (
   caption text not null default '',
   hook text,                           -- optional opening line/hook, kept separate for A/B swapping before publish
   platforms text[] not null default '{}' check (platforms <@ array['facebook','instagram','threads','linkedin']),
-  media_url text,                      -- LinkedIn is text-only (see modules/linkedin note below) — ignored for that platform
+  media_url text,                      -- image/video URL; modules/linkedin uploads this to LinkedIn's Assets API before posting
   google_drive_file_id text,           -- optional source asset in Drive (modules/docs' shared Google token covers Drive scope too)
   scheduled_date timestamptz,          -- null = draft, not yet scheduled
   status text not null default 'draft' check (status in ('draft','scheduled','published','partial','failed')),
