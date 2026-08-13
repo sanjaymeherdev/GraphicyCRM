@@ -8,7 +8,7 @@ const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
   exchangeThreadsCode, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
-const { resolveClientId, findOrCreateLead, recordMessage } = require('../../shared/crmMessages');
+const { resolveClientId, findOrCreateLead, recordMessage, messageExists } = require('../../shared/crmMessages');
 
 function disconnect(userId) { return disconnectConnection(userId, 'threads'); }
 
@@ -148,6 +148,17 @@ async function handleReplyEvent({ accountId, replyId, text }) {
   const conn = await resolveByAccountId('threads', accountId);
   if (!conn) return console.warn(`[threads] reply on unknown account ${accountId} — is that account connected here?`);
   const clientId = await resolveClientId(conn.user_id);
+
+  // Idempotency guard. Threads redelivers events, and — critically — the
+  // bot's own auto-reply comes back around as a "new" inbound reply event
+  // on the same thread. Without this check that echo re-enters this
+  // function, gets recorded as another inbound message, matches the same
+  // automation rule again, and posts another reply — which triggers
+  // another webhook. That loop is what produces dozens of near-identical
+  // webhook deliveries a minute. Bail out immediately if we've already
+  // recorded a message (inbound OR outbound) with this exact external id.
+  if (await messageExists(clientId, 'threads', replyId)) return;
+
   const leadId = await findOrCreateLead(clientId, 'threads', { externalId: replyId });
   await recordMessage(clientId, leadId, { channel: 'threads', direction: 'in', messageType: 'comment', body: text, externalId: replyId });
 

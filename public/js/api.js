@@ -17,24 +17,31 @@ const API = (() => {
 	  const opts = { method, headers: getHeaders() };
 	  if (body) opts.body = JSON.stringify(body);
 
+	  // Use relative URL - no need for origin
+	  let res;
 	  try {
-		// Use relative URL - no need for origin
-		const res = await fetch(endpoint, opts);
-		
-		// Only redirect on 401 if we have a token
-		if (res.status === 401) {
-		  // logout();
-		  throw new Error('Session expired');
-		}
-		
-		const data = await res.json().catch(() => ({}));
-		if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-		return data;
+		res = await fetch(endpoint, opts);
 	  } catch (err) {
-		console.warn(`API Error [${endpoint}]:`, err);
-		// Return mock data as fallback
+		// The fetch itself failed — no backend reachable at all (offline,
+		// running the frontend standalone against no server, etc). That's
+		// the only case mock data should stand in for the real thing.
+		console.warn(`API network error [${endpoint}]:`, err);
 		return getMockData(endpoint);
 	  }
+
+	  // Past this point we got a real response from a real backend — never
+	  // paper over it with mock data. Doing so previously meant a failed
+	  // send (bad auth, a rejected reply, a Meta API error, etc.) came back
+	  // as an unrelated mock payload with no thrown error, so the UI showed
+	  // a false "success" toast while nothing was actually sent.
+	  if (res.status === 401) {
+		// logout();
+		throw new Error('Session expired');
+	  }
+
+	  const data = await res.json().catch(() => ({}));
+	  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+	  return data;
 	}
 
   function get(endpoint) { return request(endpoint, 'GET'); }

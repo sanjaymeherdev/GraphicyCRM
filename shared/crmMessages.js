@@ -137,6 +137,26 @@ async function findOrCreateLead(clientId, source, { phone = null, externalId = n
   return data.id;
 }
 
+/**
+ * True if a message with this external_id has already been recorded for
+ * this channel — regardless of direction. Used by inbound webhook handlers
+ * to make delivery idempotent: Meta (and Threads in particular) can and
+ * will redeliver the same event, and a bot's own outbound reply can come
+ * back around as a *new* inbound webhook event (the platform reports it as
+ * a fresh reply on the thread). Without this check, a redelivered/echoed
+ * event gets recorded as a brand new message every time and, worse, can
+ * re-trigger auto-reply automations — which post another reply, which
+ * generates another webhook event, forming a runaway loop.
+ */
+async function messageExists(clientId, channel, externalId) {
+  if (!externalId) return false;
+  const { data, error } = await supabase.from('crm_messages')
+    .select('id').eq('client_id', clientId).eq('channel', channel).eq('external_id', externalId)
+    .limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
 async function recordMessage(clientId, leadId, { channel, direction, messageType = 'text', body, externalId, status, sentBy }) {
   const { error } = await supabase.from('crm_messages').insert({
     client_id: clientId, lead_id: leadId, channel, direction,
@@ -150,4 +170,4 @@ async function recordMessage(clientId, leadId, { channel, direction, messageType
   }).eq('id', leadId);
 }
 
-module.exports = { resolveClientId, findOrCreateLead, recordMessage };
+module.exports = { resolveClientId, findOrCreateLead, recordMessage, messageExists };
