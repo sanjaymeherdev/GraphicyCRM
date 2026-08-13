@@ -148,13 +148,32 @@ async function findOrCreateLead(clientId, source, { phone = null, externalId = n
  * re-trigger auto-reply automations — which post another reply, which
  * generates another webhook event, forming a runaway loop.
  */
-async function messageExists(clientId, channel, externalId) {
+async function messageExists(clientId, channel, externalId, direction = null) {
   if (!externalId) return false;
-  const { data, error } = await supabase.from('crm_messages')
-    .select('id').eq('client_id', clientId).eq('channel', channel).eq('external_id', externalId)
-    .limit(1).maybeSingle();
+  let query = supabase.from('crm_messages')
+    .select('id').eq('client_id', clientId).eq('channel', channel).eq('external_id', externalId);
+  if (direction) query = query.eq('direction', direction);
+  const { data, error } = await query.limit(1).maybeSingle();
   if (error) throw new Error(error.message);
   return !!data;
+}
+
+/**
+ * True if externalId belongs to a reply the connected account itself sent
+ * (manual send or auto-reply) rather than something a real visitor posted.
+ *
+ * Instagram/Facebook detect this by comparing the webhook event's sender id
+ * against the connected account's own id (see modules/instagram/service.js
+ * and modules/facebook/service.js's `senderId === accountId` guards) —
+ * Threads' webhook payload carries no such sender id to compare at all. The
+ * next best signal: the moment we post a reply (see
+ * modules/threads/service.js's replyToThread call sites), it's recorded
+ * here as an outbound crm_messages row tagged with Threads' own id for that
+ * reply. When Threads reports that exact reply back as a "new" event on the
+ * thread — which it does — its id matches that stored external_id exactly.
+ */
+function isOwnOutboundReply(clientId, channel, externalId) {
+  return messageExists(clientId, channel, externalId, 'out');
 }
 
 async function recordMessage(clientId, leadId, { channel, direction, messageType = 'text', body, externalId, status, sentBy }) {
@@ -170,4 +189,4 @@ async function recordMessage(clientId, leadId, { channel, direction, messageType
   }).eq('id', leadId);
 }
 
-module.exports = { resolveClientId, findOrCreateLead, recordMessage, messageExists };
+module.exports = { resolveClientId, findOrCreateLead, recordMessage, messageExists, isOwnOutboundReply };

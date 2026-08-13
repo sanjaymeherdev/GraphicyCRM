@@ -8,7 +8,7 @@ const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
   exchangeThreadsCode, APP_BASE_URL, disconnectConnection,
 } = require('../../shared/metaConnections');
-const { resolveClientId, findOrCreateLead, recordMessage, messageExists } = require('../../shared/crmMessages');
+const { resolveClientId, findOrCreateLead, recordMessage, messageExists, isOwnOutboundReply } = require('../../shared/crmMessages');
 
 function disconnect(userId) { return disconnectConnection(userId, 'threads'); }
 
@@ -81,6 +81,23 @@ async function listRecentComments(userId, limit = 10) {
   return results.filter(Boolean);
 }
 
+// Threads' webhook payload carries no sender id (see handleReplyEvent's
+// identity comment) — only the reply's own id. Fetching the reply object
+// on read (fields=username) is the one place that id becomes a person: the
+// same GET Meta's own docs point to for attributing a reply, same shape as
+// the username field already used above in listRecentComments. Returns
+// null (rather than throwing) on any failure so a lookup hiccup degrades
+// to "treat as a new person" instead of dropping the message entirely.
+async function getReplyAuthorUsername(accessToken, replyId) {
+  try {
+    const res = await axios.get(`${BASE}/${replyId}`, { params: { fields: 'username', access_token: accessToken } });
+    return res.data?.username || null;
+  } catch (err) {
+    console.warn('[threads] failed to look up reply author:', err.response?.data?.error?.message || err.message);
+    return null;
+  }
+}
+
 async function sendDM() {
   throw new Error('Threads has no DM/messaging API — this is a platform limitation, not a bug.');
 }
@@ -138,28 +155,38 @@ function parseInboundEvents(payload) {
 // not here.
 // ---------------------------------------------------------------------
 async function handleReplyEvent({ accountId, replyId, text }) {
-  // Threads' webhook payload gives no stable numeric sender id for
-  // replies (only a username on read, and not even that on the webhook
-  // event itself) — leads dedupe on the reply id, so each reply becomes a
-  // distinct lead/message rather than a threaded conversation per replier.
-  // Good enough to surface in the inbox; a proper per-user match would need
-  // an extra GET on the reply object for its author, which the webhook
-  // payload alone doesn't justify.
   const conn = await resolveByAccountId('threads', accountId);
   if (!conn) return console.warn(`[threads] reply on unknown account ${accountId} — is that account connected here?`);
   const clientId = await resolveClientId(conn.user_id);
 
-  // Idempotency guard. Threads redelivers events, and — critically — the
-  // bot's own auto-reply comes back around as a "new" inbound reply event
-  // on the same thread. Without this check that echo re-enters this
-  // function, gets recorded as another inbound message, matches the same
-  // automation rule again, and posts another reply — which triggers
-  // another webhook. That loop is what produces dozens of near-identical
-  // webhook deliveries a minute. Bail out immediately if we've already
-  // recorded a message (inbound OR outbound) with this exact external id.
+  // Self-authored guard, same purpose as Instagram/Facebook's
+  // `senderId === accountId` check in their handleCommentEvent/handleDmEvent
+  // — a reply the connected account itself posts (manual send or
+  // auto-reply) fires its own webhook event right back at this handler.
+  // Without this, the connected account ends up replying to its own reply,
+  // forever. See isOwnOutboundReply's doc comment for why Threads needs a
+  // different signal than sender-id comparison.
+  if (await isOwnOutboundReply(clientId, 'threads', replyId)) return;
+
+  // Idempotency guard for plain redelivery — Meta/Threads can redeliver the
+  // exact same inbound event more than once. Bail out if we've already
+  // recorded THIS inbound reply, so a redelivered event doesn't create a
+  // second lead/message or re-fire an automation.
   if (await messageExists(clientId, 'threads', replyId)) return;
 
-  const leadId = await findOrCreateLead(clientId, 'threads', { externalId: replyId });
+  // Lead identity. The webhook event itself gives us only the reply's own
+  // id (replyId) — not who posted it — so on its own that id is a stand-in
+  // for "this specific message", not "this specific person"; using it
+  // directly as the lead's identity, like the old code did, meant every
+  // reply from the same person landed as a brand new lead. A username
+  // lookup (see getReplyAuthorUsername) is Threads' equivalent of the
+  // sender id Instagram/Facebook get for free on the webhook payload — it's
+  // stable per person, so it's what dedupes repeat replies from the same
+  // person onto one lead the way every other channel already does. Falls
+  // back to replyId (old behavior) only if the lookup itself fails, so a
+  // flaky API call degrades to "new lead" instead of losing the message.
+  const username = await getReplyAuthorUsername(conn.access_token, replyId);
+  const leadId = await findOrCreateLead(clientId, 'threads', { externalId: username || replyId, name: username || null });
   await recordMessage(clientId, leadId, { channel: 'threads', direction: 'in', messageType: 'comment', body: text, externalId: replyId });
 
   // Auto-reply matching. No DM fallback here — Threads has no messaging API
