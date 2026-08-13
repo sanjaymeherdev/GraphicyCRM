@@ -28,6 +28,7 @@ const Inbox = {
           <button class="${this._activeChannel === 'whatsapp' ? 'on' : ''}" data-channel="whatsapp" onclick="Inbox.setChannelTab('whatsapp')"><img src="/images/whatsapp.png" alt="WhatsApp" class="channel-option-icon" /> WhatsApp</button>
           <button class="${this._activeChannel === 'instagram' ? 'on' : ''}" data-channel="instagram" onclick="Inbox.setChannelTab('instagram')"><img src="/images/instagram.png" alt="Instagram" class="channel-option-icon" /> IG</button>
           <button class="${this._activeChannel === 'facebook' ? 'on' : ''}" data-channel="facebook" onclick="Inbox.setChannelTab('facebook')"><img src="/images/facebook.png" alt="Facebook" class="channel-option-icon" /> FB</button>
+          <button class="${this._activeChannel === 'threads' ? 'on' : ''}" data-channel="threads" onclick="Inbox.setChannelTab('threads')"><img src="/images/Threads.png" alt="Threads" class="channel-option-icon" /> Threads</button>
           <button class="${this._activeChannel === 'email' ? 'on' : ''}" data-channel="email" onclick="Inbox.setChannelTab('email')"><img src="/images/gmail.png" alt="Email" class="channel-option-icon" /> Email</button>
         </div>
         <div class="inbox-layout">
@@ -137,11 +138,19 @@ const Inbox = {
       const replyWindowClosed = channel === 'whatsapp' && (hoursSinceInbound === null || hoursSinceInbound > WHATSAPP_REPLY_WINDOW_HOURS);
 
       const lastInboundMessage = [...messages].reverse().find(m => m.direction === 'in');
-      const replyContext = lastInboundMessage?.message_type === 'comment'
-        ? 'Comment received — choose how to reply'
-        : (lastInboundMessage?.channel === 'instagram' || lastInboundMessage?.channel === 'facebook')
-          ? 'DM reply'
-          : 'Reply';
+      const isThreadsChannel = channel === 'threads';
+      // Threads has no DM/messaging API — every reply is a public reply tied
+      // to a specific inbound reply, so there's nothing to answer until one
+      // has arrived (unlike WhatsApp/IG/FB, which can also start from a lead
+      // record with a phone/handle on file).
+      const threadsReplyBlocked = isThreadsChannel && !lastInboundMessage?.external_id;
+      const replyContext = isThreadsChannel
+        ? 'Threads has no DM API — this posts a public reply'
+        : lastInboundMessage?.message_type === 'comment'
+          ? 'Comment received — choose how to reply'
+          : (lastInboundMessage?.channel === 'instagram' || lastInboundMessage?.channel === 'facebook')
+            ? 'DM reply'
+            : 'Reply';
       const isMetaReplyThread = ['instagram', 'facebook'].includes(channel);
       const replyTypeOptions = (isMetaReplyThread && lastInboundMessage?.message_type === 'comment')
         ? [
@@ -177,6 +186,12 @@ const Inbox = {
         <div class="inbox-reply-bar inbox-reply-closed">
           <div class="empty-state" style="margin:0;padding:10px 4px;">
             <p>⏳ 24h reply window closed — WhatsApp only allows free-form replies within 24h of the contact's last message${hoursSinceInbound !== null ? ` (last message was ${hoursSinceInbound.toFixed(1)}h ago)` : ''}. Send an approved template to reach out again.</p>
+          </div>
+        </div>
+        ` : threadsReplyBlocked ? `
+        <div class="inbox-reply-bar inbox-reply-closed">
+          <div class="empty-state" style="margin:0;padding:10px 4px;">
+            <p>⏳ No reply to answer yet — Threads has no DM API, so a reply can only be posted against a specific inbound reply once one arrives here.</p>
           </div>
         </div>
         ` : `

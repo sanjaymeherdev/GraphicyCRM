@@ -33,10 +33,10 @@ router.get('/:id/messages', async (req, res) => {
   catch (err) { res.status(err.message === 'Lead not found' ? 404 : 500).json({ error: err.message }); }
 });
 
-// Sends a message out through the actual channel (WhatsApp/Gmail today —
-// Facebook/Instagram/Threads DMs use their own service.sendDM the same way,
-// add branches here as the frontend starts asking for those channels too),
-// then records it against the lead's thread either way.
+// Sends a message out through the actual channel (WhatsApp/Gmail/Instagram/
+// Facebook DM, or a public Threads reply — Threads has no DM API, so its
+// branch always posts a reply tied to replyToExternalId), then records it
+// against the lead's thread either way.
 router.post('/:id/messages', async (req, res) => {
   const { channel, body, format, subject, replyType, replyToExternalId } = req.body || {};
   if (!channel || !body) return res.status(400).json({ error: 'channel and body required' });

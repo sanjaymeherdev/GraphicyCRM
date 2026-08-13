@@ -736,6 +736,7 @@ tr:hover td { background: var(--surface2); }
 .source-whatsapp { background: rgba(34,197,94,0.15); }
 .source-instagram { background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(139,92,246,0.2)); }
 .source-facebook { background: rgba(59,130,246,0.15); }
+.source-threads { background: rgba(120,120,120,0.18); }
 .source-webform { background: rgba(245,158,11,0.15); }
 .source-sheet { background: rgba(34,197,94,0.1); }
 .source-email { background: rgba(239,68,68,0.15); }

@@ -3,6 +3,7 @@ const SOURCE_ICON = {
   whatsapp: '<img src="/images/whatsapp.png" alt="WhatsApp" />',
   instagram: '<img src="/images/instagram.png" alt="Instagram" />',
   facebook: '<img src="/images/facebook.png" alt="Facebook" />',
+  threads: '<img src="/images/Threads.png" alt="Threads" />',
   webform: '📝',
   sheet: '📊',
   email: '<img src="/images/gmail.png" alt="Gmail" />',
@@ -26,6 +27,7 @@ const SOURCE_OPTIONS = [
   { value: 'whatsapp', label: '<img src="/images/whatsapp.png" alt="WhatsApp" class="channel-option-icon" /> WhatsApp' },
   { value: 'instagram', label: '<img src="/images/instagram.png" alt="Instagram" class="channel-option-icon" /> Instagram' },
   { value: 'facebook', label: '<img src="/images/facebook.png" alt="Facebook" class="channel-option-icon" /> Facebook' },
+  { value: 'threads', label: '<img src="/images/Threads.png" alt="Threads" class="channel-option-icon" /> Threads' },
   { value: 'webform', label: '📝 Web Form' },
   { value: 'sheet', label: '📊 Sheet' },
   { value: 'email', label: '<img src="/images/gmail.png" alt="Email" class="channel-option-icon" /> Email' },
@@ -48,6 +50,7 @@ const CHANNEL_OPTIONS = [
   { value: 'whatsapp', label: '<img src="/images/whatsapp.png" alt="WhatsApp" class="channel-option-icon" /> WhatsApp' },
   { value: 'instagram', label: '<img src="/images/instagram.png" alt="Instagram" class="channel-option-icon" /> Instagram' },
   { value: 'facebook', label: '<img src="/images/facebook.png" alt="Facebook" class="channel-option-icon" /> Facebook' },
+  { value: 'threads', label: '<img src="/images/Threads.png" alt="Threads" class="channel-option-icon" /> Threads' },
   { value: 'email', label: '<img src="/images/gmail.png" alt="Gmail" class="channel-option-icon" /> Email' },
 ];
 

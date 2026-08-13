@@ -5,6 +5,7 @@ const whatsapp = require('../whatsapp/service');
 const gmail = require('../gmail/service');
 const instagram = require('../instagram/service');
 const facebook = require('../facebook/service');
+const threads = require('../threads/service');
 
 function normalizePhone(phone) {
   return phone ? phone.replace(/\D/g, '') : phone;
@@ -99,6 +100,7 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, form
   const gmailSvc = deps.gmail || gmail;
   const instagramSvc = deps.instagram || instagram;
   const facebookSvc = deps.facebook || facebook;
+  const threadsSvc = deps.threads || threads;
   const record = deps.recordMessage || recordMessage;
 
   let external_id = null;
@@ -151,6 +153,12 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, form
           ? await facebookSvc.sendDMRaw(userId, recipientId, jsonPayload)
           : await facebookSvc.sendDM(userId, recipientId, body);
       }
+    } else if (channel === 'threads') {
+      // Threads has no DM/messaging API (see threads/service.js's sendDM) —
+      // every manual reply is a public reply tied to the specific inbound
+      // reply it's answering, same as an auto-reply from handleReplyEvent.
+      if (!replyToExternalId) throw new Error('No reply to answer — Threads replies must be tied to a specific inbound reply');
+      external_id = await threadsSvc.replyToThread(userId, replyToExternalId, body);
     } else {
       throw new Error(`Channel ${channel} not supported`);
     }
@@ -162,7 +170,7 @@ async function sendOutboundMessage({ clientId, userId, lead, channel, body, form
   const message = await record(clientId, lead.id, {
     channel,
     body,
-    message_type: replyType === 'comment' ? 'comment' : (format === 'json' ? 'json' : format === 'html' ? 'html' : 'text'),
+    message_type: (replyType === 'comment' || channel === 'threads') ? 'comment' : (format === 'json' ? 'json' : format === 'html' ? 'html' : 'text'),
     external_id,
     status,
     error_reason,
