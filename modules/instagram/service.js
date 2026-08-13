@@ -71,7 +71,10 @@ async function withFallback(conn, path, params, token, method, entityIds = []) {
       lastError = err;
       const code = err.response?.data?.error?.code;
       const status = err.response?.status;
+      const message = err.response?.data?.error?.message || err.message;
+      console.log(`[instagram] ${method.toUpperCase()} ${url} failed — code=${code ?? 'n/a'} status=${status ?? 'n/a'}: ${message}`);
       if (![3, 100, 190].includes(code) && ![401, 403].includes(status)) break;
+      console.log(`[instagram] retrying on fallback host...`);
     }
   }
   return { success: false, error: lastError };
@@ -93,32 +96,45 @@ async function handleOAuthCallback(code, state) {
 async function publishPost(userId, { caption, mediaUrl }) {
   if (!mediaUrl) throw new Error('Instagram requires an image_url.');
   const conn = await getConnection(userId, 'instagram');
-  const create = await withFallback(conn, '/media', { image_url: mediaUrl, caption: caption || '' }, conn.access_token, 'post', [conn.account_id]);
-  if (!create.success) throw create.error;
-  const creationId = create.data.id;
+  console.log(`[instagram] publishPost: account_id=${conn.account_id} page_id=${conn.page_id || 'none'} mediaUrl=${mediaUrl}`);
 
-  // Poll the container's processing status before publishing. Meta processes
-  // media asynchronously — publishing while it's still IN_PROGRESS fails
-  // with "Media ID is not available" (and publishing an ERRORed container
-  // fails too), so both cases need to be caught here with a clear message
-  // instead of blindly calling media_publish and surfacing Meta's opaque
-  // error. Videos in particular can take well over 10s to process, so this
-  // polls up to ~2 minutes rather than giving up after 5 tries.
+  const create = await withFallback(conn, '/media', { image_url: mediaUrl, caption: caption || '' }, conn.access_token, 'post', [conn.account_id]);
+  if (!create.success) {
+    console.log(`[instagram] media container creation failed:`, create.error.response?.data?.error || create.error.message);
+    throw create.error;
+  }
+  const creationId = create.data.id;
+  console.log(`[instagram] media container created: ${creationId}`);
+
+  // Poll the container's processing status before publishing — mirrors the
+  // reference implementation (sanjayaidev/MetaWhatsappAPI's
+  // sm/platforms/instagram.js) exactly: 5 tries, 2s apart, then proceed to
+  // media_publish regardless of the final status_code. status_code doesn't
+  // reliably reach FINISHED before Meta is willing to publish, and gating
+  // hard on it isn't confirmed against Meta's actual behavior across IG API
+  // versions/account types — it's a plausible-sounding "improvement" that
+  // rejects containers Meta would have published, and polling for up to 2
+  // minutes in a single request risks timing the request out before
+  // media_publish is ever called. If media_publish itself fails, that error
+  // is surfaced below and is more trustworthy than second-guessing
+  // status_code here.
   let statusCode = 'IN_PROGRESS';
-  for (let i = 0; i < 60 && statusCode === 'IN_PROGRESS'; i++) {
+  for (let i = 0; i < 5 && statusCode === 'IN_PROGRESS'; i++) {
     await sleep(2000);
     const statusRes = await withFallback(conn, `/${creationId}`, { fields: 'status_code' }, conn.access_token, 'get');
-    if (!statusRes.success) throw statusRes.error;
+    if (!statusRes.success) {
+      console.log(`[instagram] status check failed:`, statusRes.error.response?.data?.error || statusRes.error.message);
+      throw statusRes.error;
+    }
     statusCode = statusRes.data.status_code;
-  }
-  if (statusCode === 'ERROR') {
-    throw new Error(`Instagram media container ${creationId} failed processing (status_code=ERROR) — check that the image/video URL is publicly reachable and in a supported format.`);
-  }
-  if (statusCode !== 'FINISHED') {
-    throw new Error(`Instagram media container ${creationId} did not finish processing in time (status_code=${statusCode}) — try again.`);
+    console.log(`[instagram] container ${creationId} status: ${statusCode} (attempt ${i + 1}/5)`);
   }
   const publish = await withFallback(conn, '/media_publish', { creation_id: creationId }, conn.access_token, 'post', [conn.account_id]);
-  if (!publish.success) throw publish.error;
+  if (!publish.success) {
+    console.log(`[instagram] media_publish failed:`, publish.error.response?.data?.error || publish.error.message);
+    throw publish.error;
+  }
+  console.log(`[instagram] published: ${publish.data.id}`);
   return publish.data.id;
 }
 
