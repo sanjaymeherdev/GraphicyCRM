@@ -3,23 +3,11 @@ const express = require('express');
 const { requireAuth } = require('../../shared/auth');
 const { logWebhookDelivery } = require('../../shared/webhookLog');
 const service = require('./service');
-const facebookService = require('../facebook/service');
 
 const router = express.Router();
 
 router.get('/connect', requireAuth, (req, res) => {
   res.json({ url: service.getAuthUrl(req.user.id, req.query.return_to) });
-});
-
-// "Login with Facebook" — Instagram business accounts reached through a
-// linked Facebook Page use the Facebook app's OAuth (FB_APP_ID/FB_SECRET),
-// not Instagram's own app. This is deliberately an alias for
-// GET /api/facebook/connect: the callback (and multi-Page picker, if the
-// user manages more than one Page) both live in modules/facebook, which is
-// what auto-links the chosen Page's IG business account. There's no
-// Instagram-specific callback to add here.
-router.get('/connect/via-facebook', requireAuth, (req, res) => {
-  res.json({ url: facebookService.getAuthUrl(req.user.id, req.query.return_to) });
 });
 
 router.get('/connect/callback', async (req, res) => {
@@ -78,23 +66,8 @@ router.post('/media', async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/media', async (req, res) => {
-  try { res.json({ success: true, media: await service.listRecentMedia(req.user.id, Number(req.query.limit) || 25) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 router.post('/comments/:commentId/reply', async (req, res) => {
   try { res.json({ success: true, commentId: await service.replyToComment(req.user.id, req.params.commentId, req.body?.message) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/comments', async (req, res) => {
-  try { res.json({ success: true, comments: await service.listRecentComments(req.user.id, Number(req.query.limit) || 10) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/conversations', async (req, res) => {
-  try { res.json({ success: true, conversations: await service.listConversations(req.user.id, Number(req.query.limit) || 25) }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -172,40 +172,6 @@ async function sendDMRaw(userId, recipientId, payload, replyToMid) {
   return result.data.message_id;
 }
 
-async function listRecentMedia(userId, limit = 25) {
-  const conn = await getConnection(userId, 'instagram');
-  const result = await withFallback(conn, '/media', { fields: 'id,caption,timestamp,permalink,media_type,media_url,thumbnail_url', limit }, conn.access_token, 'get', [conn.account_id]);
-  if (!result.success) throw result.error;
-  return result.data.data || [];
-}
-
-async function listRecentComments(userId, postLimit = 10) {
-  const conn = await getConnection(userId, 'instagram');
-  const mediaResult = await withFallback(conn, '/media', { fields: 'id', limit: postLimit }, conn.access_token, 'get', [conn.account_id]);
-  if (!mediaResult.success) throw mediaResult.error;
-  const mediaIds = (mediaResult.data.data || []).map((m) => m.id);
-  const results = await Promise.all(mediaIds.map(async (mediaId) => {
-    const res = await withFallback(conn, `/${mediaId}/comments`, { fields: 'id,text,username,timestamp,from', order: 'reverse_chronological', limit: 1 }, conn.access_token, 'get');
-    if (!res.success) return null;
-    const comment = (res.data.data || [])[0];
-    if (!comment) return null;
-    return { external_id: comment.id, media_id: mediaId, sender_id: comment.from?.id || null, sender_name: comment.username || comment.from?.username || null, trigger_text: comment.text || '', created_at: comment.timestamp };
-  }));
-  return results.filter(Boolean);
-}
-
-async function listConversations(userId, limit = 25) {
-  const conn = await getConnection(userId, 'instagram');
-  const res = await withFallback(conn, '/conversations', { platform: 'instagram', fields: 'participants,updated_time,messages.limit(1){message,from,created_time,id}', limit }, conn.access_token, 'get', [conn.account_id]);
-  if (!res.success) throw res.error;
-  return (res.data.data || []).map((convo) => {
-    const latest = convo.messages?.data?.[0];
-    if (!latest) return null;
-    const other = (convo.participants?.data || []).find((p) => p.id !== conn.account_id) || convo.participants?.data?.[0];
-    return { external_id: latest.id, sender_id: other?.id || latest.from?.id || null, sender_name: other?.username || latest.from?.username || null, trigger_text: latest.message || '', created_at: latest.created_time || convo.updated_time };
-  }).filter(Boolean);
-}
-
 // ---------------------------------------------------------------------
 // Webhook signature verification. IG_SECRET is tried first, then FB_SECRET
 // as a fallback — Meta sometimes delivers Instagram events through an app
@@ -287,7 +253,7 @@ async function tryAutoReply({ clientId, leadId, text, send, sendJson, replyMessa
 
 module.exports = {
   getAuthUrl, handleOAuthCallback, disconnect,
-  publishPost, replyToComment, sendDM, sendDMRaw, sendPrivateReply, listRecentMedia, listRecentComments, listConversations,
+  publishPost, replyToComment, sendDM, sendDMRaw, sendPrivateReply,
   verifySignature, handleCommentEvent, handleDmEvent,
   buildGraphRequestCandidates,
 };

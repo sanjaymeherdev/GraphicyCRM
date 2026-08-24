@@ -80,18 +80,8 @@ router.post('/posts', async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/posts', async (req, res) => {
-  try { res.json({ success: true, threads: await service.listRecentThreads(req.user.id, Number(req.query.limit) || 25) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 router.post('/posts/:threadId/reply', async (req, res) => {
   try { res.json({ success: true, id: await service.replyToThread(req.user.id, req.params.threadId, req.body?.text) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/comments', async (req, res) => {
-  try { res.json({ success: true, comments: await service.listRecentComments(req.user.id, Number(req.query.limit) || 10) }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 

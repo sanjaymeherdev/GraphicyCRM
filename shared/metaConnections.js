@@ -15,7 +15,7 @@ const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://localhost:3000').repla
 const OAUTH_CONFIGS = {
   facebook: {
     authUrl: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`,
-    scope: 'pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging,instagram_basic,instagram_manage_comments,instagram_manage_messages,email',
+    scope: 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_messaging,email',
     clientId: process.env.FB_APP_ID,
     clientSecret: process.env.FB_SECRET,
   },
@@ -27,7 +27,7 @@ const OAUTH_CONFIGS = {
   },
   threads: {
     authUrl: 'https://threads.net/oauth/authorize',
-    scope: 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies,threads_read_replies',
+    scope: 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies',
     clientId: process.env.TH_APP_ID,
     clientSecret: process.env.TH_SECRET,
   },
@@ -141,11 +141,10 @@ async function exchangeFacebookCode(code, redirectUri) {
 
   // pages_show_list — every Page this user manages. Caller decides: connect
   // directly if there's exactly one, or run a picker if there's more than
-  // one — silently picking pages[0] risks linking the wrong Page (and, for
-  // Instagram-via-Facebook, the wrong linked IG account) for anyone who
-  // manages multiple Pages.
+  // one — silently picking pages[0] risks linking the wrong Page for anyone
+  // who manages multiple Pages.
   const pagesRes = await axios.get(`https://graph.facebook.com/${GRAPH_VERSION}/me/accounts`, {
-    params: { fields: 'id,name,instagram_business_account,access_token', access_token: userToken },
+    params: { fields: 'id,name,access_token', access_token: userToken },
   });
   const pages = pagesRes.data.data || [];
   if (!pages.length) throw new Error('No Facebook Pages found for this account — is it a Page admin?');

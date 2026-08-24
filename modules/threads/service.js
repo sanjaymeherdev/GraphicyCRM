@@ -58,34 +58,10 @@ async function replyToThread(userId, replyToId, text) {
   return publish.id;
 }
 
-async function listRecentThreads(userId, limit = 25) {
-  const conn = await getConnection(userId, 'threads');
-  const res = await axios.get(`${BASE}/${conn.account_id}/threads`, {
-    params: { fields: 'id,text,timestamp,permalink,media_type,threads_media{media_type,image_url,video_url}', limit, access_token: conn.access_token },
-  });
-  return res.data.data || [];
-}
-
-async function listRecentComments(userId, limit = 10) {
-  const conn = await getConnection(userId, 'threads');
-  const threadsRes = await axios.get(`${BASE}/${conn.account_id}/threads`, { params: { fields: 'id', limit, access_token: conn.access_token } });
-  const threadIds = (threadsRes.data.data || []).map((t) => t.id);
-  const results = await Promise.all(threadIds.map(async (threadId) => {
-    try {
-      const res = await axios.get(`${BASE}/${threadId}/replies`, { params: { fields: 'id,text,username,timestamp', access_token: conn.access_token } });
-      const reply = (res.data.data || [])[0];
-      if (!reply) return null;
-      return { external_id: reply.id, media_id: threadId, sender_id: null, sender_name: reply.username || null, trigger_text: reply.text || '', created_at: reply.timestamp };
-    } catch { return null; }
-  }));
-  return results.filter(Boolean);
-}
-
 // Threads' webhook payload carries no sender id (see handleReplyEvent's
 // identity comment) — only the reply's own id. Fetching the reply object
 // on read (fields=username) is the one place that id becomes a person: the
-// same GET Meta's own docs point to for attributing a reply, same shape as
-// the username field already used above in listRecentComments. Returns
+// same GET Meta's own docs point to for attributing a reply. Returns
 // null (rather than throwing) on any failure so a lookup hiccup degrades
 // to "treat as a new person" instead of dropping the message entirely.
 async function getReplyAuthorUsername(accessToken, replyId) {
@@ -207,6 +183,6 @@ async function handleReplyEvent({ accountId, replyId, text }) {
 }
 
 module.exports = {
-  getAuthUrl, handleOAuthCallback, disconnect, publishPost, replyToThread, listRecentThreads, listRecentComments, sendDM,
+  getAuthUrl, handleOAuthCallback, disconnect, publishPost, replyToThread, sendDM,
   verifySignature, parseInboundEvents, handleReplyEvent,
 };

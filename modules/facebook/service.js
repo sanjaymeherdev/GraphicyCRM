@@ -91,16 +91,6 @@ async function finishPage(userId, page, expiresAt) {
   // this Page-level subscribed_apps call.
   await subscribeToPageWebhooks(page.id, page.access_token);
 
-  // Auto-link the Page's connected Instagram business account, if any —
-  // this is what lets modules/instagram reuse the same Page token.
-  if (page.instagram_business_account) {
-    const igId = page.instagram_business_account.id;
-    const igRes = await axios.get(`${BASE}/${igId}`, { params: { fields: 'id,username', access_token: page.access_token } });
-    await upsertConnection(userId, {
-      platform: 'instagram', account_name: `@${igRes.data.username}`, account_id: igId,
-      page_id: page.id, access_token: page.access_token, token_expires_at: expiresAt,
-    });
-  }
   return connection;
 }
 
@@ -136,7 +126,7 @@ async function handleOAuthCallback(code, state) {
   return {
     needsPageSelection: true,
     selectionToken,
-    pages: pages.map((p) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account })),
+    pages: pages.map((p) => ({ id: p.id, name: p.name })),
   };
 }
 
@@ -160,44 +150,10 @@ async function publishPost(userId, { caption, mediaUrl }) {
   return res.id;
 }
 
-async function listRecentPosts(userId, limit = 25) {
-  const conn = await getConnection(userId, 'facebook');
-  const res = await get(`${BASE}/${conn.account_id}/posts`, {
-    fields: 'id,message,created_time,permalink_url,attachments{media{image,source},type,url}', limit,
-  }, conn.access_token);
-  return (res.data || []).map((p) => ({ ...p, thumbnail: p.attachments?.data?.[0]?.media?.image?.src || p.attachments?.data?.[0]?.url || null }));
-}
-
 async function replyToComment(userId, objectId, message) {
   const conn = await getConnection(userId, 'facebook');
   const res = await post(`${BASE}/${objectId}/comments`, { message }, conn.access_token);
   return res.id;
-}
-
-async function listRecentComments(userId, postLimit = 10) {
-  const conn = await getConnection(userId, 'facebook');
-  const posts = await get(`${BASE}/${conn.account_id}/posts`, { fields: 'id', limit: postLimit }, conn.access_token);
-  const postIds = (posts.data || []).map((p) => p.id);
-  const results = await Promise.all(postIds.map(async (postId) => {
-    try {
-      const res = await get(`${BASE}/${postId}/comments`, { fields: 'id,message,from,created_time', order: 'reverse_chronological', limit: 1 }, conn.access_token);
-      const comment = (res.data || [])[0];
-      if (!comment) return null;
-      return { external_id: comment.id, media_id: postId, sender_id: comment.from?.id || null, sender_name: comment.from?.name || null, trigger_text: comment.message || '', created_at: comment.created_time };
-    } catch { return null; }
-  }));
-  return results.filter(Boolean);
-}
-
-async function listConversations(userId, limit = 25) {
-  const conn = await getConnection(userId, 'facebook');
-  const res = await get(`${BASE}/${conn.account_id}/conversations`, { fields: 'participants,updated_time,messages.limit(1){message,from,created_time,id}', limit }, conn.access_token);
-  return (res.data || []).map((convo) => {
-    const latest = convo.messages?.data?.[0];
-    if (!latest) return null;
-    const other = (convo.participants?.data || []).find((p) => p.id !== conn.account_id) || convo.participants?.data?.[0];
-    return { external_id: latest.id, sender_id: other?.id || latest.from?.id || null, sender_name: other?.name || latest.from?.name || null, trigger_text: latest.message || '', created_at: latest.created_time || convo.updated_time };
-  }).filter(Boolean);
 }
 
 async function sendDM(userId, recipientId, text, replyToMid) {
@@ -324,6 +280,6 @@ async function tryAutoReply({ userId, clientId, leadId, text, send, sendJson, re
 
 module.exports = {
   getAuthUrl, handleOAuthCallback, selectPage, disconnect, resubscribeWebhooks, getWebhookStatus,
-  publishPost, listRecentPosts, replyToComment, listRecentComments, listConversations, sendDM, sendDMRaw, sendPrivateReply,
+  publishPost, replyToComment, sendDM, sendDMRaw, sendPrivateReply,
   verifySignature, handleCommentEvent, handleDmEvent,
 };

@@ -17,7 +17,7 @@ router.get('/connect/callback', async (req, res) => {
   try {
     const result = await service.handleOAuthCallback(code, state);
     if (result.needsPageSelection) {
-      const options = result.pages.map((p) => `<button onclick="choose('${p.id}')" style="display:block;width:100%;margin:6px 0;padding:10px;font-size:15px;">${p.name}${p.hasInstagram ? ' (+ Instagram)' : ''}</button>`).join('');
+      const options = result.pages.map((p) => `<button onclick="choose('${p.id}')" style="display:block;width:100%;margin:6px 0;padding:10px;font-size:15px;">${p.name}</button>`).join('');
       return res.send(`<!doctype html><html><body style="font-family:sans-serif;max-width:420px;margin:40px auto;">
         <h3>Which Page should this connect?</h3>
         <div>${options}</div>
@@ -119,23 +119,8 @@ router.post('/posts', async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/posts', async (req, res) => {
-  try { res.json({ success: true, posts: await service.listRecentPosts(req.user.id, Number(req.query.limit) || 25) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 router.post('/comments/:objectId/reply', async (req, res) => {
   try { res.json({ success: true, commentId: await service.replyToComment(req.user.id, req.params.objectId, req.body?.message) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/comments', async (req, res) => {
-  try { res.json({ success: true, comments: await service.listRecentComments(req.user.id, Number(req.query.limit) || 10) }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.get('/conversations', async (req, res) => {
-  try { res.json({ success: true, conversations: await service.listConversations(req.user.id, Number(req.query.limit) || 25) }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
