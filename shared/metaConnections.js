@@ -15,7 +15,7 @@ const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://localhost:3000').repla
 const OAUTH_CONFIGS = {
   facebook: {
     authUrl: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`,
-    scope: 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_messaging,email',
+    scope: 'pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_manage_engagement,pages_messaging,email',
     clientId: process.env.FB_APP_ID,
     clientSecret: process.env.FB_SECRET,
   },
@@ -27,7 +27,7 @@ const OAUTH_CONFIGS = {
   },
   threads: {
     authUrl: 'https://threads.net/oauth/authorize',
-    scope: 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies',
+    scope: 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies,threads_read_replies',
     clientId: process.env.TH_APP_ID,
     clientSecret: process.env.TH_SECRET,
   },
