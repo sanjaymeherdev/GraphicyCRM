@@ -89,6 +89,17 @@ async function handleOAuthCallback(code, state) {
   const redirectUri = `${APP_BASE_URL}/api/instagram/connect/callback`;
   const { accountId, accountName, accessToken, expiresAt } = await exchangeInstagramCode(code, redirectUri);
   const connection = await upsertConnection(userId, { platform: 'instagram', account_name: accountName, account_id: accountId, access_token: accessToken, token_expires_at: expiresAt });
+  // Direct Instagram Login (graph.instagram.com, no linked Facebook Page)
+  // does NOT auto-deliver webhooks the way Page-subscribed Facebook events
+  // do — Meta requires an explicit per-account subscribe call, or comment/DM
+  // webhooks for this account will simply never arrive.
+  try {
+    await axios.post(`https://graph.instagram.com/${FB_VERSION}/${accountId}/subscribed_apps`, null, {
+      params: { subscribed_fields: 'comments,messages', access_token: accessToken },
+    });
+  } catch (err) {
+    console.error(`[instagram] subscribed_apps failed for account ${accountId} — webhooks will NOT arrive:`, err.response?.data?.error?.message || err.message);
+  }
   return { connection, returnTo };
 }
 
