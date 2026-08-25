@@ -15,7 +15,7 @@ const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://localhost:3000').repla
 const OAUTH_CONFIGS = {
   facebook: {
     authUrl: `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`,
-    scope: 'pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_manage_engagement,pages_messaging,email',
+    scope: 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_engagement,pages_messaging,email',
     clientId: process.env.FB_APP_ID,
     clientSecret: process.env.FB_SECRET,
   },
@@ -119,7 +119,7 @@ async function resolveByAccountId(platform, accountId) {
   if (!accountId) return null;
   const { data, error } = await supabase.from('crm_connections')
     .select('*').eq('platform', platform).eq('is_connected', true)
-    .or(`account_id.eq.${accountId},page_id.eq.${accountId}`)
+    .or(`account_id.eq.${accountId},page_id.eq.${accountId},webhook_account_id.eq.${accountId}`)
     .order('updated_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   if (!data) return null;

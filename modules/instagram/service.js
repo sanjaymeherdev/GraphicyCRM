@@ -7,6 +7,8 @@
 // the other on an auth/capability error, exactly as the source did.
 const axios = require('axios');
 const crypto = require('crypto');
+const { supabase } = require('../../shared/db');
+const { decryptToken } = require('../../shared/crypto');
 const {
   buildAuthUrl, parseState, upsertConnection, getConnection, resolveByAccountId,
   exchangeInstagramCode, APP_BASE_URL, disconnectConnection,
@@ -204,9 +206,41 @@ function verifySignature(rawBody, sigHeader) {
 // (see modules/whatsapp/service.js). Auto-reply/keyword-matching is a
 // separate concern handled by modules/automations, not here.
 // ---------------------------------------------------------------------
-async function handleCommentEvent({ accountId, commentId, text, senderId, senderName }) {
+
+// Meta bug workaround (see migrations/012_instagram_webhook_account_id.sql):
+// graph.instagram.com/me and Instagram's own webhooks disagree on this
+// account's ID for the same account. If a normal lookup misses and there's
+// exactly ONE connected Instagram account still missing its
+// webhook_account_id, we assume the mismatch is that account, record the ID
+// so future events resolve directly, and continue processing this one
+// instead of dropping it. Ambiguous (0 or 2+ candidates) still just warns —
+// silently guessing which of multiple accounts an event belongs to would be
+// worse than dropping it.
+async function resolveOrHealAccount(accountId) {
   const conn = await resolveByAccountId('instagram', accountId);
-  if (!conn) return console.warn(`[instagram] comment on unknown account ${accountId} — is that account connected here?`);
+  if (conn) return conn;
+  // Meta's own "Test" button in the App Dashboard sends entry.id: "0" —
+  // a canned placeholder, not a real account. Never let that (or any other
+  // falsy id) get self-healed onto a real connection.
+  if (!accountId || accountId === '0') return null;
+  const { data: candidates } = await supabase.from('crm_connections')
+    .select('*').eq('platform', 'instagram').eq('is_connected', true).is('webhook_account_id', null);
+  if ((candidates || []).length !== 1) return null;
+  const candidate = candidates[0];
+  console.warn(`[instagram] self-healing: binding webhook_account_id=${accountId} to connection ${candidate.id} (${candidate.account_name}, account_id=${candidate.account_id}) — this is Meta's known me-vs-webhook ID mismatch, not a new account.`);
+  const { error } = await supabase.from('crm_connections').update({ webhook_account_id: accountId }).eq('id', candidate.id);
+  if (error) { console.error('[instagram] failed to persist webhook_account_id:', error.message); return null; }
+  return { ...candidate, webhook_account_id: accountId, access_token: decryptToken(candidate.access_token_enc) };
+}
+
+async function handleCommentEvent({ accountId, commentId, text, senderId, senderName }) {
+  const conn = await resolveOrHealAccount(accountId);
+  if (!conn) {
+    const { data: connected } = await supabase.from('crm_connections')
+      .select('account_id, webhook_account_id, account_name').eq('platform', 'instagram').eq('is_connected', true);
+    const known = (connected || []).map((c) => `${c.account_name}=${c.account_id}${c.webhook_account_id ? `/${c.webhook_account_id}` : ''}`).join(', ') || 'none';
+    return console.warn(`[instagram] comment on unknown account ${accountId} — is that account connected here? (currently connected: ${known})`);
+  }
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'comment', body: text, externalId: commentId });
@@ -221,7 +255,7 @@ async function handleCommentEvent({ accountId, commentId, text, senderId, sender
 }
 
 async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
-  const conn = await resolveByAccountId('instagram', accountId);
+  const conn = await resolveOrHealAccount(accountId);
   if (!conn) return console.warn(`[instagram] DM on unknown account ${accountId} — is that account connected here?`);
   const clientId = await resolveClientId(conn.user_id);
   const leadId = await findOrCreateLead(clientId, 'instagram', { externalId: senderId, name: senderName });
