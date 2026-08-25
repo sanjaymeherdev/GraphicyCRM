@@ -250,7 +250,13 @@ async function handleCommentEvent({ accountId, commentId, text, senderId, sender
   // Without this check, that self-authored comment would be treated as a
   // fresh inbound message and re-matched against automations — the AI
   // replying to its own reply, forever.
-  if (senderId && senderId === accountId) return;
+  // NOTE: compare senderId against the connection's own known IDs
+  // (account_id / webhook_account_id), not the raw webhook accountId —
+  // Meta's from.id and entry.id can use different ID formats for the same
+  // account (see migrations/012_instagram_webhook_account_id.sql), so
+  // `senderId === accountId` can silently miss a real self-reply and let
+  // the auto-reply loop fire on its own output.
+  if (senderId && (senderId === conn.account_id || senderId === conn.webhook_account_id)) return;
   await tryAutoReply({ clientId, leadId, text, send: (replyText) => replyToComment(conn.user_id, commentId, replyText), replyMessageType: 'comment' });
 }
 
@@ -262,8 +268,9 @@ async function handleDmEvent({ accountId, mid, text, senderId, senderName }) {
   await recordMessage(clientId, leadId, { channel: 'instagram', direction: 'in', messageType: 'text', body: text, externalId: mid });
   // Same self-authored guard as handleCommentEvent above — an outbound DM
   // the account sends can otherwise loop back through the webhook as if it
-  // were a new inbound message from itself.
-  if (senderId && senderId === accountId) return;
+  // were a new inbound message from itself. Same account_id/webhook_account_id
+  // comparison for the same reason (see handleCommentEvent's note).
+  if (senderId && (senderId === conn.account_id || senderId === conn.webhook_account_id)) return;
   await tryAutoReply({
     clientId, leadId, text,
     send: (replyText) => sendDM(conn.user_id, senderId, replyText, mid),
