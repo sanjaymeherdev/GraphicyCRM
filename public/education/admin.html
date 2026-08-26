@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Module - School Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+        .badge-purple {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+
+        /* Form */
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        input[type="datetime-local"],
+        input[type="file"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        select option {
+            background: var(--surface2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input[type="file"] {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        /* Tabs */
+        .admin-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg2);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            border: 1px solid var(--border);
+        }
+
+        .admin-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .admin-tab:hover {
+            color: var(--text);
+            background: var(--surface2);
+        }
+
+        .admin-tab.active {
+            background: var(--surface);
+            color: var(--green);
+            border: 1px solid var(--border);
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12.5px;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: var(--surface2);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .75);
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .modal-box.wide {
+            max-width: 1000px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text2);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        /* Grid for forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-grid .half-width {
+            grid-column: span 1;
+        }
+
+        /* Document section in modal */
+        .doc-section {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .doc-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .doc-item .doc-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .doc-item .doc-name {
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .doc-item .doc-desc {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .doc-item .doc-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .doc-upload-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .doc-upload-row input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .doc-upload-row input[type="file"] {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-grid .half-width {
+                grid-column: 1;
+            }
+            .admin-tabs {
+                flex-direction: column;
+            }
+            .admin-tab {
+                text-align: center;
+            }
+            .modal-box {
+                padding: 18px;
+                margin: 10px;
+            }
+            .doc-upload-row {
+                flex-direction: column;
+            }
+            .doc-upload-row input[type="text"],
+            .doc-upload-row input[type="file"] {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .doc-item {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .doc-item .doc-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-bar select {
+            width: auto;
+            min-width: 150px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .salary-detail {
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .salary-detail .amount {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .phone-display {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+        }
+
+        .doc-count-badge {
+            background: var(--purple-dim);
+            color: var(--purple);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 18px 0;
+        }
+
+        .class-badge {
+            background: var(--blue-dim);
+            color: var(--blue);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">🏫 Admin<span>Module</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadSampleData()">📋 Load Sample</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportAllData()">📤 Export All</button>
+                <button class="btn btn-secondary btn-sm" onclick="refreshData()">↻ Refresh</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Students</div>
+                <div class="stat-value" id="statStudents">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Teachers</div>
+                <div class="stat-value" id="statTeachers">0</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Staff</div>
+                <div class="stat-value" id="statStaff">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Classes</div>
+                <div class="stat-value" id="statClasses">0</div>
+            </div>
+        </div>
+
+        <!-- Admin Tabs -->
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-tab="students" onclick="switchTab('students')">👨‍🎓 Students</button>
+            <button class="admin-tab" data-tab="teachers" onclick="switchTab('teachers')">👨‍🏫 Teachers</button>
+            <button class="admin-tab" data-tab="staff" onclick="switchTab('staff')">👔 Staff</button>
+            <button class="admin-tab" data-tab="classes" onclick="switchTab('classes')">📚 Classes</button>
+        </div>
+
+        <!-- ==================== STUDENTS TAB ==================== -->
+        <div class="tab-content active" id="tab-students">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">👨‍🎓 Student Management</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModal('student')">+ Add Student</button>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="studentSearch" placeholder="Search students..." oninput="renderStudents()">
+                    <select id="studentClassFilter" onchange="renderStudents()">
+                        <option value="all">All Classes</option>
+                    </select>
+                    <select id="studentStatusFilter" onchange="renderStudents()">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Phone</th>
+                                <th>Guardian</th>
+                                <th>Guardian Phone</th>
+                                <th>Fee</th>
+                                <th>Docs</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody">
+                            <tr><td colspan="8" style="text-align:center; color:var(--text3); padding:40px;">No students found. Click "Add Student" to create one.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TEACHERS TAB ==================== -->
+        <div class="tab-content" id="tab-teachers">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">👨‍🏫 Teacher Management</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModal('teacher')">+ Add Teacher</button>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="teacherSearch" placeholder="Search teachers..." oninput="renderTeachers()">
+                    <select id="teacherSubjectFilter" onchange="renderTeachers()">
+                        <option value="all">All Subjects</option>
+                    </select>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Subject</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Salary</th>
+                                <th>Docs</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text3); padding:40px;">No teachers found. Click "Add Teacher" to create one.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== STAFF TAB ==================== -->
+        <div class="tab-content" id="tab-staff">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">👔 Staff Management</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModal('staff')">+ Add Staff</button>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="staffSearch" placeholder="Search staff..." oninput="renderStaff()">
+                    <select id="staffRoleFilter" onchange="renderStaff()">
+                        <option value="all">All Roles</option>
+                    </select>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Salary</th>
+                                <th>Docs</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text3); padding:40px;">No staff found. Click "Add Staff" to create one.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CLASSES TAB ==================== -->
+        <div class="tab-content" id="tab-classes">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📚 Class Management</div>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModal('class')">+ Add Class</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Class Name</th>
+                                <th>Section</th>
+                                <th>Class Teacher</th>
+                                <th>Students</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="classTableBody">
+                            <tr><td colspan="5" style="text-align:center; color:var(--text3); padding:40px;">No classes found. Click "Add Class" to create one.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ADD/EDIT MODAL ==================== -->
+    <div class="modal" id="adminModal">
+        <div class="modal-box wide">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Add New</div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modalContent">
+                <!-- Dynamic content loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Document View Modal -->
+    <div class="modal" id="docViewModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">📄 Document Preview</div>
+                <button class="modal-close" onclick="closeDocViewModal()">✕</button>
+            </div>
+            <div id="docViewContent" style="text-align:center; padding:20px;">
+                <div style="font-size:48px; margin-bottom:16px;">📄</div>
+                <h3 id="docViewName" style="margin-bottom:8px;">document.pdf</h3>
+                <p id="docViewInfo" style="color:var(--text2); font-size:13px;">Size: 125 KB • Uploaded: 2024-01-15</p>
+                <div style="margin-top:20px; padding:20px; background:var(--bg2); border-radius:8px; border:1px solid var(--border);">
+                    <p style="color:var(--text3);">Document preview would appear here.<br>In a real app, this would show the actual document content.</p>
+                </div>
+                <div class="btn-row" style="justify-content:center;">
+                    <button class="btn btn-primary" onclick="downloadDocument()">⬇️ Download</button>
+                    <button class="btn btn-ghost" onclick="closeDocViewModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // ADMIN MODULE - Complete JavaScript with Class Dropdown
+        // ============================================================
+
+        // Data stores
+        let students = [];
+        let teachers = [];
+        let staff = [];
+        let classes = [];
+        let editingId = null;
+        let editingType = null;
+        let viewingDoc = null;
+
+        // ============================================================
+        // BACKEND API — modules/education (see server.js). Data lives in
+        // the connected Google Sheet, proxied through this app's own
+        // backend; nothing here talks to Google directly.
+        // ============================================================
+        const EDU_API = '/api/education';
+        const RESOURCE_PATH = { student: '/students', teacher: '/teachers', staff: '/staff', class: '/classes' };
+
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) { /* non-JSON error page */ }
+            if (!res.ok || body.success === false) {
+                throw new Error(body.error || `Request failed (${res.status})`);
+            }
+            return body.data;
+        }
+
+        // 'documents' round-trips as a JSON string (Sheets cells are scalar) —
+        // parse on the way in, stringify on the way out.
+        function deserializeRow(row) {
+            if (row && typeof row.documents === 'string') {
+                try { row.documents = row.documents ? JSON.parse(row.documents) : []; }
+                catch (e) { row.documents = []; }
+            }
+            return row;
+        }
+        function serializeRow(item) {
+            const out = { ...item };
+            if ('documents' in out) out.documents = JSON.stringify(out.documents || []);
+            return out;
+        }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        async function loadSampleData() {
+            // First create classes
+            const sampleClasses = [{
+                id: 'c1',
+                name: '10',
+                section: 'A',
+                teacher: 'Dr. Suresh Kumar',
+                studentCount: 25
+            }, {
+                id: 'c2',
+                name: '12',
+                section: 'B',
+                teacher: 'Mrs. Meera Reddy',
+                studentCount: 20
+            }, {
+                id: 'c3',
+                name: '8',
+                section: 'C',
+                teacher: 'Mr. Rajesh Singh',
+                studentCount: 18
+            }, {
+                id: 'c4',
+                name: '9',
+                section: 'A',
+                teacher: 'Mr. Amit Verma',
+                studentCount: 22
+            }, {
+                id: 'c5',
+                name: '11',
+                section: 'B',
+                teacher: 'Dr. Priya Sharma',
+                studentCount: 15
+            }];
+
+            // Then create students with class references
+            const sampleStudents = [{
+                id: 's1',
+                name: 'Aarav Sharma',
+                class_id: 'c1',
+                class_display: '10-A',
+                phone: '919876543210',
+                guardian_name: 'Mr. Rajesh Sharma',
+                guardian_phone: '919876543211',
+                email: 'aarav@example.com',
+                fee_status: 'paid',
+                status: 'active',
+                documents: [
+                    { name: 'Aadhar Card', file: 'aadhar_aarav.pdf', size: '125 KB', date: '2024-01-15' },
+                    { name: 'Mark Sheet', file: 'marks_aarav.pdf', size: '340 KB', date: '2024-01-15' }
+                ]
+            }, {
+                id: 's2',
+                name: 'Priya Patel',
+                class_id: 'c2',
+                class_display: '12-B',
+                phone: '919876543212',
+                guardian_name: 'Mrs. Meena Patel',
+                guardian_phone: '919876543213',
+                email: 'priya@example.com',
+                fee_status: 'unpaid',
+                status: 'active',
+                documents: [
+                    { name: 'Aadhar Card', file: 'aadhar_priya.pdf', size: '110 KB', date: '2024-01-10' }
+                ]
+            }, {
+                id: 's3',
+                name: 'Rahul Singh',
+                class_id: 'c3',
+                class_display: '8-C',
+                phone: '919876543214',
+                guardian_name: 'Mr. Vikram Singh',
+                guardian_phone: '919876543215',
+                email: 'rahul@example.com',
+                fee_status: 'paid',
+                status: 'active',
+                documents: []
+            }, {
+                id: 's4',
+                name: 'Sneha Reddy',
+                class_id: 'c4',
+                class_display: '9-A',
+                phone: '919876543216',
+                guardian_name: 'Mrs. Lakshmi Reddy',
+                guardian_phone: '919876543217',
+                email: 'sneha@example.com',
+                fee_status: 'unpaid',
+                status: 'active',
+                documents: []
+            }, {
+                id: 's5',
+                name: 'Vikram Kumar',
+                class_id: 'c5',
+                class_display: '11-B',
+                phone: '919876543218',
+                guardian_name: 'Mr. Suresh Kumar',
+                guardian_phone: '919876543219',
+                email: 'vikram@example.com',
+                fee_status: 'paid',
+                status: 'active',
+                documents: []
+            }];
+
+            const sampleTeachers = [{
+                id: 't1',
+                name: 'Dr. Suresh Kumar',
+                subject: 'Mathematics',
+                phone: '919876543220',
+                email: 'suresh@school.com',
+                salary: '45000',
+                documents: [
+                    { name: 'Degree Certificate', file: 'degree_suresh.pdf', size: '450 KB', date: '2024-01-10' },
+                    { name: 'Experience Letter', file: 'experience_suresh.pdf', size: '230 KB', date: '2024-01-10' }
+                ]
+            }, {
+                id: 't2',
+                name: 'Mrs. Meera Reddy',
+                subject: 'Physics',
+                phone: '919876543221',
+                email: 'meera@school.com',
+                salary: '42000',
+                documents: [
+                    { name: 'Degree Certificate', file: 'degree_meera.pdf', size: '380 KB', date: '2024-01-12' }
+                ]
+            }, {
+                id: 't3',
+                name: 'Mr. Rajesh Singh',
+                subject: 'Chemistry',
+                phone: '919876543222',
+                email: 'rajesh@school.com',
+                salary: '40000',
+                documents: []
+            }, {
+                id: 't4',
+                name: 'Mr. Amit Verma',
+                subject: 'English',
+                phone: '919876543223',
+                email: 'amit@school.com',
+                salary: '38000',
+                documents: []
+            }, {
+                id: 't5',
+                name: 'Dr. Priya Sharma',
+                subject: 'Biology',
+                phone: '919876543224',
+                email: 'priya@school.com',
+                salary: '43000',
+                documents: []
+            }];
+
+            const sampleStaff = [{
+                id: 'st1',
+                name: 'Ramesh Gupta',
+                role: 'Administrative Officer',
+                phone: '919876543230',
+                email: 'ramesh@school.com',
+                salary: '35000',
+                documents: [
+                    { name: 'Appointment Letter', file: 'appointment_ramesh.pdf', size: '280 KB', date: '2024-01-08' }
+                ]
+            }, {
+                id: 'st2',
+                name: 'Sita Sharma',
+                role: 'Librarian',
+                phone: '919876543231',
+                email: 'sita@school.com',
+                salary: '28000',
+                documents: []
+            }];
+
+            try {
+                // Classes first — students reference class_id.
+                await apiFetch('/classes/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleClasses.map(({ studentCount, ...c }) => c) }) });
+                await Promise.all([
+                    apiFetch('/students/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleStudents.map(serializeRow) }) }),
+                    apiFetch('/teachers/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleTeachers.map(serializeRow) }) }),
+                    apiFetch('/staff/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleStaff.map(serializeRow) }) }),
+                ]);
+                await loadAllData();
+                renderAll();
+                updateStats();
+                showToast('✅ Sample data loaded');
+            } catch (err) {
+                showToast('⚠️ Failed to load sample data: ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD DATA — pulled fresh from the connected Google Sheet on
+        // every load/refresh. There's no local write-through cache
+        // anymore: saveItem/deleteItem/addDocument/removeDocument each
+        // call the backend directly and then re-render from the response.
+        // ============================================================
+        async function checkConnected() {
+            try {
+                const config = await apiFetch('/config');
+                return !!config;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function loadAllData() {
+            const [s, t, st, c] = await Promise.all([
+                apiFetch('/students'),
+                apiFetch('/teachers'),
+                apiFetch('/staff'),
+                apiFetch('/classes'),
+            ]);
+            students = (s || []).map(deserializeRow);
+            teachers = (t || []).map(deserializeRow);
+            staff = (st || []).map(deserializeRow);
+            classes = c || [];
+            return students.length > 0 || teachers.length > 0 || staff.length > 0 || classes.length > 0;
+        }
+
+        function showConnectBanner() {
+            const tbody = document.getElementById('studentTableBody');
+            const msg = `⚠️ No Google Sheet connected yet. Go to Settings to connect one before adding data.`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--amber); padding:40px;">${msg}</td></tr>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // HELPER FUNCTIONS
+        // ============================================================
+        function getClassDisplay(classId) {
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return '—';
+            return cls.section ? `${cls.name}-${cls.section}` : cls.name;
+        }
+
+        function getClassOptions(selectedId) {
+            return classes.map(c => {
+                const display = c.section ? `${c.name}-${c.section}` : c.name;
+                return `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${display}</option>`;
+            }).join('');
+        }
+
+        // ============================================================
+        // RENDER FUNCTIONS
+        // ============================================================
+        function renderAll() {
+            renderStudents();
+            renderTeachers();
+            renderStaff();
+            renderClasses();
+            populateFilters();
+            updateStats();
+        }
+
+        function renderStudents() {
+            const search = document.getElementById('studentSearch')?.value.toLowerCase() || '';
+            const classFilter = document.getElementById('studentClassFilter')?.value || 'all';
+            const statusFilter = document.getElementById('studentStatusFilter')?.value || 'all';
+
+            const filtered = students.filter(s => {
+                const classDisplay = getClassDisplay(s.class_id);
+                if (search && !s.name.toLowerCase().includes(search) && !classDisplay.toLowerCase().includes(search) && !s
+                    .guardian_name?.toLowerCase().includes(search)) return false;
+                if (classFilter !== 'all' && s.class_id !== classFilter) return false;
+                if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('studentTableBody');
+            if (!filtered.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="8" style="text-align:center; color:var(--text3); padding:40px;">No students found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(s => `
+                <tr>
+                    <td><strong>${escapeHtml(s.name)}</strong></td>
+                    <td><span class="class-badge">${escapeHtml(getClassDisplay(s.class_id))}</span></td>
+                    <td class="phone-display">${s.phone || '—'}</td>
+                    <td>${escapeHtml(s.guardian_name || '—')}</td>
+                    <td class="phone-display">${s.guardian_phone || '—'}</td>
+                    <td><span class="badge ${s.fee_status === 'paid' ? 'badge-green' : 'badge-amber'}">${s.fee_status === 'paid' ? '✅ Paid' : '⏳ Unpaid'}</span></td>
+                    <td>${s.documents?.length ? `<span class="doc-count-badge">${s.documents.length} docs</span>` : '—'}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-xs" onclick="editItem('student','${s.id}')">✏️</button>
+                            <button class="btn btn-danger btn-xs" onclick="deleteItem('student','${s.id}')">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderTeachers() {
+            const search = document.getElementById('teacherSearch')?.value.toLowerCase() || '';
+            const subjectFilter = document.getElementById('teacherSubjectFilter')?.value || 'all';
+
+            const filtered = teachers.filter(t => {
+                if (search && !t.name.toLowerCase().includes(search) && !t.subject.toLowerCase().includes(search))
+                return false;
+                if (subjectFilter !== 'all' && t.subject !== subjectFilter) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('teacherTableBody');
+            if (!filtered.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:40px;">No teachers found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(t => `
+                <tr>
+                    <td><strong>${escapeHtml(t.name)}</strong></td>
+                    <td>${escapeHtml(t.subject)}</td>
+                    <td class="phone-display">${t.phone || '—'}</td>
+                    <td>${t.email || '—'}</td>
+                    <td class="salary-detail">₹<span class="amount">${t.salary || '0'}</span></td>
+                    <td>${t.documents?.length ? `<span class="doc-count-badge">${t.documents.length} docs</span>` : '—'}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-xs" onclick="editItem('teacher','${t.id}')">✏️</button>
+                            <button class="btn btn-danger btn-xs" onclick="deleteItem('teacher','${t.id}')">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderStaff() {
+            const search = document.getElementById('staffSearch')?.value.toLowerCase() || '';
+            const roleFilter = document.getElementById('staffRoleFilter')?.value || 'all';
+
+            const filtered = staff.filter(s => {
+                if (search && !s.name.toLowerCase().includes(search) && !s.role.toLowerCase().includes(search))
+                return false;
+                if (roleFilter !== 'all' && s.role !== roleFilter) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('staffTableBody');
+            if (!filtered.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:40px;">No staff found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(s => `
+                <tr>
+                    <td><strong>${escapeHtml(s.name)}</strong></td>
+                    <td>${escapeHtml(s.role)}</td>
+                    <td class="phone-display">${s.phone || '—'}</td>
+                    <td>${s.email || '—'}</td>
+                    <td class="salary-detail">₹<span class="amount">${s.salary || '0'}</span></td>
+                    <td>${s.documents?.length ? `<span class="doc-count-badge">${s.documents.length} docs</span>` : '—'}</td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-xs" onclick="editItem('staff','${s.id}')">✏️</button>
+                            <button class="btn btn-danger btn-xs" onclick="deleteItem('staff','${s.id}')">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderClasses() {
+            const tbody = document.getElementById('classTableBody');
+            if (!classes.length) {
+                tbody.innerHTML =
+                    `<tr><td colspan="5" style="text-align:center; color:var(--text3); padding:40px;">No classes found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = classes.map(c => {
+                const studentCount = students.filter(s => s.class_id === c.id).length;
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(c.name)}</strong></td>
+                        <td>${escapeHtml(c.section || '—')}</td>
+                        <td>${escapeHtml(c.teacher || 'Not assigned')}</td>
+                        <td>${studentCount}</td>
+                        <td>
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn btn-secondary btn-xs" onclick="editItem('class','${c.id}')">✏️</button>
+                                <button class="btn btn-danger btn-xs" onclick="deleteItem('class','${c.id}')">🗑</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function populateFilters() {
+            // Class filter for students
+            const classFilter = document.getElementById('studentClassFilter');
+            if (classFilter) {
+                const currentVal = classFilter.value;
+                classFilter.innerHTML = '<option value="all">All Classes</option>' +
+                    classes.map(c => {
+                        const display = c.section ? `${c.name}-${c.section}` : c.name;
+                        return `<option value="${c.id}" ${c.id === currentVal ? 'selected' : ''}>${display}</option>`;
+                    }).join('');
+            }
+
+            // Subject filter for teachers
+            const subjectFilter = document.getElementById('teacherSubjectFilter');
+            if (subjectFilter) {
+                const subjects = [...new Set(teachers.map(t => t.subject))].sort();
+                const currentVal = subjectFilter.value;
+                subjectFilter.innerHTML = '<option value="all">All Subjects</option>' +
+                    subjects.map(s => `<option value="${s}" ${s === currentVal ? 'selected' : ''}>${s}</option>`).join('');
+            }
+
+            // Role filter for staff
+            const roleFilter = document.getElementById('staffRoleFilter');
+            if (roleFilter) {
+                const roles = [...new Set(staff.map(s => s.role))].sort();
+                const currentVal = roleFilter.value;
+                roleFilter.innerHTML = '<option value="all">All Roles</option>' +
+                    roles.map(r => `<option value="${r}" ${r === currentVal ? 'selected' : ''}>${r}</option>`).join('');
+            }
+        }
+
+        // ============================================================
+        // STATS
+        // ============================================================
+        function updateStats() {
+            document.getElementById('statStudents').textContent = students.length;
+            document.getElementById('statTeachers').textContent = teachers.length;
+            document.getElementById('statStaff').textContent = staff.length;
+            document.getElementById('statClasses').textContent = classes.length;
+        }
+
+        // ============================================================
+        // TAB SWITCHING
+        // ============================================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
+
+            const tabContent = document.getElementById('tab-' + tabName);
+            if (tabContent) tabContent.classList.add('active');
+
+            const tabBtn = document.querySelector(`.admin-tab[data-tab="${tabName}"]`);
+            if (tabBtn) tabBtn.classList.add('active');
+
+            if (tabName === 'students') renderStudents();
+            if (tabName === 'teachers') renderTeachers();
+            if (tabName === 'staff') renderStaff();
+            if (tabName === 'classes') renderClasses();
+        }
+
+        // ============================================================
+        // MODAL
+        // ============================================================
+        function openModal() {
+            document.getElementById('adminModal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('adminModal').classList.remove('open');
+            editingId = null;
+            editingType = null;
+        }
+
+        // ============================================================
+        // ADD/EDIT ITEMS
+        // ============================================================
+        function openAddModal(type) {
+            editingId = null;
+            editingType = type;
+            document.getElementById('modalTitle').textContent = 'Add New ' + type.charAt(0).toUpperCase() + type.slice(1);
+
+            let html = getFormHTML(type, null);
+            document.getElementById('modalContent').innerHTML = html;
+            openModal();
+        }
+
+        function editItem(type, id) {
+            editingId = id;
+            editingType = type;
+            const item = getItem(type, id);
+            if (!item) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit ' + type.charAt(0).toUpperCase() + type.slice(1);
+            let html = getFormHTML(type, item);
+            document.getElementById('modalContent').innerHTML = html;
+            openModal();
+        }
+
+        function getItem(type, id) {
+            const collections = { student: students, teacher: teachers, staff: staff, class: classes };
+            return collections[type]?.find(i => i.id === id);
+        }
+
+        function getFormHTML(type, data) {
+            const isEdit = !!data;
+
+            if (type === 'student') {
+                const docHtml = isEdit ? renderDocumentsHTML(data.documents, 'student', data.id) : '';
+                const classOptions = getClassOptions(data?.class_id || '');
+
+                return `
+                    <div class="form-grid">
+                        <div><span class="form-label">Student Name</span><input type="text" id="f_name" value="${data?.name || ''}" placeholder="Student name"></div>
+                        <div><span class="form-label">Class</span>
+                            <select id="f_class_id">
+                                <option value="">— Select Class —</option>
+                                ${classOptions}
+                            </select>
+                        </div>
+                        <div><span class="form-label">Student Phone</span><input type="tel" id="f_phone" value="${data?.phone || ''}" placeholder="919876543210"></div>
+                        <div><span class="form-label">Guardian Name</span><input type="text" id="f_guardian_name" value="${data?.guardian_name || ''}" placeholder="Guardian name"></div>
+                        <div><span class="form-label">Guardian Phone</span><input type="tel" id="f_guardian_phone" value="${data?.guardian_phone || ''}" placeholder="919876543211"></div>
+                        <div><span class="form-label">Email</span><input type="email" id="f_email" value="${data?.email || ''}" placeholder="student@example.com"></div>
+                        <div><span class="form-label">Fee Status</span>
+                            <select id="f_fee_status">
+                                <option value="paid" ${data?.fee_status === 'paid' ? 'selected' : ''}>✅ Paid</option>
+                                <option value="unpaid" ${data?.fee_status === 'unpaid' ? 'selected' : ''}>⏳ Unpaid</option>
+                            </select>
+                        </div>
+                        <div><span class="form-label">Status</span>
+                            <select id="f_status">
+                                <option value="active" ${data?.status === 'active' ? 'selected' : ''}>Active</option>
+                                <option value="inactive" ${data?.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    ${isEdit ? `
+                        <hr class="section-divider">
+                        <div class="doc-section">
+                            <div class="doc-section-title">📄 Documents</div>
+                            ${docHtml}
+                            <div style="margin-top:12px;">
+                                <div class="doc-upload-row">
+                                    <input type="text" id="doc_name" placeholder="Document name (e.g. Aadhar Card)" style="flex:1;">
+                                    <input type="file" id="doc_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="flex:1;">
+                                    <button class="btn btn-primary btn-sm" onclick="addDocument('student','${data.id}')">➕ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="saveItem('student')">💾 Save Student</button>
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    </div>
+                `;
+            }
+
+            if (type === 'teacher') {
+                const docHtml = isEdit ? renderDocumentsHTML(data.documents, 'teacher', data.id) : '';
+
+                return `
+                    <div class="form-grid">
+                        <div><span class="form-label">Full Name</span><input type="text" id="f_name" value="${data?.name || ''}" placeholder="Teacher name"></div>
+                        <div><span class="form-label">Subject</span><input type="text" id="f_subject" value="${data?.subject || ''}" placeholder="e.g. Mathematics"></div>
+                        <div><span class="form-label">Phone</span><input type="tel" id="f_phone" value="${data?.phone || ''}" placeholder="919876543220"></div>
+                        <div><span class="form-label">Email</span><input type="email" id="f_email" value="${data?.email || ''}" placeholder="teacher@school.com"></div>
+                        <div class="full-width"><span class="form-label">Monthly Salary (₹)</span><input type="number" id="f_salary" value="${data?.salary || ''}" placeholder="45000"></div>
+                    </div>
+                    ${isEdit ? `
+                        <hr class="section-divider">
+                        <div class="doc-section">
+                            <div class="doc-section-title">📄 Documents</div>
+                            ${docHtml}
+                            <div style="margin-top:12px;">
+                                <div class="doc-upload-row">
+                                    <input type="text" id="doc_name" placeholder="Document name (e.g. Degree Certificate)" style="flex:1;">
+                                    <input type="file" id="doc_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="flex:1;">
+                                    <button class="btn btn-primary btn-sm" onclick="addDocument('teacher','${data.id}')">➕ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="saveItem('teacher')">💾 Save Teacher</button>
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    </div>
+                `;
+            }
+
+            if (type === 'staff') {
+                const docHtml = isEdit ? renderDocumentsHTML(data.documents, 'staff', data.id) : '';
+
+                return `
+                    <div class="form-grid">
+                        <div><span class="form-label">Full Name</span><input type="text" id="f_name" value="${data?.name || ''}" placeholder="Staff name"></div>
+                        <div><span class="form-label">Role</span><input type="text" id="f_role" value="${data?.role || ''}" placeholder="e.g. Administrative Officer"></div>
+                        <div><span class="form-label">Phone</span><input type="tel" id="f_phone" value="${data?.phone || ''}" placeholder="919876543230"></div>
+                        <div><span class="form-label">Email</span><input type="email" id="f_email" value="${data?.email || ''}" placeholder="staff@school.com"></div>
+                        <div class="full-width"><span class="form-label">Monthly Salary (₹)</span><input type="number" id="f_salary" value="${data?.salary || ''}" placeholder="35000"></div>
+                    </div>
+                    ${isEdit ? `
+                        <hr class="section-divider">
+                        <div class="doc-section">
+                            <div class="doc-section-title">📄 Documents</div>
+                            ${docHtml}
+                            <div style="margin-top:12px;">
+                                <div class="doc-upload-row">
+                                    <input type="text" id="doc_name" placeholder="Document name (e.g. Appointment Letter)" style="flex:1;">
+                                    <input type="file" id="doc_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="flex:1;">
+                                    <button class="btn btn-primary btn-sm" onclick="addDocument('staff','${data.id}')">➕ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="saveItem('staff')">💾 Save Staff</button>
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    </div>
+                `;
+            }
+
+            if (type === 'class') {
+                const teacherOptions = teachers.map(t =>
+                    `<option value="${escapeHtml(t.name)}" ${data?.teacher === t.name ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
+                ).join('');
+
+                return `
+                    <div class="form-grid">
+                        <div><span class="form-label">Class Name</span><input type="text" id="f_name" value="${data?.name || ''}" placeholder="e.g. 10"></div>
+                        <div><span class="form-label">Section</span><input type="text" id="f_section" value="${data?.section || ''}" placeholder="e.g. A"></div>
+                        <div class="full-width"><span class="form-label">Class Teacher</span>
+                            <select id="f_teacher">
+                                <option value="">— Select Teacher —</option>
+                                ${teacherOptions}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="saveItem('class')">💾 Save Class</button>
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    </div>
+                `;
+            }
+
+            return '<p>Invalid type</p>';
+        }
+
+        function renderDocumentsHTML(documents, type, id) {
+            if (!documents || !documents.length) {
+                return `<p style="color:var(--text3); font-size:13px;">No documents uploaded yet.</p>`;
+            }
+
+            return `
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    ${documents.map((doc, index) => `
+                        <div class="doc-item">
+                            <div class="doc-info">
+                                <span style="font-size:18px;">📄</span>
+                                <div>
+                                    <div class="doc-name">${escapeHtml(doc.name)}</div>
+                                    <div class="doc-desc">${doc.size || '—'} • ${doc.date || '—'}</div>
+                                </div>
+                            </div>
+                            <div class="doc-actions">
+                                <button class="btn btn-ghost btn-xs" onclick="viewDocument('${type}','${id}',${index})">👁️</button>
+                                <button class="btn btn-danger btn-xs" onclick="removeDocument('${type}','${id}',${index})">🗑</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // DOCUMENT FUNCTIONS
+        // ============================================================
+        // Note: only filename/size/date metadata is stored — no file bytes
+        // are ever uploaded. Real attachment storage would need a
+        // Drive-backed module; this mirrors the original prototype's mock
+        // upload behavior exactly, just persisted server-side now.
+        async function addDocument(type, id) {
+            const docName = document.getElementById('doc_name')?.value?.trim();
+            const fileInput = document.getElementById('doc_file');
+            const file = fileInput?.files?.[0];
+
+            if (!docName) {
+                showToast('Please enter a document name', true);
+                return;
+            }
+
+            if (!file) {
+                showToast('Please select a file', true);
+                return;
+            }
+
+            const item = getItem(type, id);
+            if (!item) return;
+
+            const docs = [...(item.documents || []), {
+                name: docName,
+                file: file.name,
+                size: (file.size / 1024).toFixed(1) + ' KB',
+                date: new Date().toISOString().split('T')[0]
+            }];
+
+            try {
+                await apiFetch(`${RESOURCE_PATH[type]}/${id}`, {
+                    method: 'PUT', body: JSON.stringify({ documents: JSON.stringify(docs) }),
+                });
+                await loadAllData();
+                editItem(type, id);
+                showToast(`✅ Document "${docName}" added`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        async function removeDocument(type, id, index) {
+            const item = getItem(type, id);
+            if (!item || !item.documents) return;
+
+            const doc = item.documents[index];
+            if (!doc) return;
+
+            if (!confirm(`Remove document "${doc.name}"?`)) return;
+
+            const docs = item.documents.filter((_, i) => i !== index);
+
+            try {
+                await apiFetch(`${RESOURCE_PATH[type]}/${id}`, {
+                    method: 'PUT', body: JSON.stringify({ documents: JSON.stringify(docs) }),
+                });
+                await loadAllData();
+                editItem(type, id);
+                showToast('🗑 Document removed');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function viewDocument(type, id, index) {
+            const item = getItem(type, id);
+            if (!item || !item.documents) return;
+
+            const doc = item.documents[index];
+            if (!doc) return;
+
+            viewingDoc = doc;
+
+            document.getElementById('docViewName').textContent = doc.name;
+            document.getElementById('docViewInfo').textContent = `Size: ${doc.size || '—'} • Uploaded: ${doc.date || '—'}`;
+
+            const previewArea = document.querySelector('#docViewContent > div:last-child');
+            if (previewArea) {
+                const ext = doc.file?.split('.').pop()?.toLowerCase() || '';
+                const icons = {
+                    pdf: '📄',
+                    doc: '📝',
+                    docx: '📝',
+                    jpg: '🖼️',
+                    jpeg: '🖼️',
+                    png: '🖼️'
+                };
+                const icon = icons[ext] || '📄';
+
+                previewArea.innerHTML = `
+                    <div style="font-size:64px; margin-bottom:16px;">${icon}</div>
+                    <p style="color:var(--text2);">${doc.file}</p>
+                    <p style="color:var(--text3); font-size:12px; margin-top:8px;">Click Download to save the document</p>
+                `;
+            }
+
+            document.getElementById('docViewModal').classList.add('open');
+        }
+
+        function closeDocViewModal() {
+            document.getElementById('docViewModal').classList.remove('open');
+            viewingDoc = null;
+        }
+
+        function downloadDocument() {
+            if (viewingDoc) {
+                showToast(`⬇️ Downloading: ${viewingDoc.file} (mock download)`);
+            }
+        }
+
+        // ============================================================
+        // SAVE ITEMS
+        // ============================================================
+        async function saveItem(type) {
+            const isEdit = !!editingId;
+            const id = editingId; // undefined for new items — backend assigns the id on create
+
+            const getVal = (field) => document.getElementById('f_' + field)?.value?.trim() || '';
+
+            let item = isEdit ? { id } : {};
+
+            if (type === 'student') {
+                const classId = document.getElementById('f_class_id')?.value || '';
+                item.name = getVal('name');
+                item.class_id = classId;
+                item.class_display = classId ? getClassDisplay(classId) : '';
+                item.phone = getVal('phone');
+                item.guardian_name = getVal('guardian_name');
+                item.guardian_phone = getVal('guardian_phone');
+                item.email = getVal('email');
+                item.fee_status = document.getElementById('f_fee_status')?.value || 'unpaid';
+                item.status = document.getElementById('f_status')?.value || 'active';
+                item.documents = editingId ? getItem(type, id)?.documents || [] : [];
+
+                if (!item.class_id) {
+                    showToast('Please select a class', true);
+                    return;
+                }
+            } else if (type === 'teacher') {
+                item.name = getVal('name');
+                item.subject = getVal('subject');
+                item.phone = getVal('phone');
+                item.email = getVal('email');
+                item.salary = getVal('salary');
+                item.documents = editingId ? getItem(type, id)?.documents || [] : [];
+            } else if (type === 'staff') {
+                item.name = getVal('name');
+                item.role = getVal('role');
+                item.phone = getVal('phone');
+                item.email = getVal('email');
+                item.salary = getVal('salary');
+                item.documents = editingId ? getItem(type, id)?.documents || [] : [];
+            } else if (type === 'class') {
+                item.name = getVal('name');
+                item.section = getVal('section');
+                item.teacher = getVal('teacher');
+            }
+
+            if (!item.name) {
+                showToast('Please fill in the name field', true);
+                return;
+            }
+
+            // For students, validate phone numbers
+            if (type === 'student') {
+                if (item.phone && item.phone.length < 10) {
+                    showToast('Please enter a valid student phone number (10+ digits)', true);
+                    return;
+                }
+                if (item.guardian_phone && item.guardian_phone.length < 10) {
+                    showToast('Please enter a valid guardian phone number (10+ digits)', true);
+                    return;
+                }
+                if (item.phone) item.phone = item.phone.replace(/\D/g, '');
+                if (item.guardian_phone) item.guardian_phone = item.guardian_phone.replace(/\D/g, '');
+            }
+
+            if (type === 'student' && item.class_id) {
+                item.class_display = getClassDisplay(item.class_id);
+            }
+
+            const path = RESOURCE_PATH[type];
+            const btn = document.querySelector('.modal-content .btn-primary');
+            if (btn) { btn.disabled = true; btn.textContent = '💾 Saving...'; }
+
+            try {
+                if (isEdit) {
+                    await apiFetch(`${path}/${id}`, { method: 'PUT', body: JSON.stringify(serializeRow(item)) });
+                } else {
+                    await apiFetch(path, { method: 'POST', body: JSON.stringify(serializeRow(item)) });
+                }
+                await loadAllData();
+                renderAll();
+                closeModal();
+                showToast(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+                if (btn) { btn.disabled = false; btn.textContent = '💾 Save ' + type.charAt(0).toUpperCase() + type.slice(1); }
+            }
+        }
+
+        // ============================================================
+        // DELETE ITEMS
+        // ============================================================
+        async function deleteItem(type, id) {
+            if (!confirm(`Delete this ${type}? This will also remove all associated data.`)) return;
+
+            const path = RESOURCE_PATH[type];
+            try {
+                await apiFetch(`${path}/${id}`, { method: 'DELETE' });
+                await loadAllData();
+                renderAll();
+                showToast(`🗑 ${type.charAt(0).toUpperCase() + type.slice(1)} deleted`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // EXPORT
+        // ============================================================
+        function exportAllData() {
+            const data = {
+                students,
+                teachers,
+                staff,
+                classes,
+                exportedAt: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `school_data_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('✅ Data exported');
+        }
+
+        // ============================================================
+        // REFRESH
+        // ============================================================
+        async function refreshData() {
+            try {
+                await loadAllData();
+                renderAll();
+                showToast('↻ Refreshed');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 3500);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // KEYBOARD SHORTCUTS
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeDocViewModal();
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const connected = await checkConnected();
+            if (!connected) {
+                showConnectBanner();
+                return;
+            }
+
+            try {
+                await loadAllData();
+                renderAll();
+                updateStats();
+                console.log('🏫 Admin Module initialized');
+                console.log(`Students: ${students.length}, Teachers: ${teachers.length}, Staff: ${staff.length}, Classes: ${classes.length}`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        });
+
+        // Make functions globally accessible
+        window.loadSampleData = loadSampleData;
+        window.refreshData = refreshData;
+        window.exportAllData = exportAllData;
+        window.switchTab = switchTab;
+        window.openAddModal = openAddModal;
+        window.editItem = editItem;
+        window.saveItem = saveItem;
+        window.deleteItem = deleteItem;
+        window.addDocument = addDocument;
+        window.removeDocument = removeDocument;
+        window.viewDocument = viewDocument;
+        window.closeDocViewModal = closeDocViewModal;
+        window.downloadDocument = downloadDocument;
+        window.closeModal = closeModal;
+        window.renderStudents = renderStudents;
+        window.renderTeachers = renderTeachers;
+        window.renderStaff = renderStaff;
+        window.renderClasses = renderClasses;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+    </script>
+
+</body>
+</html>
