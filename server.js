@@ -27,6 +27,7 @@ const scheduleService = require('./modules/schedule/service');
 const followupService = require('./modules/followup/service');
 const insightsService = require('./modules/insights/service');
 const automationsService = require('./modules/automations/service');
+const educationService = require('./modules/education/service');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -113,6 +114,7 @@ app.use('/api/bot-builder', require('./modules/bot-builder/routes'));
 app.use('/api/meetings', require('./modules/meetings/routes'));
 app.use('/api/billing', require('./modules/billing/routes'));
 app.use('/api/api-keys', require('./modules/api-keys/routes'));
+app.use('/api/education', require('./modules/education/routes'));
 // Mounted last and at the generic '/api' prefix (its routes are /profile and
 // /client, not under their own subpath) — registered after every specific
 // /api/<module> mount above so its blanket requireAuth middleware (see
@@ -198,6 +200,16 @@ const FOLLOWUP_POLL_MS = 5 * 60 * 1000;
 setInterval(() => {
   automationsService.checkFollowUps().catch((err) => console.error('[automations] follow-up poll tick failed:', err.message));
 }, FOLLOWUP_POLL_MS);
+
+// Birthday/fee/invoice reminders (modules/education) — each tick re-checks
+// every active client's own Google Sheet for what's due today, so an
+// hourly cadence is plenty (a birthday sent an hour late is fine; unlike
+// modules/automations' due-timestamped follow-ups, nothing here is
+// minute-precision).
+const EDUCATION_POLL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  educationService.pollReminders().catch((err) => console.error('[education] poll tick failed:', err.message));
+}, EDUCATION_POLL_MS);
 
 const PORT = process.env.PORT || 3000;
 
