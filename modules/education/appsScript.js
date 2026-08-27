@@ -28,12 +28,17 @@ var SECRET_KEY = '__SECRET_KEY__';
 // first column is always the primary key "id" (except Settings).
 // ------------------------------------------------------------
 var SCHEMAS = {
+  // 'documents' holds a JSON-stringified array of {name, file, size, date}
+  // metadata objects (filename/size/date only — no binary bytes are ever
+  // sent to or stored by this script, matching the original prototype's
+  // mock upload behavior). Real file storage would need a Drive-backed
+  // module instead; this is metadata-only by design.
   Students: ['id', 'name', 'class_id', 'class_display', 'phone', 'guardian_name',
-    'guardian_phone', 'email', 'dob', 'fee_status', 'status', 'created_at', 'updated_at'],
+    'guardian_phone', 'email', 'dob', 'fee_status', 'status', 'documents', 'created_at', 'updated_at'],
 
-  Teachers: ['id', 'name', 'subject', 'phone', 'email', 'salary', 'created_at', 'updated_at'],
+  Teachers: ['id', 'name', 'subject', 'phone', 'email', 'salary', 'documents', 'created_at', 'updated_at'],
 
-  Staff: ['id', 'name', 'role', 'phone', 'email', 'salary', 'created_at', 'updated_at'],
+  Staff: ['id', 'name', 'role', 'phone', 'email', 'salary', 'documents', 'created_at', 'updated_at'],
 
   Classes: ['id', 'name', 'section', 'teacher', 'created_at', 'updated_at'],
 

@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Module with Live Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+        .badge-purple {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+
+        /* Form */
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        select option {
+            background: var(--surface2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+        }
+
+        /* Invoice Grid */
+        .invoice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .invoice-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 18px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .invoice-card:hover {
+            border-color: var(--border2);
+            transform: translateY(-2px);
+        }
+
+        .invoice-card .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .invoice-card .name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .invoice-card .class {
+            font-size: 12px;
+            color: var(--text2);
+            margin-bottom: 4px;
+        }
+
+        .invoice-card .details {
+            font-size: 12px;
+            color: var(--text3);
+            margin-bottom: 4px;
+        }
+
+        .invoice-card .details strong {
+            color: var(--text);
+        }
+
+        .invoice-card .amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--green);
+            margin: 8px 0;
+        }
+
+        .invoice-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .invoice-card .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .invoice-card .sent-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+        }
+
+        /* Auto-send section */
+        .auto-send-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            background: var(--bg2);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .auto-send-section label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text2);
+            white-space: nowrap;
+        }
+
+        .auto-send-section select {
+            flex: 1;
+            min-width: 200px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        .auto-send-section select:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        .auto-send-section .status {
+            font-size: 12px;
+            color: var(--text3);
+            padding: 4px 12px;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .auto-send-section .status.active {
+            color: var(--green);
+            border-color: var(--green);
+            background: var(--green-dim);
+        }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg2);
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .filter-bar .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-bar label {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            width: auto;
+            padding: 6px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            min-width: 100px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .75);
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .modal-box.wide {
+            max-width: 1000px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        /* Split layout for preview */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .split-layout .left-panel {
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .split-layout .right-panel {
+            overflow-y: auto;
+            max-height: 600px;
+            position: sticky;
+            top: 0;
+        }
+
+        /* Invoice Preview */
+        .invoice-preview {
+            background: #fff;
+            color: #000;
+            padding: 24px;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            min-height: 300px;
+            border: 1px solid #ddd;
+            overflow: auto;
+        }
+
+        .invoice-preview .placeholder {
+            color: #888;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .invoice-preview .error {
+            color: red;
+            padding: 20px;
+            background: #fee;
+            border-radius: 8px;
+        }
+
+        /* Template Editor */
+        .template-editor {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .template-editor .editor-toolbar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .template-editor .editor-toolbar button {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+            background: var(--surface3);
+            border: 1px solid var(--border2);
+            color: var(--text2);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+        }
+
+        .template-editor .editor-toolbar button:hover {
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--green);
+        }
+
+        .template-editor textarea {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            min-height: 200px;
+        }
+
+        .template-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-list-item:hover {
+            border-color: var(--green);
+            background: var(--surface2);
+        }
+
+        .template-list-item.active {
+            border-color: var(--green);
+            background: var(--green-dim);
+        }
+
+        .template-list-item .template-name {
+            font-weight: 600;
+        }
+
+        .template-list-item .template-meta {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .split-layout {
+                grid-template-columns: 1fr;
+            }
+            .split-layout .right-panel {
+                position: relative;
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .invoice-grid {
+                grid-template-columns: 1fr;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .modal-box {
+                padding: 18px;
+                margin: 10px;
+            }
+            .auto-send-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .auto-send-section select {
+                min-width: auto;
+            }
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-bar .filter-group {
+                flex-wrap: wrap;
+            }
+            .filter-bar select,
+            .filter-bar input {
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .help-text code {
+            background: var(--surface3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
+        .help-text strong {
+            color: var(--text);
+        }
+
+        .preview-refresh {
+            font-size: 11px;
+            color: var(--text3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: var(--bg2);
+            border-radius: 20px;
+        }
+
+        .preview-refresh .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">📄 Invoice<span>Module</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadSampleInvoices()">📋 Load Sample</button>
+                <button class="btn btn-secondary btn-sm" onclick="openTemplateManager()">📝 Manage Templates</button>
+                <button class="btn btn-secondary btn-sm" onclick="syncInvoiceData()">🔄 Sync</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Paid</div>
+                <div class="stat-value" id="invoiceTotal">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Invoices Sent</div>
+                <div class="stat-value" id="invoiceSent">0</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Pending Send</div>
+                <div class="stat-value" id="invoicePending">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Total Amount</div>
+                <div class="stat-value" id="invoiceTotalAmount">₹0</div>
+            </div>
+        </div>
+
+        <!-- Auto-Send Setup -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🤖 Auto Invoice Sending</div>
+                <span id="invoiceAutoStatus" class="badge badge-amber">● Not Configured</span>
+            </div>
+            <div class="auto-send-section">
+                <label>Default Template:</label>
+                <select id="defaultInvoiceTemplate" onchange="previewDefaultTemplate()">
+                    <option value="">— Select a template —</option>
+                </select>
+                <button class="btn btn-primary" onclick="setDefaultInvoiceTemplate()">✅ Set as Default</button>
+                <span id="defaultInvoiceTemplateStatus" class="status">No default set</span>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <button class="btn btn-secondary btn-sm" onclick="toggleAutoInvoiceSend()" id="autoInvoiceToggleBtn">▶ Enable Auto-Send</button>
+                <span style="font-size:12px; color:var(--text2); align-self:center;">
+                    Auto-send will automatically send invoices to paid students
+                </span>
+                <button class="btn btn-ghost btn-xs" onclick="previewDefaultTemplate()" style="margin-left:auto;">👁️ Preview Default</button>
+            </div>
+            <div id="defaultTemplatePreviewContainer" style="margin-top:12px; display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="form-label" style="margin-top:0;">Default Template Preview</span>
+                    <span class="preview-refresh"><span class="dot"></span> Live</span>
+                </div>
+                <div class="invoice-preview" id="defaultTemplatePreview">
+                    <div class="placeholder">Select a default template to preview</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice List -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📄 Invoices <span id="invoiceCount" style="color:var(--text3);font-weight:400;">(0)</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="sendBulkInvoices()">📨 Send All</button>
+                    <button class="btn btn-ghost btn-sm" onclick="refreshInvoices()">↻ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select id="invoiceFilter" onchange="renderInvoiceGrid()">
+                        <option value="all">All</option>
+                        <option value="sent">✅ Sent</option>
+                        <option value="pending">⏳ Pending</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search:</label>
+                    <input type="text" id="invoiceSearchInput" placeholder="Search name..." oninput="renderInvoiceGrid()">
+                </div>
+                <div class="filter-group" style="margin-left:auto;">
+                    <label>Sort:</label>
+                    <select id="invoiceSort" onchange="renderInvoiceGrid()">
+                        <option value="name">By Name</option>
+                        <option value="amount">By Amount</option>
+                        <option value="date">By Date</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="invoice-grid" id="invoiceGrid">
+                <div class="empty-state" style="grid-column:1/-1;">
+                    <div class="empty-icon">📄</div>
+                    <p>No paid students found.<br>Click "Load Sample" to see demo data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Invoice Modal with Live Preview -->
+    <div class="modal" id="invoiceSendModal">
+        <div class="modal-box wide">
+            <div class="modal-header">
+                <div class="modal-title">📄 Send Invoice</div>
+                <button class="btn btn-ghost btn-xs" onclick="closeInvoiceSendModal()">✕</button>
+            </div>
+
+            <div id="sendStudentInfo" style="margin-bottom:16px; padding:12px; background:var(--bg2); border-radius:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div id="sendAvatar" style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, var(--purple), var(--blue)); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0;">A</div>
+                <div style="flex:1;">
+                    <div id="sendName" style="font-size:16px; font-weight:600;">Student Name</div>
+                    <div id="sendClass" style="font-size:12px; color:var(--text2);">Class</div>
+                </div>
+                <div id="sendAmount" style="font-size:20px; font-weight:700; color:var(--green);">₹0</div>
+            </div>
+
+            <!-- Split Layout: Template Selector + Live Preview -->
+            <div class="split-layout">
+                <!-- Left Panel: Template Selection -->
+                <div class="left-panel">
+                    <span class="form-label" style="margin-top:0;">Select Invoice Template</span>
+                    <select id="invoiceTemplateSelect" onchange="previewInvoiceTemplate()" style="margin-bottom:12px;">
+                        <option value="">— Select a template —</option>
+                    </select>
+
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                        <button class="btn btn-secondary btn-sm" onclick="openTemplateManager()">📝 Edit Templates</button>
+                        <button class="btn btn-ghost btn-sm" onclick="refreshInvoiceTemplates()">↻ Refresh</button>
+                    </div>
+
+                    <div style="font-size:11px; color:var(--text3); padding:10px; background:var(--bg2); border-radius:8px; border:1px solid var(--border);">
+                        <strong>💡 Template Variables:</strong><br>
+                        <code>${data.studentName}</code> - Student's full name<br>
+                        <code>${data.class}</code> - Class/Section<br>
+                        <code>${data.amount}</code> - Fee amount<br>
+                        <code>${data.date}</code> - Invoice date<br>
+                        <code>${data.invoiceNumber}</code> - Unique invoice number<br>
+                        <code>${data.dueDate}</code> - Payment due date<br>
+                        <code>${data.phone}</code> - WhatsApp number
+                    </div>
+                </div>
+
+                <!-- Right Panel: Live Preview -->
+                <div class="right-panel">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span class="form-label" style="margin-top:0;">📄 Invoice Preview</span>
+                        <span class="preview-refresh"><span class="dot"></span> Live</span>
+                    </div>
+                    <div class="invoice-preview" id="invoicePreview">
+                        <div class="placeholder">Select a template to preview the invoice</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-row" style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="sendInvoice()" id="sendInvoiceBtn">📨 Send Invoice</button>
+                <button class="btn btn-ghost" onclick="closeInvoiceSendModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Manager Modal with Live Preview -->
+    <div class="modal" id="templateManagerModal">
+        <div class="modal-box wide">
+            <div class="modal-header">
+                <div class="modal-title">📝 Invoice Template Manager</div>
+                <button class="btn btn-ghost btn-xs" onclick="closeTemplateManager()">✕</button>
+            </div>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+                <button class="btn btn-primary btn-sm" onclick="createNewTemplate()">+ New Template</button>
+                <button class="btn btn-secondary btn-sm" onclick="loadInvoiceTemplates()">↻ Refresh</button>
+            </div>
+
+            <!-- Template List -->
+            <div id="templateList" style="margin-bottom:16px; max-height:200px; overflow-y:auto;">
+                <div class="empty-state">
+                    <p>No templates created yet. Click "New Template" to create one.</p>
+                </div>
+            </div>
+
+            <!-- Template Editor with Live Preview -->
+            <div class="template-editor" id="templateEditor" style="display:none;">
+                <div class="card-header" style="margin-bottom:8px;">
+                    <div class="card-title" id="templateEditorTitle">✏️ Edit Template</div>
+                    <button class="btn btn-danger btn-xs" onclick="deleteCurrentTemplate()">🗑 Delete</button>
+                </div>
+                <input type="hidden" id="editingTemplateId">
+
+                <div class="split-layout">
+                    <!-- Left: Editor -->
+                    <div class="left-panel">
+                        <span class="form-label" style="margin-top:0;">Template Name</span>
+                        <input type="text" id="templateNameInput" placeholder="e.g. standard_invoice" oninput="livePreviewTemplate()">
+
+                        <span class="form-label">Template Code (JavaScript)</span>
+                        <div class="editor-toolbar">
+                            <button onclick="insertTemplateVar('studentName')">Insert studentName</button>
+                            <button onclick="insertTemplateVar('class')">Insert class</button>
+                            <button onclick="insertTemplateVar('amount')">Insert amount</button>
+                            <button onclick="insertTemplateVar('date')">Insert date</button>
+                            <button onclick="insertTemplateVar('invoiceNumber')">Insert invoiceNumber</button>
+                            <button onclick="insertTemplateVar('dueDate')">Insert dueDate</button>
+                            <button onclick="insertTemplateVar('phone')">Insert phone</button>
+                        </div>
+                        <textarea id="templateCodeInput" rows="12" placeholder="// JavaScript code that returns an HTML string&#10;function generateInvoice(data) {&#10;  return `...`;&#10;}" oninput="livePreviewTemplate()"></textarea>
+
+                        <div class="btn-row">
+                            <button class="btn btn-primary" onclick="saveInvoiceTemplate()">💾 Save Template</button>
+                            <button class="btn btn-ghost" onclick="cancelTemplateEdit()">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Preview -->
+                    <div class="right-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span class="form-label" style="margin-top:0;">📄 Live Preview</span>
+                            <span class="preview-refresh"><span class="dot"></span> Live</span>
+                        </div>
+                        <div class="invoice-preview" id="templateLivePreview">
+                            <div class="placeholder">Edit the template code to see live preview</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // INVOICE MODULE - Complete JavaScript with Live Preview
+        // ============================================================
+
+        let invoiceData = [];
+        let filteredInvoiceData = [];
+        let invoiceTemplates = [];
+        let currentSendStudentId = null;
+        let autoInvoiceSendEnabled = false;
+        let defaultInvoiceTemplateId = null; // InvoiceTemplates row id — controls the rendered HTML preview
+        let defaultWhatsAppTemplateName = null; // Settings.defaultInvoiceTemplate — the APPROVED Meta template actually sent
+        let editingTemplateId = null;
+
+        // Default test student for preview
+        const PREVIEW_STUDENT = {
+            studentName: 'John Doe',
+            class: '10-A',
+            amount: '5000',
+            date: '2024-01-15',
+            invoiceNumber: 'INV-PREV-001',
+            dueDate: '2024-02-15',
+            phone: '919876543210'
+        };
+
+        // Default invoice template code
+        const DEFAULT_TEMPLATE_CODE = `function generateInvoice(data) {
+          // data contains: studentName, class, amount, date, invoiceNumber, dueDate, phone
+          return \`
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <div style="border-bottom: 3px solid #22d172; padding-bottom: 12px; margin-bottom: 20px;">
+                <h1 style="color: #000; margin: 0; font-size: 24px;">INVOICE</h1>
+                <div style="color: #666; font-size: 14px;">#\${data.invoiceNumber}</div>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                <div>
+                  <div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600;">Student</div>
+                  <div style="font-size: 16px; font-weight: 600; color: #000;">\${data.studentName}</div>
+                  <div style="font-size: 13px; color: #666;">Class: \${data.class || 'N/A'}</div>
+                  <div style="font-size: 13px; color: #666;">Phone: \${data.phone || 'N/A'}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600;">Invoice Date</div>
+                  <div style="font-size: 14px; color: #000;">\${data.date}</div>
+                  <div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600; margin-top: 8px;">Due Date</div>
+                  <div style="font-size: 14px; color: #000;">\${data.dueDate || 'N/A'}</div>
+                </div>
+              </div>
+              
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                <thead>
+                  <tr style="background: #f5f5f5;">
+                    <th style="padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #333; border-bottom: 1px solid #ddd;">Description</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #333; border-bottom: 1px solid #ddd;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #333;">Fee for \${data.class}</td>
+                    <td style="padding: 10px 12px; text-align: right; border-bottom: 1px solid #eee; color: #333;">₹\${data.amount}</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <div style="text-align: right; padding-top: 16px; border-top: 2px solid #eee;">
+                <span style="font-size: 14px; color: #666;">Total Amount: </span>
+                <span style="font-size: 24px; font-weight: 700; color: #22d172;">₹\${data.amount}</span>
+              </div>
+              
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+                Thank you for your payment. This is a system-generated invoice.
+              </div>
+            </div>
+          \`;
+        }`;
+
+        // ============================================================
+        // BACKEND API — modules/education
+        // ============================================================
+        const EDU_API = '/api/education';
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+            return body.data;
+        }
+        async function checkConnected() {
+            try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+        function showConnectBanner() {
+            const grid = document.getElementById('invoiceGrid');
+            const msg = '⚠️ No Google Sheet connected yet. Go to Settings to connect one before managing invoices.';
+            if (grid) grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1; color:var(--amber, #d97706);">${msg}</div>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 3500);
+        }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        async function loadSampleInvoices() {
+            const sampleInvoices = [{
+                student_id: 'invsmp_1', name: 'Aarav Sharma', class: '10-A', amount: '5000',
+                date: '2024-01-15', dueDate: '2024-02-15', phone: '919876543210',
+                invoice_number: 'INV-2024-001', status: 'pending',
+            }, {
+                student_id: 'invsmp_2', name: 'Priya Patel', class: '12-B', amount: '7500',
+                date: '2024-01-20', dueDate: '2024-02-20', phone: '919876543211',
+                invoice_number: 'INV-2024-002', status: 'paid', sent_at: new Date().toISOString(),
+            }, {
+                student_id: 'invsmp_3', name: 'Rahul Singh', class: '8-C', amount: '4000',
+                date: '2024-02-01', dueDate: '2024-03-01', phone: '919876543212',
+                invoice_number: 'INV-2024-003', status: 'pending',
+            }, {
+                student_id: 'invsmp_4', name: 'Sneha Reddy', class: '11-A', amount: '6500',
+                date: '2024-02-05', dueDate: '2024-03-05', phone: '919876543213',
+                invoice_number: 'INV-2024-004', status: 'pending',
+            }, {
+                student_id: 'invsmp_5', name: 'Vikram Kumar', class: '9-B', amount: '4500',
+                date: '2024-02-10', dueDate: '2024-03-10', phone: '919876543214',
+                invoice_number: 'INV-2024-005', status: 'pending',
+            }, {
+                student_id: 'invsmp_6', name: 'Ananya Gupta', class: '10-B', amount: '5500',
+                date: '2024-02-15', dueDate: '2024-03-15', phone: '919876543215',
+                invoice_number: 'INV-2024-006', status: 'paid', sent_at: new Date().toISOString(),
+            }];
+
+            try {
+                await apiFetch('/invoices/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleInvoices }) });
+                await loadInvoiceData();
+                showToast('✅ Loaded ' + invoiceData.length + ' sample invoices');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD DATA
+        // ============================================================
+        async function loadInvoiceData() {
+            const rows = await apiFetch('/invoices');
+            invoiceData = (rows || []).map(r => ({
+                id: r.id, name: r.name, class: r.class, amount: r.amount,
+                date: r.date, dueDate: r.dueDate, phone: r.phone,
+                invoiceNumber: r.invoice_number, status: r.status,
+                sent: !!r.sent_at, student_id: r.student_id,
+            }));
+            await loadInvoiceTemplates();
+            await loadInvoiceSettings();
+            renderInvoiceGrid();
+            updateInvoiceStats();
+            return invoiceData.length > 0;
+        }
+
+        async function loadInvoiceSettings() {
+            const settings = await apiFetch('/settings');
+            defaultWhatsAppTemplateName = settings.defaultInvoiceTemplate || null;
+            autoInvoiceSendEnabled = !!settings.autoInvoiceSendEnabled;
+
+            const btn = document.getElementById('autoInvoiceToggleBtn');
+            if (autoInvoiceSendEnabled) {
+                btn.textContent = '⏹ Disable Auto-Send';
+                btn.className = 'btn btn-danger btn-sm';
+            } else {
+                btn.textContent = '▶ Enable Auto-Send';
+                btn.className = 'btn btn-secondary btn-sm';
+            }
+        }
+
+        // ============================================================
+        // INVOICE TEMPLATES
+        // ============================================================
+        function loadInvoiceTemplates() {
+            return apiFetch('/invoice-templates').then(rows => {
+                invoiceTemplates = (rows || []).map(t => ({
+                    id: t.id, name: t.name, code: t.code,
+                    isDefault: String(t.is_default) === 'true',
+                    createdAt: t.created_at,
+                }));
+
+                if (!invoiceTemplates.length) {
+                    // Seed a starter template so the page is usable immediately
+                    return apiFetch('/invoice-templates', {
+                        method: 'POST',
+                        body: JSON.stringify({ name: 'standard_invoice', code: DEFAULT_TEMPLATE_CODE, is_default: 'true' }),
+                    }).then(() => loadInvoiceTemplates());
+                }
+
+                const def = invoiceTemplates.find(t => t.isDefault);
+                defaultInvoiceTemplateId = def ? def.id : null;
+
+                populateTemplateSelects();
+                renderTemplateList();
+                updateDefaultInvoiceStatus();
+                if (defaultInvoiceTemplateId) previewDefaultTemplate();
+            });
+        }
+
+        function populateTemplateSelects() {
+            const selects = ['invoiceTemplateSelect', 'defaultInvoiceTemplate'];
+            selects.forEach(selId => {
+                const sel = document.getElementById(selId);
+                if (!sel) return;
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">— Select a template —</option>' +
+                    invoiceTemplates.map(t =>
+                        `<option value="${t.id}" ${t.id === currentVal ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
+                    ).join('');
+            });
+        }
+
+        function renderTemplateList() {
+            const container = document.getElementById('templateList');
+            if (!invoiceTemplates.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No templates created yet. Click "New Template" to create one.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = invoiceTemplates.map(t => `
+                <div class="template-list-item ${t.isDefault ? 'active' : ''}" onclick="editInvoiceTemplate('${t.id}')">
+                    <div>
+                        <div class="template-name">${escapeHtml(t.name)} ${t.isDefault ? '⭐' : ''}</div>
+                        <div class="template-meta">
+                            ${t.isDefault ? 'Default template • ' : ''}
+                            ${t.createdAt ? `Created: ${new Date(t.createdAt).toLocaleDateString()}` : ''}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();editInvoiceTemplate('${t.id}')">✏️</button>
+                        ${!t.isDefault ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();setAsDefaultTemplate('${t.id}')">⭐</button>` : ''}
+                        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();deleteInvoiceTemplate('${t.id}')">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function createNewTemplate() {
+            editingTemplateId = null;
+            document.getElementById('editingTemplateId').value = '';
+            document.getElementById('templateNameInput').value = 'new_invoice_template';
+            document.getElementById('templateCodeInput').value = DEFAULT_TEMPLATE_CODE;
+            document.getElementById('templateEditorTitle').textContent = '✏️ New Template';
+            document.getElementById('templateEditor').style.display = 'block';
+            document.getElementById('templateEditor').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => livePreviewTemplate(), 100);
+        }
+
+        function editInvoiceTemplate(id) {
+            const template = invoiceTemplates.find(t => t.id === id);
+            if (!template) {
+                showToast('Template not found', true);
+                return;
+            }
+
+            editingTemplateId = id;
+            document.getElementById('editingTemplateId').value = id;
+            document.getElementById('templateNameInput').value = template.name;
+            document.getElementById('templateCodeInput').value = template.code || DEFAULT_TEMPLATE_CODE;
+            document.getElementById('templateEditorTitle').textContent = `✏️ Edit: ${template.name}`;
+            document.getElementById('templateEditor').style.display = 'block';
+            document.getElementById('templateEditor').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => livePreviewTemplate(), 100);
+        }
+
+        async function saveInvoiceTemplate() {
+            const name = document.getElementById('templateNameInput').value.trim();
+            const code = document.getElementById('templateCodeInput').value.trim();
+            const editId = document.getElementById('editingTemplateId').value;
+
+            if (!name) {
+                showToast('Please enter a template name', true);
+                return;
+            }
+
+            if (!code) {
+                showToast('Please enter template code', true);
+                return;
+            }
+
+            // Test the code
+            try {
+                const evalCode = code + '\nreturn typeof generateInvoice === "function" ? generateInvoice(data) : "";';
+                const fn = new Function('data', evalCode);
+                fn(PREVIEW_STUDENT);
+            } catch (e) {
+                showToast('Template code error: ' + e.message, true);
+                return;
+            }
+
+            try {
+                if (editId) {
+                    await apiFetch(`/invoice-templates/${editId}`, { method: 'PUT', body: JSON.stringify({ name, code }) });
+                    showToast('✅ Template updated');
+                } else {
+                    await apiFetch('/invoice-templates', { method: 'POST', body: JSON.stringify({ name, code, is_default: 'false' }) });
+                    showToast('✅ Template created');
+                }
+                await loadInvoiceTemplates();
+                document.getElementById('templateEditor').style.display = 'none';
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        async function deleteInvoiceTemplate(id) {
+            const template = invoiceTemplates.find(t => t.id === id);
+            if (!template) return;
+
+            if (template.isDefault) {
+                showToast('Cannot delete the default template', true);
+                return;
+            }
+
+            if (!confirm('Delete template "' + template.name + '"?')) return;
+
+            try {
+                await apiFetch(`/invoice-templates/${id}`, { method: 'DELETE' });
+                await loadInvoiceTemplates();
+                showToast('🗑 Template deleted');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function deleteCurrentTemplate() {
+            const id = document.getElementById('editingTemplateId').value;
+            if (id) deleteInvoiceTemplate(id);
+            document.getElementById('templateEditor').style.display = 'none';
+        }
+
+        function cancelTemplateEdit() {
+            document.getElementById('templateEditor').style.display = 'none';
+        }
+
+        function insertTemplateVar(varName) {
+            const textarea = document.getElementById('templateCodeInput');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const insertText = '${data.' + varName + '}';
+            textarea.value = text.substring(0, start) + insertText + text.substring(end);
+            textarea.focus();
+            const newPos = start + insertText.length;
+            textarea.selectionStart = textarea.selectionEnd = newPos;
+            livePreviewTemplate();
+        }
+
+        function openTemplateManager() {
+            loadInvoiceTemplates();
+            document.getElementById('templateManagerModal').classList.add('open');
+            document.getElementById('templateEditor').style.display = 'none';
+        }
+
+        function closeTemplateManager() {
+            document.getElementById('templateManagerModal').classList.remove('open');
+        }
+
+        function refreshInvoiceTemplates() {
+            loadInvoiceTemplates();
+            showToast('↻ Templates refreshed');
+        }
+
+        // ============================================================
+        // RENDER TEMPLATE (FIXED)
+        // ============================================================
+        function renderTemplate(code, data) {
+            try {
+                // The template code defines a function `generateInvoice(data)`.
+                // We append a return statement to evaluate the code and then call that function.
+                const evalCode = code + '\nreturn typeof generateInvoice === "function" ? generateInvoice(data) : "";';
+                const fn = new Function('data', evalCode);
+                const result = fn(data);
+                return result || '';
+            } catch (e) {
+                return '<div class="error">❌ Error: ' + escapeHtml(e.message) + '</div>';
+            }
+        }
+
+        // ============================================================
+        // LIVE PREVIEW
+        // ============================================================
+        function livePreviewTemplate() {
+            const code = document.getElementById('templateCodeInput').value.trim();
+            const previewContainer = document.getElementById('templateLivePreview');
+
+            if (!code) {
+                previewContainer.innerHTML = '<div class="placeholder">Enter template code to preview</div>';
+                return;
+            }
+
+            const html = renderTemplate(code, PREVIEW_STUDENT);
+            previewContainer.innerHTML = html;
+        }
+
+        function previewInvoiceTemplate() {
+            const templateId = document.getElementById('invoiceTemplateSelect').value;
+            const container = document.getElementById('invoicePreview');
+
+            if (!templateId) {
+                container.innerHTML = '<div class="placeholder">Select a template to preview the invoice</div>';
+                return;
+            }
+
+            const template = invoiceTemplates.find(t => t.id === templateId);
+            if (!template) {
+                container.innerHTML = '<div class="placeholder">Template not found</div>';
+                return;
+            }
+
+            const student = invoiceData.find(s => s.id === currentSendStudentId);
+            if (!student) {
+                container.innerHTML = '<div class="placeholder">Student not found</div>';
+                return;
+            }
+
+            const data = {
+                studentName: student.name,
+                class: student.class || 'N/A',
+                amount: student.amount || '0',
+                date: student.date || new Date().toISOString().split('T')[0],
+                invoiceNumber: student.invoiceNumber || 'INV-' + Date.now(),
+                dueDate: student.dueDate || 'N/A',
+                phone: student.phone || 'N/A'
+            };
+
+            const html = renderTemplate(template.code, data);
+            container.innerHTML = html;
+        }
+
+        function previewDefaultTemplate() {
+            const container = document.getElementById('defaultTemplatePreviewContainer');
+            const preview = document.getElementById('defaultTemplatePreview');
+
+            if (!defaultInvoiceTemplateId) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const template = invoiceTemplates.find(t => t.id === defaultInvoiceTemplateId);
+            if (!template) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            const html = renderTemplate(template.code, PREVIEW_STUDENT);
+            preview.innerHTML = html;
+        }
+
+        // ============================================================
+        // DEFAULT TEMPLATE
+        // ============================================================
+        function loadDefaultInvoiceTemplate() {
+            // No-op now — defaultInvoiceTemplateId is derived from the
+            // InvoiceTemplates sheet's is_default flag inside loadInvoiceTemplates().
+            updateDefaultInvoiceStatus();
+            if (defaultInvoiceTemplateId) previewDefaultTemplate();
+        }
+
+        async function setDefaultInvoiceTemplate() {
+            const sel = document.getElementById('defaultInvoiceTemplate');
+            const id = sel.value;
+
+            if (!id) {
+                showToast('Please select a template first', true);
+                return;
+            }
+
+            try {
+                await Promise.all(invoiceTemplates.map(t =>
+                    apiFetch(`/invoice-templates/${t.id}`, { method: 'PUT', body: JSON.stringify({ is_default: String(t.id === id) }) })
+                ));
+                defaultInvoiceTemplateId = id;
+                await loadInvoiceTemplates();
+                showToast('✅ Default invoice template set');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function updateDefaultInvoiceStatus() {
+            const statusEl = document.getElementById('defaultInvoiceTemplateStatus');
+            if (defaultInvoiceTemplateId) {
+                const tpl = invoiceTemplates.find(t => t.id === defaultInvoiceTemplateId);
+                statusEl.textContent = '✅ Default: ' + (tpl ? tpl.name : 'Unknown template');
+                statusEl.className = 'status active';
+                document.getElementById('invoiceAutoStatus').className = 'badge badge-green';
+                document.getElementById('invoiceAutoStatus').textContent = '● Default Set';
+            } else {
+                statusEl.textContent = 'No default set';
+                statusEl.className = 'status';
+            }
+        }
+
+        async function setAsDefaultTemplate(id) {
+            try {
+                await Promise.all(invoiceTemplates.map(t =>
+                    apiFetch(`/invoice-templates/${t.id}`, { method: 'PUT', body: JSON.stringify({ is_default: String(t.id === id) }) })
+                ));
+                defaultInvoiceTemplateId = id;
+                await loadInvoiceTemplates();
+                previewDefaultTemplate();
+                showToast('⭐ Default template updated');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // AUTO-SEND
+        // ============================================================
+        // ============================================================
+        // AUTO-SEND — only sets Settings.autoInvoiceSendEnabled. The
+        // actual sending happens server-side (modules/education's hourly
+        // poll tick, using Settings.defaultInvoiceTemplate — an APPROVED
+        // Meta WhatsApp template name, separate from the HTML-render
+        // template above which only controls what the on-screen/print
+        // invoice looks like).
+        // ============================================================
+        async function toggleAutoInvoiceSend() {
+            const btn = document.getElementById('autoInvoiceToggleBtn');
+            const next = !autoInvoiceSendEnabled;
+
+            if (next && !defaultWhatsAppTemplateName) {
+                showToast('⚠️ Set a default invoice WhatsApp template in Settings first', true);
+                return;
+            }
+
+            try {
+                await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ autoInvoiceSendEnabled: next }) });
+                autoInvoiceSendEnabled = next;
+                if (autoInvoiceSendEnabled) {
+                    btn.textContent = '⏹ Disable Auto-Send';
+                    btn.className = 'btn btn-danger btn-sm';
+                    showToast('✅ Auto-send enabled — the server checks for unsent invoices hourly');
+                } else {
+                    btn.textContent = '▶ Enable Auto-Send';
+                    btn.className = 'btn btn-secondary btn-sm';
+                    showToast('⏹ Auto-send disabled');
+                }
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // RENDER INVOICE GRID
+        // ============================================================
+        function renderInvoiceGrid() {
+            const filter = document.getElementById('invoiceFilter').value;
+            const search = document.getElementById('invoiceSearchInput').value.toLowerCase().trim();
+            const sort = document.getElementById('invoiceSort').value;
+
+            filteredInvoiceData = invoiceData.filter(student => {
+                if (filter === 'sent' && !student.sent) return false;
+                if (filter === 'pending' && student.sent) return false;
+                if (search) {
+                    if (!student.name.toLowerCase().includes(search) &&
+                        !student.class.toLowerCase().includes(search)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            filteredInvoiceData.sort((a, b) => {
+                if (sort === 'name') return a.name.localeCompare(b.name);
+                if (sort === 'amount') return parseFloat(b.amount) - parseFloat(a.amount);
+                if (sort === 'date') return new Date(b.date) - new Date(a.date);
+                return 0;
+            });
+
+            const grid = document.getElementById('invoiceGrid');
+            document.getElementById('invoiceCount').textContent = '(' + filteredInvoiceData.length + ')';
+
+            if (!filteredInvoiceData.length) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <div class="empty-icon">📄</div>
+                        <p>${invoiceData.length > 0 ? 'No invoices match your filters' : 'No invoice records loaded'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filteredInvoiceData.map(student => {
+                const isSent = student.sent;
+
+                return `
+                    <div class="invoice-card">
+                        ${isSent ? '<span class="sent-badge badge badge-green">✅ Sent</span>' : ''}
+                        <div class="avatar">${student.name.charAt(0).toUpperCase()}</div>
+                        <div class="name">${escapeHtml(student.name)}</div>
+                        <div class="class">📚 ${escapeHtml(student.class || 'N/A')}</div>
+                        <div class="details">📅 ${student.date || 'N/A'}</div>
+                        <div class="details">📋 ${student.invoiceNumber || 'N/A'}</div>
+                        <div class="amount">₹${student.amount || '0'}</div>
+                        <button class="btn ${isSent ? 'btn-secondary' : 'btn-primary'}" 
+                                onclick="openInvoiceSendModal('${student.id}')"
+                                ${isSent ? 'disabled' : ''}>
+                            ${isSent ? '✅ Sent' : '📨 Send Invoice'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // STATS
+        // ============================================================
+        function updateInvoiceStats() {
+            document.getElementById('invoiceTotal').textContent = invoiceData.length;
+            document.getElementById('invoiceSent').textContent = invoiceData.filter(s => s.sent).length;
+            document.getElementById('invoicePending').textContent = invoiceData.filter(s => !s.sent).length;
+            const total = invoiceData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+            document.getElementById('invoiceTotalAmount').textContent = '₹' + total.toLocaleString();
+        }
+
+        // ============================================================
+        // SEND MODAL
+        // ============================================================
+        function openInvoiceSendModal(studentId) {
+            const student = invoiceData.find(s => s.id === studentId);
+            if (!student) {
+                showToast('Student not found', true);
+                return;
+            }
+
+            if (student.sent) {
+                showToast('Invoice already sent', true);
+                return;
+            }
+
+            currentSendStudentId = studentId;
+
+            document.getElementById('sendName').textContent = student.name;
+            document.getElementById('sendClass').textContent = '📚 ' + (student.class || 'N/A') + ' • 📅 ' + (student.date || 'N/A');
+            document.getElementById('sendAmount').textContent = '₹' + (student.amount || '0');
+            document.getElementById('sendAvatar').textContent = student.name.charAt(0).toUpperCase();
+
+            populateTemplateSelects();
+
+            if (defaultInvoiceTemplateId) {
+                document.getElementById('invoiceTemplateSelect').value = defaultInvoiceTemplateId;
+                previewInvoiceTemplate();
+            } else {
+                document.getElementById('invoicePreview').innerHTML = '<div class="placeholder">Select a template to preview the invoice</div>';
+            }
+
+            document.getElementById('invoiceSendModal').classList.add('open');
+        }
+
+        function closeInvoiceSendModal() {
+            document.getElementById('invoiceSendModal').classList.remove('open');
+            currentSendStudentId = null;
+        }
+
+        // ============================================================
+        // SEND INVOICE — the rendered HTML (via the InvoiceTemplates
+        // "code" template) is preview/print only. Actual WhatsApp sending
+        // uses Settings.defaultInvoiceTemplate, an APPROVED Meta template
+        // name, via whatsapp.sendTemplate server-side (see service.js —
+        // this is a business-initiated message, free text isn't allowed).
+        // ============================================================
+        async function sendInvoice() {
+            const templateId = document.getElementById('invoiceTemplateSelect').value;
+            if (!templateId) {
+                showToast('Please select a template', true);
+                return;
+            }
+
+            const student = invoiceData.find(s => s.id === currentSendStudentId);
+            if (!student) {
+                showToast('Student not found', true);
+                return;
+            }
+
+            if (!student.phone) {
+                showToast('No phone number available', true);
+                return;
+            }
+
+            if (!defaultWhatsAppTemplateName) {
+                showToast('⚠️ Set a default invoice WhatsApp template in Settings first', true);
+                return;
+            }
+
+            const btn = document.getElementById('sendInvoiceBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending...';
+
+            try {
+                await apiFetch('/send', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        studentId: student.student_id || student.id, name: student.name,
+                        phone: student.phone, templateName: defaultWhatsAppTemplateName, module: 'invoice',
+                    }),
+                });
+                await apiFetch(`/invoices/${student.id}`, { method: 'PUT', body: JSON.stringify({ sent_at: new Date().toISOString() }) });
+
+                await loadInvoiceData();
+                closeInvoiceSendModal();
+                showToast('✅ Invoice sent to ' + student.name);
+            } catch (err) {
+                showToast('❌ Failed to send: ' + err.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📨 Send Invoice';
+            }
+        }
+
+        // ============================================================
+        // BULK SEND
+        // ============================================================
+        async function sendBulkInvoices() {
+            const pendingStudents = invoiceData.filter(s => !s.sent && s.phone);
+
+            if (!pendingStudents.length) {
+                showToast('No pending invoices to send');
+                return;
+            }
+
+            if (!defaultWhatsAppTemplateName) {
+                showToast('⚠️ Set a default invoice WhatsApp template in Settings first', true);
+                return;
+            }
+
+            if (!confirm('Send invoices to ' + pendingStudents.length + ' students?')) return;
+
+            const btn = document.querySelector('[onclick="sendBulkInvoices()"]');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Sending...';
+            btn.disabled = true;
+
+            let sent = 0, failed = 0;
+
+            for (const student of pendingStudents) {
+                try {
+                    await apiFetch('/send', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            studentId: student.student_id || student.id, name: student.name,
+                            phone: student.phone, templateName: defaultWhatsAppTemplateName, module: 'invoice',
+                        }),
+                    });
+                    await apiFetch(`/invoices/${student.id}`, { method: 'PUT', body: JSON.stringify({ sent_at: new Date().toISOString() }) });
+                    sent++;
+                } catch (err) {
+                    failed++;
+                }
+            }
+
+            await loadInvoiceData();
+            btn.textContent = originalText;
+            btn.disabled = false;
+            showToast('📨 Sent: ' + sent + ', Failed: ' + failed);
+        }
+
+        // ============================================================
+        // SYNC / REFRESH
+        // ============================================================
+        async function syncInvoiceData() {
+            showToast('🔄 Syncing...');
+            try {
+                await loadInvoiceData();
+                showToast('✅ Synced successfully');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function refreshInvoices() {
+            renderInvoiceGrid();
+            updateInvoiceStats();
+            showToast('↻ Refreshed');
+        }
+
+        // ============================================================
+        // KEYBOARD SHORTCUTS
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeInvoiceSendModal();
+                closeTemplateManager();
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const connected = await checkConnected();
+            if (!connected) { showConnectBanner(); return; }
+
+            try {
+                await loadInvoiceData();
+                console.log('📄 Invoice Module with Live Preview initialized');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+
+            // Auto-refresh the view every 5 minutes (data only, not a send
+            // trigger — actual sending is server-side, see toggleAutoInvoiceSend).
+            setInterval(() => { loadInvoiceData().catch(() => {}); }, 300000);
+        });
+
+        // Make functions globally accessible
+        window.loadSampleInvoices = loadSampleInvoices;
+        window.loadInvoiceData = loadInvoiceData;
+        window.renderInvoiceGrid = renderInvoiceGrid;
+        window.updateInvoiceStats = updateInvoiceStats;
+        window.openInvoiceSendModal = openInvoiceSendModal;
+        window.closeInvoiceSendModal = closeInvoiceSendModal;
+        window.sendInvoice = sendInvoice;
+        window.previewInvoiceTemplate = previewInvoiceTemplate;
+        window.previewDefaultTemplate = previewDefaultTemplate;
+        window.livePreviewTemplate = livePreviewTemplate;
+        window.setDefaultInvoiceTemplate = setDefaultInvoiceTemplate;
+        window.loadInvoiceTemplates = loadInvoiceTemplates;
+        window.toggleAutoInvoiceSend = toggleAutoInvoiceSend;
+        window.syncInvoiceData = syncInvoiceData;
+        window.refreshInvoices = refreshInvoices;
+        window.openTemplateManager = openTemplateManager;
+        window.closeTemplateManager = closeTemplateManager;
+        window.createNewTemplate = createNewTemplate;
+        window.editInvoiceTemplate = editInvoiceTemplate;
+        window.saveInvoiceTemplate = saveInvoiceTemplate;
+        window.deleteInvoiceTemplate = deleteInvoiceTemplate;
+        window.deleteCurrentTemplate = deleteCurrentTemplate;
+        window.cancelTemplateEdit = cancelTemplateEdit;
+        window.insertTemplateVar = insertTemplateVar;
+        window.setAsDefaultTemplate = setAsDefaultTemplate;
+        window.refreshInvoiceTemplates = refreshInvoiceTemplates;
+        window.sendBulkInvoices = sendBulkInvoices;
+        window.renderTemplate = renderTemplate;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+    </script>
+
+</body>
+</html>

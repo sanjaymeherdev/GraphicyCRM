@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings · Connect with Google</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --red: #f04f6e;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            padding: 20px;
+        }
+        .app { max-width: 1100px; margin: 0 auto; }
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+        .logo span { color: var(--green); }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .card-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child { margin-top: 0; }
+        input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], select {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--green); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-grid .full-width { grid-column: 1 / -1; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--green); color: #000; }
+        .btn-primary:hover { background: #1bbf64; }
+        .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+        .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-danger:hover { background: #d93f5c; }
+        .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+        .btn-ghost:hover { color: var(--text); }
+        .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-green { background: var(--green-dim); color: var(--green); }
+        .badge-amber { background: rgba(245,166,35,0.12); color: var(--amber); }
+        .badge-red { background: rgba(240,79,110,0.12); color: var(--red); }
+        .profile-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg2);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            border: 1px solid var(--border);
+        }
+        .profile-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .profile-tab:hover { color: var(--text); background: var(--surface2); }
+        .profile-tab.active { background: var(--surface); color: var(--green); border: 1px solid var(--border); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            font-size: 12px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.connected { background: var(--green); }
+        .status-dot.disconnected { background: var(--red); }
+        .help-text { font-size: 12px; color: var(--text2); margin-top: 6px; }
+        .help-text code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 11px; color: var(--purple); }
+        .section-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+        .google-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+            color: #1a1a1a;
+            padding: 8px 20px;
+            border-radius: 24px;
+            border: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .google-btn:hover { background: #f0f0f0; transform: scale(1.02); }
+        .google-btn.connected {
+            background: var(--green-dim);
+            color: var(--green);
+            border: 1px solid var(--green);
+        }
+        .google-btn svg { width: 18px; height: 18px; }
+        .connected-service {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: var(--green-dim);
+            border-radius: 20px;
+            border: 1px solid var(--green);
+            color: var(--green);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .connected-account {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+        .connected-account .info { display: flex; align-items: center; gap: 12px; }
+        .connected-account .info .icon { font-size: 20px; }
+        .connected-account .info .details .name { font-weight: 500; font-size: 13px; }
+        .connected-account .info .details .meta { font-size: 11px; color: var(--text3); }
+        .empty-state { text-align: center; padding: 30px 20px; color: var(--text3); }
+        .empty-state .empty-icon { font-size: 32px; margin-bottom: 8px; }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .toast.success { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+        .toast.error { background: rgba(240,79,110,0.12); color: var(--red); border-color: var(--red); }
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .auth-status.connected { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+        .auth-status.disconnected { background: var(--bg2); color: var(--text3); border: 1px solid var(--border); }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .profile-tabs { flex-direction: column; }
+            .profile-tab { text-align: center; }
+            .app-header { flex-direction: column; align-items: stretch; text-align: center; }
+            .header-actions { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <header class="app-header">
+        <div class="logo">⚙️ Profile<span>Settings</span></div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="saveGeneral()">💾 Save General</button>
+        </div>
+    </header>
+
+    <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="general" onclick="switchTab('general')">🏢 General</button>
+        <button class="profile-tab" data-tab="integrations" onclick="switchTab('integrations')">🔗 Integrations</button>
+        <button class="profile-tab" data-tab="whatsapp" onclick="switchTab('whatsapp')">💬 WhatsApp</button>
+    </div>
+
+    <!-- GENERAL -->
+    <div class="tab-content active" id="tab-general">
+        <div class="card">
+            <div class="card-header"><div class="card-title">🏢 Institute Information</div></div>
+            <div class="form-grid">
+                <div class="full-width"><span class="form-label">Institute Name</span><input type="text" id="instituteName" placeholder="e.g. ABC Coaching" /></div>
+                <div><span class="form-label">Institute Code</span><input type="text" id="instituteCode" placeholder="ABC001" /></div>
+                <div><span class="form-label">Est. Year</span><input type="number" id="establishmentYear" placeholder="2020" /></div>
+                <div><span class="form-label">Email</span><input type="email" id="instituteEmail" placeholder="info@abc.com" /></div>
+                <div><span class="form-label">Phone</span><input type="tel" id="institutePhone" placeholder="919876543210" /></div>
+                <div class="full-width"><span class="form-label">Address</span><input type="text" id="instituteAddress" placeholder="Full address" /></div>
+                <div class="full-width"><span class="form-label">About</span><input type="text" id="instituteDescription" placeholder="Brief description" /></div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="saveGeneral()">💾 Save General</button></div>
+        </div>
+    </div>
+
+    <!-- GOOGLE SHEET CONNECTION - real Apps Script setup, replaces the
+         earlier standalone prototype's simulated "Connect with Google"
+         buttons for Sheets/Docs/Drive (those didn't correspond to
+         anything real for this module). -->
+    <div class="tab-content" id="tab-integrations">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📊 Google Sheet (Apps Script)</div>
+                <div class="connection-status">
+                    <span class="status-dot disconnected" id="sheetsDot"></span>
+                    <span id="sheetsStatus">Not connected</span>
+                </div>
+            </div>
+            <p style="color:var(--text2); font-size:13px; margin-bottom:14px;">
+                All of this module's data (students, attendance, fees, invoices) lives in a Google Sheet you control &mdash;
+                not in this app's database. One-time setup: deploy a small Apps Script as a Web App, then paste its URL back here.
+            </p>
+            <div id="setupStep1" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="getSetupScript()">📜 Get Setup Script</button>
+            </div>
+            <div id="setupStep2" style="display:none; margin-top:16px;">
+                <span class="form-label">1. Copy this into a new Apps Script project (script.google.com), deploy as Web App (Execute as: Me, Access: Anyone), then paste the resulting URL below:</span>
+                <textarea id="scriptCodeBox" readonly style="width:100%; height:160px; font-family:monospace; font-size:11px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:10px; margin-top:6px;"></textarea>
+                <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="copyScriptCode()">📋 Copy Code</button>
+
+                <div class="form-grid" style="margin-top:16px;">
+                    <div class="full-width"><span class="form-label">2. Deployed Web App URL (ends in /exec)</span><input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" /></div>
+                </div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="saveConnection()">💾 Save Connection</button></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:14px;">
+                <button class="btn btn-danger btn-sm" id="sheetsDisconnectBtn" style="display:none;" onclick="disconnectSheet()">✕ Disconnect</button>
+            </div>
+            <div id="sheetsResult"></div>
+        </div>
+    </div>
+
+    <!-- REMINDER TEMPLATES & AUTO-SEND -->
+    <div class="tab-content" id="tab-whatsapp">
+        <div class="card">
+            <div class="card-header"><div class="card-title">💬 WhatsApp Business</div></div>
+            <p style="color:var(--text2); font-size:13px;">
+                WhatsApp itself is already connected for your account elsewhere in this app &mdash; this page only sets which
+                <strong>approved message template</strong> each automated reminder below uses. Business-initiated messages
+                (birthday wishes, fee/invoice reminders) require a Meta-approved template; they can't be sent as free text.
+            </p>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">🎂 Birthday Reminders</div></div>
+            <div class="form-grid">
+                <div class="full-width">
+                    <span class="form-label">Default Template</span>
+                    <select id="birthdayTemplateSelect"><option value="">— Select a template —</option></select>
+                </div>
+            </div>
+            <div class="btn-row" style="align-items:center;">
+                <button class="btn btn-secondary" id="birthdayAutoBtn" onclick="toggleAuto('autoSendEnabled', 'birthdayAutoBtn')">▶ Enable Auto-Send</button>
+                <button class="btn btn-primary" onclick="saveTemplate('defaultBirthdayTemplate', 'birthdayTemplateSelect')">💾 Save Template</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">💰 Fee Reminders</div></div>
+            <div class="form-grid">
+                <div class="full-width">
+                    <span class="form-label">Default Template</span>
+                    <select id="feeTemplateSelect"><option value="">— Select a template —</option></select>
+                </div>
+            </div>
+            <div class="btn-row" style="align-items:center;">
+                <button class="btn btn-secondary" id="feeAutoBtn" onclick="toggleAuto('autoFeeReminderEnabled', 'feeAutoBtn')">▶ Enable Auto-Send</button>
+                <button class="btn btn-primary" onclick="saveTemplate('defaultFeeTemplate', 'feeTemplateSelect')">💾 Save Template</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">📄 Invoice Reminders</div></div>
+            <div class="form-grid">
+                <div class="full-width">
+                    <span class="form-label">Default Template</span>
+                    <select id="invoiceTemplateSelect"><option value="">— Select a template —</option></select>
+                </div>
+            </div>
+            <div class="btn-row" style="align-items:center;">
+                <button class="btn btn-secondary" id="invoiceAutoBtn" onclick="toggleAuto('autoInvoiceSendEnabled', 'invoiceAutoBtn')">▶ Enable Auto-Send</button>
+                <button class="btn btn-primary" onclick="saveTemplate('defaultInvoiceTemplate', 'invoiceTemplateSelect')">💾 Save Template</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">🧪 Test</div></div>
+            <p style="color:var(--text2); font-size:13px; margin-bottom:10px;">Runs today's checks now instead of waiting for the hourly server check.</p>
+            <button class="btn btn-secondary" onclick="runRemindersNow()">▶ Run Reminders Now</button>
+            <div id="waResult"></div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // ============================================================
+    // SETTINGS - Education module (Google Sheet connection + reminder
+    // templates/auto-send). Real backend via modules/education.
+    // ============================================================
+
+    const EDU_API = '/api/education';
+    let currentSecret = null; // held only long enough to save the connection
+    let messageTemplatesByModule = { birthday: [], fee: [], invoice: [] };
+    let settings = {};
+    let connected = false;
+
+    async function apiFetch(path, opts = {}) {
+        const res = await fetch(EDU_API + path, {
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            ...opts,
+        });
+        let body = {};
+        try { body = await res.json(); } catch (e) {}
+        if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+        return body.data !== undefined ? body.data : body;
+    }
+
+    // ============================================================
+    // GENERAL (Institute Information) — persisted as Settings sheet keys
+    // ============================================================
+    function collectForm() {
+        return {
+            schoolName: document.getElementById('instituteName').value,
+            instituteCode: document.getElementById('instituteCode').value,
+            establishmentYear: document.getElementById('establishmentYear').value,
+            instituteEmail: document.getElementById('instituteEmail').value,
+            institutePhone: document.getElementById('institutePhone').value,
+            instituteAddress: document.getElementById('instituteAddress').value,
+            instituteDescription: document.getElementById('instituteDescription').value,
+        };
+    }
+
+    function applyGeneral(s) {
+        document.getElementById('instituteName').value = s.schoolName || '';
+        document.getElementById('instituteCode').value = s.instituteCode || '';
+        document.getElementById('establishmentYear').value = s.establishmentYear || '';
+        document.getElementById('instituteEmail').value = s.instituteEmail || '';
+        document.getElementById('institutePhone').value = s.institutePhone || '';
+        document.getElementById('instituteAddress').value = s.instituteAddress || '';
+        document.getElementById('instituteDescription').value = s.instituteDescription || '';
+    }
+
+    async function saveGeneral() {
+        try {
+            await apiFetch('/settings', { method: 'PUT', body: JSON.stringify(collectForm()) });
+            // Also keep crm_edu_config.school_name in sync for display elsewhere
+            const cfg = await apiFetch('/config');
+            if (cfg) {
+                await apiFetch('/config', {
+                    method: 'POST',
+                    body: JSON.stringify({ scriptUrl: cfg.script_url, schoolName: document.getElementById('instituteName').value }),
+                });
+            }
+            showToast('✅ General saved');
+        } catch (err) {
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    // ============================================================
+    // GOOGLE SHEET (APPS SCRIPT) CONNECTION
+    // ============================================================
+    async function getSetupScript() {
+        try {
+            const result = await apiFetch('/script');
+            currentSecret = result.secret;
+            document.getElementById('scriptCodeBox').value = result.script;
+            document.getElementById('setupStep2').style.display = 'block';
+            showToast('📜 Script generated — deploy it, then paste the URL below');
+        } catch (err) {
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    function copyScriptCode() {
+        const box = document.getElementById('scriptCodeBox');
+        box.select();
+        navigator.clipboard?.writeText(box.value).then(() => showToast('📋 Copied')).catch(() => document.execCommand('copy'));
+    }
+
+    async function saveConnection() {
+        const scriptUrl = document.getElementById('scriptUrlInput').value.trim();
+        if (!scriptUrl) {
+            showToast('❌ Paste the deployed Web App URL first', true);
+            return;
+        }
+        if (!currentSecret) {
+            showToast('❌ Click "Get Setup Script" first — the secret is generated there', true);
+            return;
+        }
+
+        try {
+            await apiFetch('/config', {
+                method: 'POST',
+                body: JSON.stringify({ scriptUrl, secret: currentSecret, schoolName: document.getElementById('instituteName').value }),
+            });
+            connected = true;
+            currentSecret = null;
+            updateConnectionUI();
+            showResult('sheets', '✅ Connected successfully', 'success');
+            showToast('✅ Google Sheet connected');
+            await loadTemplatesAndSettings();
+        } catch (err) {
+            showResult('sheets', '❌ ' + err.message, 'error');
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    async function disconnectSheet() {
+        if (!confirm('Disconnect this Google Sheet? Reminders and data access will stop working until reconnected.')) return;
+        try {
+            await apiFetch('/config', { method: 'DELETE' });
+            connected = false;
+            updateConnectionUI();
+            showToast('🗑 Disconnected');
+        } catch (err) {
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    function updateConnectionUI() {
+        const dot = document.getElementById('sheetsDot');
+        const status = document.getElementById('sheetsStatus');
+        const disconnectBtn = document.getElementById('sheetsDisconnectBtn');
+        dot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+        status.textContent = connected ? 'Connected' : 'Not connected';
+        disconnectBtn.style.display = connected ? 'inline-flex' : 'none';
+    }
+
+    function showResult(service, msg, type) {
+        const el = document.getElementById(service + 'Result');
+        if (!el) return;
+        const cls = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+        el.innerHTML = `<div class="test-result ${cls}" style="padding:8px 14px;border-radius:8px;margin-top:8px;background:${cls === 'success' ? 'var(--green-dim)' : cls === 'error' ? 'rgba(240,79,110,0.12)' : 'var(--bg2)'};color:${cls === 'success' ? 'var(--green)' : cls === 'error' ? 'var(--red)' : 'var(--text2)'};border:1px solid ${cls === 'success' ? 'var(--green)' : cls === 'error' ? 'var(--red)' : 'var(--border)'};">${msg}</div>`;
+    }
+
+    // ============================================================
+    // REMINDER TEMPLATES & AUTO-SEND — all live in the Sheet's Settings
+    // tab via /api/education/settings; template dropdowns pull from
+    // MessageTemplates (module:'birthday'|'fee'|'invoice'). The template
+    // `name` doubles as the Meta-approved WhatsApp template name used for
+    // actual sending (see modules/education/service.js).
+    // ============================================================
+    async function loadTemplatesAndSettings() {
+        try {
+            const [birthday, fee, invoice, s] = await Promise.all([
+                apiFetch('/message-templates?module=birthday'),
+                apiFetch('/message-templates?module=fee'),
+                apiFetch('/message-templates?module=invoice'),
+                apiFetch('/settings'),
+            ]);
+            messageTemplatesByModule = { birthday: birthday || [], fee: fee || [], invoice: invoice || [] };
+            settings = s || {};
+
+            populateTemplateSelect('birthdayTemplateSelect', 'birthday', settings.defaultBirthdayTemplate);
+            populateTemplateSelect('feeTemplateSelect', 'fee', settings.defaultFeeTemplate);
+            populateTemplateSelect('invoiceTemplateSelect', 'invoice', settings.defaultInvoiceTemplate);
+
+            setAutoBtnState('birthdayAutoBtn', !!settings.autoSendEnabled);
+            setAutoBtnState('feeAutoBtn', !!settings.autoFeeReminderEnabled);
+            setAutoBtnState('invoiceAutoBtn', !!settings.autoInvoiceSendEnabled);
+        } catch (err) {
+            // Not connected yet, or no templates — non-fatal, page still usable
+        }
+    }
+
+    function populateTemplateSelect(selId, moduleName, currentVal) {
+        const sel = document.getElementById(selId);
+        const templates = messageTemplatesByModule[moduleName] || [];
+        sel.innerHTML = '<option value="">— Select a template —</option>' +
+            templates.map(t => `<option value="${t.name}" ${t.name === currentVal ? 'selected' : ''}>${t.name}</option>`).join('');
+    }
+
+    function setAutoBtnState(btnId, enabled) {
+        const btn = document.getElementById(btnId);
+        if (enabled) {
+            btn.textContent = '⏹ Disable Auto-Send';
+            btn.className = 'btn btn-danger';
+            btn.dataset.enabled = 'true';
+        } else {
+            btn.textContent = '▶ Enable Auto-Send';
+            btn.className = 'btn btn-secondary';
+            btn.dataset.enabled = 'false';
+        }
+    }
+
+    async function saveTemplate(settingsKey, selectId) {
+        const value = document.getElementById(selectId).value;
+        if (!value) {
+            showToast('Select a template first', true);
+            return;
+        }
+        try {
+            await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ [settingsKey]: value }) });
+            settings[settingsKey] = value;
+            showToast('✅ Template saved');
+        } catch (err) {
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    async function toggleAuto(settingsKey, btnId) {
+        const btn = document.getElementById(btnId);
+        const next = btn.dataset.enabled !== 'true';
+        try {
+            await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ [settingsKey]: next }) });
+            settings[settingsKey] = next;
+            setAutoBtnState(btnId, next);
+            showToast(next ? '✅ Auto-send enabled' : '⏹ Auto-send disabled');
+        } catch (err) {
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    async function runRemindersNow() {
+        try {
+            await apiFetch('/poll-now', { method: 'POST' });
+            showResult('wa', '✅ Reminders checked and sent where due', 'success');
+            showToast('✅ Done');
+        } catch (err) {
+            showResult('wa', '❌ ' + err.message, 'error');
+            showToast('⚠️ ' + err.message, true);
+        }
+    }
+
+    // ============================================================
+    // TOAST
+    // ============================================================
+    function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + (isError ? 'error' : 'success');
+        t.style.display = 'block';
+        clearTimeout(t._to);
+        t._to = setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    function switchTab(name) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.profile-tab').forEach(el => el.classList.remove('active'));
+        const tc = document.getElementById('tab-' + name);
+        if (tc) tc.classList.add('active');
+        const tb = document.querySelector(`.profile-tab[data-tab="${name}"]`);
+        if (tb) tb.classList.add('active');
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            const cfg = await apiFetch('/config');
+            connected = !!cfg;
+            updateConnectionUI();
+
+            const s = await apiFetch('/settings').catch(() => ({}));
+            settings = s || {};
+            applyGeneral(settings);
+
+            if (connected) await loadTemplatesAndSettings();
+        } catch (err) {
+            connected = false;
+            updateConnectionUI();
+        }
+        console.log('⚙️ Education Settings initialized');
+    });
+
+    // Expose
+    window.getSetupScript = getSetupScript;
+    window.copyScriptCode = copyScriptCode;
+    window.saveConnection = saveConnection;
+    window.disconnectSheet = disconnectSheet;
+    window.saveGeneral = saveGeneral;
+    window.saveTemplate = saveTemplate;
+    window.toggleAuto = toggleAuto;
+    window.runRemindersNow = runRemindersNow;
+    window.switchTab = switchTab;
+    window.showToast = showToast;
+</script>
+</body>
+</html>

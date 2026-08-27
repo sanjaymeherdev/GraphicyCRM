@@ -86,6 +86,7 @@ mountResource('/invoices', service.invoices);
 mountResource('/invoice-templates', service.invoiceTemplates);
 mountResource('/message-templates', service.messageTemplates);
 mountResource('/message-log', service.messageLog);
+mountResource('/birthday-sent', service.birthdaySent);
 
 // ---------------------------------------------------------------------
 // Settings (key/value sheet — school name, default templates, auto-send
