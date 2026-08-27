@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Management Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+        .badge-purple {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+
+        /* Class Cards Grid */
+        .class-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .class-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 18px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            position: relative;
+        }
+
+        .class-card:hover {
+            border-color: var(--green);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(34, 209, 114, 0.05);
+        }
+
+        .class-card .class-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .class-card .class-count {
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .class-card .class-status {
+            font-size: 11px;
+            margin-top: 8px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .class-card .class-status.complete {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .class-card .class-status.pending {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        .class-card .class-status.incomplete {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .class-card .class-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text3);
+            font-size: 18px;
+        }
+
+        /* Student List */
+        .student-list-container {
+            margin-top: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--bg2);
+        }
+
+        .student-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+            gap: 12px;
+        }
+
+        .student-item:last-child {
+            border-bottom: none;
+        }
+
+        .student-item:hover {
+            background: var(--surface2);
+        }
+
+        .student-item .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .student-item .info {
+            flex: 1;
+        }
+
+        .student-item .info .name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .student-item .info .meta {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .student-item .status-toggle {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .student-item .status-toggle .toggle-btn {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 2px solid var(--border2);
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .student-item .status-toggle .toggle-btn:hover {
+            border-color: var(--text2);
+            color: var(--text);
+        }
+
+        .student-item .status-toggle .toggle-btn.present {
+            border-color: var(--green);
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .student-item .status-toggle .toggle-btn.absent {
+            border-color: var(--red);
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .student-item .status-toggle .toggle-btn.leave {
+            border-color: var(--amber);
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        .student-item .status-toggle .toggle-btn.active {
+            transform: scale(1.05);
+        }
+
+        .student-item .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .student-item .status-badge.present {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .student-item .status-badge.absent {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .student-item .status-badge.leave {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        /* Date Selector */
+        .date-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: var(--bg2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .date-selector label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .date-selector input[type="date"] {
+            padding: 8px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            min-width: 180px;
+        }
+
+        .date-selector input[type="date"]:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        .date-selector .date-nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .date-selector .date-nav button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border2);
+            background: var(--surface);
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.15s;
+        }
+
+        .date-selector .date-nav button:hover {
+            border-color: var(--green);
+            color: var(--text);
+        }
+
+        .date-selector .today-label {
+            font-size: 12px;
+            color: var(--green);
+            font-weight: 600;
+            padding: 4px 12px;
+            background: var(--green-dim);
+            border-radius: 20px;
+        }
+
+        /* Back button */
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border2);
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            transition: all 0.15s;
+            margin-bottom: 12px;
+        }
+
+        .back-btn:hover {
+            border-color: var(--green);
+            color: var(--text);
+        }
+
+        /* Bulk actions */
+        .bulk-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px 16px;
+            background: var(--surface2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .bulk-actions .label {
+            font-size: 11px;
+            color: var(--text3);
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 4px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .75);
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 700px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text2);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .class-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            .date-selector {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .date-selector input[type="date"] {
+                width: 100%;
+            }
+            .student-item {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .student-item .status-toggle {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .bulk-actions {
+                flex-wrap: wrap;
+            }
+            .modal-box {
+                padding: 18px;
+                margin: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .class-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .class-card {
+                padding: 14px 12px;
+            }
+            .class-card .class-name {
+                font-size: 15px;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .attendance-summary {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: var(--bg2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .attendance-summary .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .attendance-summary .summary-item .count {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .attendance-summary .summary-item .count.present {
+            color: var(--green);
+        }
+
+        .attendance-summary .summary-item .count.absent {
+            color: var(--red);
+        }
+
+        .attendance-summary .summary-item .count.leave {
+            color: var(--amber);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--bg2);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .view-toggle button {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .view-toggle button.active {
+            background: var(--surface);
+            color: var(--green);
+            border: 1px solid var(--border);
+        }
+
+        .view-toggle button:hover:not(.active) {
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">📋 Attendance<span>Module</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadSampleAttendance()">📋 Load Sample</button>
+                <button class="btn btn-secondary btn-sm" onclick="saveAttendance()">💾 Save All</button>
+                <button class="btn btn-secondary btn-sm" onclick="refreshData()">↻ Refresh</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Classes</div>
+                <div class="stat-value" id="statClasses">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="statStudents">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Today's Present</div>
+                <div class="stat-value" id="statPresent">0</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">Today's Absent</div>
+                <div class="stat-value" id="statAbsent">0</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="card">
+            <!-- Class Grid View -->
+            <div id="classGridView">
+                <div class="card-header">
+                    <div class="card-title">📚 Classes</div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span style="font-size:12px; color:var(--text3);">Today: <strong id="todayDateDisplay"></strong></span>
+                        <button class="btn btn-ghost btn-sm" onclick="refreshClassGrid()">↻</button>
+                    </div>
+                </div>
+                <div class="class-grid" id="classGrid">
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <div class="empty-icon">📚</div>
+                        <p>No classes found. Please add classes in the Admin module first.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student List View (hidden by default) -->
+            <div id="studentListView" style="display:none;">
+                <button class="back-btn" onclick="backToClasses()">← Back to Classes</button>
+
+                <div class="card-header" style="margin-bottom:12px;">
+                    <div class="card-title" id="selectedClassTitle">Class: 10-A</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <span class="badge badge-blue" id="studentCountBadge">0 Students</span>
+                    </div>
+                </div>
+
+                <!-- Date Selector -->
+                <div class="date-selector">
+                    <label>📅 Date</label>
+                    <input type="date" id="attendanceDate" onchange="loadAttendanceForDate()">
+                    <div class="date-nav">
+                        <button onclick="changeDate(-1)">◀</button>
+                        <button onclick="setToday()">Today</button>
+                        <button onclick="changeDate(1)">▶</button>
+                    </div>
+                    <span class="today-label" id="dateStatusLabel">Today</span>
+                </div>
+
+                <!-- Attendance Summary -->
+                <div class="attendance-summary" id="attendanceSummary">
+                    <div class="summary-item">✅ Present: <span class="count present" id="summaryPresent">0</span></div>
+                    <div class="summary-item">❌ Absent: <span class="count absent" id="summaryAbsent">0</span></div>
+                    <div class="summary-item">📝 Leave: <span class="count leave" id="summaryLeave">0</span></div>
+                    <div class="summary-item" style="margin-left:auto;">Total: <span class="count" id="summaryTotal">0</span></div>
+                </div>
+
+                <!-- Bulk Actions -->
+                <div class="bulk-actions">
+                    <span class="label">Bulk:</span>
+                    <button class="btn btn-xs btn-primary" onclick="markAll('present')">✅ All Present</button>
+                    <button class="btn btn-xs btn-danger" onclick="markAll('absent')">❌ All Absent</button>
+                    <button class="btn btn-xs btn-ghost" onclick="markAll('leave')">📝 All Leave</button>
+                    <span style="font-size:11px; color:var(--text3); margin-left:8px;">Click status buttons to toggle individual students</span>
+                </div>
+
+                <!-- Student List -->
+                <div class="student-list-container" id="studentListContainer">
+                    <div class="empty-state">
+                        <div class="empty-icon">👨‍🎓</div>
+                        <p>No students in this class</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // ATTENDANCE MODULE - Complete JavaScript
+        // ============================================================
+
+        // Data stores
+        let students = [];
+        let classes = [];
+        let attendance = {};
+        let currentClassId = null;
+        let currentDate = new Date();
+
+        // ============================================================
+        // BACKEND API — modules/education
+        // ============================================================
+        const EDU_API = '/api/education';
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+            return body.data;
+        }
+        async function checkConnected() {
+            try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+        function showConnectBanner() {
+            const grid = document.getElementById('classGrid');
+            const msg = '⚠️ No Google Sheet connected yet. Go to Settings to connect one before taking attendance.';
+            if (grid) grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1; color:var(--amber);">${msg}</div>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        async function loadSampleAttendance() {
+            const sampleClasses = [{
+                id: 'c1',
+                name: '10',
+                section: 'A',
+                teacher: 'Dr. Suresh Kumar'
+            }, {
+                id: 'c2',
+                name: '12',
+                section: 'B',
+                teacher: 'Mrs. Meera Reddy'
+            }, {
+                id: 'c3',
+                name: '8',
+                section: 'C',
+                teacher: 'Mr. Rajesh Singh'
+            }, {
+                id: 'c4',
+                name: '9',
+                section: 'A',
+                teacher: 'Mr. Amit Verma'
+            }, {
+                id: 'c5',
+                name: '11',
+                section: 'B',
+                teacher: 'Dr. Priya Sharma'
+            }];
+
+            // Load students with class references
+            const sampleStudents = [{
+                id: 's1',
+                name: 'Aarav Sharma',
+                class_id: 'c1',
+                phone: '919876543210',
+                guardian_name: 'Mr. Rajesh Sharma',
+                guardian_phone: '919876543211'
+            }, {
+                id: 's2',
+                name: 'Priya Patel',
+                class_id: 'c1',
+                phone: '919876543212',
+                guardian_name: 'Mrs. Meena Patel',
+                guardian_phone: '919876543213'
+            }, {
+                id: 's3',
+                name: 'Rahul Singh',
+                class_id: 'c1',
+                phone: '919876543214',
+                guardian_name: 'Mr. Vikram Singh',
+                guardian_phone: '919876543215'
+            }, {
+                id: 's4',
+                name: 'Sneha Reddy',
+                class_id: 'c2',
+                phone: '919876543216',
+                guardian_name: 'Mrs. Lakshmi Reddy',
+                guardian_phone: '919876543217'
+            }, {
+                id: 's5',
+                name: 'Vikram Kumar',
+                class_id: 'c2',
+                phone: '919876543218',
+                guardian_name: 'Mr. Suresh Kumar',
+                guardian_phone: '919876543219'
+            }, {
+                id: 's6',
+                name: 'Ananya Gupta',
+                class_id: 'c3',
+                phone: '919876543220',
+                guardian_name: 'Mr. Ravi Gupta',
+                guardian_phone: '919876543221'
+            }, {
+                id: 's7',
+                name: 'Arjun Nair',
+                class_id: 'c3',
+                phone: '919876543222',
+                guardian_name: 'Mrs. Sita Nair',
+                guardian_phone: '919876543223'
+            }, {
+                id: 's8',
+                name: 'Meera Iyer',
+                class_id: 'c4',
+                phone: '919876543224',
+                guardian_name: 'Dr. Krishnan Iyer',
+                guardian_phone: '919876543225'
+            }, {
+                id: 's9',
+                name: 'Karan Joshi',
+                class_id: 'c4',
+                phone: '919876543226',
+                guardian_name: 'Mr. Mahesh Joshi',
+                guardian_phone: '919876543227'
+            }, {
+                id: 's10',
+                name: 'Nisha Patel',
+                class_id: 'c5',
+                phone: '919876543228',
+                guardian_name: 'Mr. Deepak Patel',
+                guardian_phone: '919876543229'
+            }];
+
+            try {
+                await apiFetch('/classes/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleClasses }) });
+                await apiFetch('/students/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleStudents }) });
+
+                // Generate sample attendance for today
+                const today = formatDate(currentDate);
+                const rows = [];
+                sampleClasses.forEach(cls => {
+                    const classStudents = sampleStudents.filter(s => s.class_id === cls.id);
+                    classStudents.forEach(s => {
+                        const rand = Math.random();
+                        const status = rand < 0.7 ? 'present' : (rand < 0.9 ? 'absent' : 'leave');
+                        rows.push({ student_id: s.id, class_id: cls.id, date: today, status, marked_at: new Date().toISOString() });
+                    });
+                });
+                await apiFetch('/attendance/bulk', { method: 'POST', body: JSON.stringify({ rows }) });
+
+                await loadAllData();
+                renderAll();
+                showToast('✅ Sample attendance data loaded');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD DATA — students/classes load once; attendance reloads
+        // per viewed date (see changeDate/setToday/loadAttendanceForDate).
+        // ============================================================
+        async function loadAllData() {
+            const [s, c] = await Promise.all([apiFetch('/students'), apiFetch('/classes')]);
+            students = s || [];
+            classes = c || [];
+            await loadAttendanceForCurrentDate();
+            return students.length > 0 || classes.length > 0;
+        }
+
+        async function loadAttendanceForCurrentDate() {
+            const date = formatDate(currentDate);
+            const rows = await apiFetch(`/attendance?date=${encodeURIComponent(date)}`);
+            attendance = {};
+            (rows || []).forEach(r => {
+                const key = getAttendanceKey(r.class_id, r.date);
+                if (!attendance[key]) attendance[key] = {};
+                attendance[key][r.student_id] = { id: r.id, status: r.status };
+            });
+        }
+
+        // ============================================================
+        // HELPER FUNCTIONS
+        // ============================================================
+        function formatDate(date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getClassDisplay(cls) {
+            if (!cls) return '—';
+            return cls.section ? `${cls.name}-${cls.section}` : cls.name;
+        }
+
+        function getClassById(id) {
+            return classes.find(c => c.id === id);
+        }
+
+        function getStudentsByClass(classId) {
+            return students.filter(s => s.class_id === classId);
+        }
+
+        function getAttendanceKey(classId, date) {
+            return `${classId}_${date}`;
+        }
+
+        function getStudentAttendance(classId, studentId, date) {
+            const key = getAttendanceKey(classId, date);
+            if (attendance[key] && attendance[key][studentId]) {
+                return attendance[key][studentId].status;
+            }
+            return null; // Not marked yet
+        }
+
+        async function setStudentAttendance(classId, studentId, date, status) {
+            const key = getAttendanceKey(classId, date);
+            if (!attendance[key]) attendance[key] = {};
+            const existing = attendance[key][studentId];
+
+            if (existing && existing.id) {
+                await apiFetch(`/attendance/${existing.id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+                attendance[key][studentId] = { id: existing.id, status };
+            } else {
+                const row = await apiFetch('/attendance', {
+                    method: 'POST',
+                    body: JSON.stringify({ student_id: studentId, class_id: classId, date, status, marked_at: new Date().toISOString() }),
+                });
+                attendance[key][studentId] = { id: row.id, status };
+            }
+        }
+
+        function getStatusCounts(classId, date) {
+            const key = getAttendanceKey(classId, date);
+            const classStudents = getStudentsByClass(classId);
+            const counts = { present: 0, absent: 0, leave: 0, total: classStudents.length };
+
+            classStudents.forEach(s => {
+                const status = attendance[key]?.[s.id]?.status || null;
+                if (status === 'present') counts.present++;
+                else if (status === 'absent') counts.absent++;
+                else if (status === 'leave') counts.leave++;
+            });
+
+            return counts;
+        }
+
+        function getAttendanceStatusForDate(date) {
+            let totalPresent = 0;
+            let totalAbsent = 0;
+            let totalLeave = 0;
+            let totalStudents = 0;
+
+            classes.forEach(cls => {
+                const counts = getStatusCounts(cls.id, date);
+                totalPresent += counts.present;
+                totalAbsent += counts.absent;
+                totalLeave += counts.leave;
+                totalStudents += counts.total;
+            });
+
+            return { present: totalPresent, absent: totalAbsent, leave: totalLeave, total: totalStudents };
+        }
+
+        // ============================================================
+        // RENDER FUNCTIONS
+        // ============================================================
+        function renderAll() {
+            renderClassGrid();
+            updateStats();
+            document.getElementById('todayDateDisplay').textContent = formatDate(currentDate);
+        }
+
+        function renderClassGrid() {
+            const grid = document.getElementById('classGrid');
+
+            if (!classes.length) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <div class="empty-icon">📚</div>
+                        <p>No classes found. Please add classes in the Admin module first.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const today = formatDate(currentDate);
+
+            grid.innerHTML = classes.map(cls => {
+                const classStudents = getStudentsByClass(cls.id);
+                const counts = getStatusCounts(cls.id, today);
+                const total = classStudents.length;
+
+                let statusText = 'Pending';
+                let statusClass = 'pending';
+
+                if (total === 0) {
+                    statusText = 'No Students';
+                    statusClass = 'incomplete';
+                } else if (counts.present + counts.absent + counts.leave === total) {
+                    statusText = `✅ ${counts.present} Present, ${counts.absent} Absent, ${counts.leave} Leave`;
+                    statusClass = 'complete';
+                } else {
+                    const marked = counts.present + counts.absent + counts.leave;
+                    statusText = `⏳ ${marked}/${total} Marked`;
+                    statusClass = 'pending';
+                }
+
+                return `
+                    <div class="class-card" onclick="openClassAttendance('${cls.id}')">
+                        <div class="class-name">${escapeHtml(getClassDisplay(cls))}</div>
+                        <div class="class-count">👨‍🎓 ${total} Students</div>
+                        <div class="class-status ${statusClass}">${statusText}</div>
+                        <div class="class-arrow">›</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStudentList() {
+            const container = document.getElementById('studentListContainer');
+            const classStudents = getStudentsByClass(currentClassId);
+            const cls = getClassById(currentClassId);
+
+            document.getElementById('selectedClassTitle').textContent = `Class: ${getClassDisplay(cls)}`;
+            document.getElementById('studentCountBadge').textContent = `${classStudents.length} Students`;
+
+            if (!classStudents.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">👨‍🎓</div>
+                        <p>No students in this class</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const date = formatDate(currentDate);
+            const dateLabel = currentDate.toDateString() === new Date().toDateString() ? 'Today' : formatDate(currentDate);
+
+            container.innerHTML = classStudents.map(s => {
+                const status = getStudentAttendance(currentClassId, s.id, date);
+                const statusDisplay = status || 'not_marked';
+
+                let statusBadge = '';
+                if (status === 'present') statusBadge = '<span class="status-badge present">✅ Present</span>';
+                else if (status === 'absent') statusBadge = '<span class="status-badge absent">❌ Absent</span>';
+                else if (status === 'leave') statusBadge = '<span class="status-badge leave">📝 Leave</span>';
+                else statusBadge = '<span class="status-badge" style="background:var(--surface3);color:var(--text3);">— Not Marked</span>';
+
+                return `
+                    <div class="student-item">
+                        <div class="avatar">${s.name.charAt(0).toUpperCase()}</div>
+                        <div class="info">
+                            <div class="name">${escapeHtml(s.name)}</div>
+                            <div class="meta">${s.phone || '—'} • ${s.guardian_name || 'No guardian'}</div>
+                        </div>
+                        <div class="status-toggle">
+                            <button class="toggle-btn ${status === 'present' ? 'present active' : ''}" 
+                                    onclick="markAttendance('${s.id}','present')">
+                                ✅ Present
+                            </button>
+                            <button class="toggle-btn ${status === 'absent' ? 'absent active' : ''}" 
+                                    onclick="markAttendance('${s.id}','absent')">
+                                ❌ Absent
+                            </button>
+                            <button class="toggle-btn ${status === 'leave' ? 'leave active' : ''}" 
+                                    onclick="markAttendance('${s.id}','leave')">
+                                📝 Leave
+                            </button>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                `;
+            }).join('');
+
+            // Update summary
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const date = formatDate(currentDate);
+            const counts = getStatusCounts(currentClassId, date);
+
+            document.getElementById('summaryPresent').textContent = counts.present;
+            document.getElementById('summaryAbsent').textContent = counts.absent;
+            document.getElementById('summaryLeave').textContent = counts.leave;
+            document.getElementById('summaryTotal').textContent = counts.total;
+
+            // Update date status label
+            const today = new Date();
+            const isToday = currentDate.toDateString() === today.toDateString();
+            document.getElementById('dateStatusLabel').textContent = isToday ? '📌 Today' : formatDate(currentDate);
+            document.getElementById('dateStatusLabel').style.color = isToday ? 'var(--green)' : 'var(--text2)';
+        }
+
+        function updateStats() {
+            const today = formatDate(currentDate);
+            const stats = getAttendanceStatusForDate(today);
+
+            document.getElementById('statClasses').textContent = classes.length;
+            document.getElementById('statStudents').textContent = students.length;
+            document.getElementById('statPresent').textContent = stats.present;
+            document.getElementById('statAbsent').textContent = stats.absent;
+        }
+
+        // ============================================================
+        // ATTENDANCE ACTIONS
+        // ============================================================
+        async function markAttendance(studentId, status) {
+            const date = formatDate(currentDate);
+            try {
+                await setStudentAttendance(currentClassId, studentId, date, status);
+                renderStudentList();
+                updateStats();
+                renderClassGrid();
+                showToast(`✅ Marked as ${status}`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        async function markAll(status) {
+            const classStudents = getStudentsByClass(currentClassId);
+            const date = formatDate(currentDate);
+
+            if (!classStudents.length) {
+                showToast('No students in this class', true);
+                return;
+            }
+
+            if (!confirm(`Mark all ${classStudents.length} students as ${status}?`)) return;
+
+            try {
+                await Promise.all(classStudents.map(s => setStudentAttendance(currentClassId, s.id, date, status)));
+                renderStudentList();
+                updateStats();
+                renderClassGrid();
+                showToast(`✅ All students marked as ${status}`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        async function loadAttendanceForDate() {
+            const dateInput = document.getElementById('attendanceDate');
+            const selectedDate = new Date(dateInput.value + 'T00:00:00');
+            if (!isNaN(selectedDate.getTime())) {
+                currentDate = selectedDate;
+                await loadAttendanceForCurrentDate();
+                renderStudentList();
+                updateStats();
+            }
+        }
+
+        async function changeDate(days) {
+            const newDate = new Date(currentDate);
+            newDate.setDate(newDate.getDate() + days);
+            currentDate = newDate;
+            document.getElementById('attendanceDate').value = formatDate(currentDate);
+            await loadAttendanceForCurrentDate();
+            renderStudentList();
+            updateStats();
+        }
+
+        async function setToday() {
+            currentDate = new Date();
+            document.getElementById('attendanceDate').value = formatDate(currentDate);
+            await loadAttendanceForCurrentDate();
+            renderStudentList();
+            updateStats();
+        }
+
+        // ============================================================
+        // NAVIGATION
+        // ============================================================
+        function openClassAttendance(classId) {
+            currentClassId = classId;
+            const cls = getClassById(classId);
+
+            // Set date input to current date
+            document.getElementById('attendanceDate').value = formatDate(currentDate);
+
+            document.getElementById('classGridView').style.display = 'none';
+            document.getElementById('studentListView').style.display = 'block';
+
+            renderStudentList();
+        }
+
+        function backToClasses() {
+            document.getElementById('studentListView').style.display = 'none';
+            document.getElementById('classGridView').style.display = 'block';
+            currentClassId = null;
+            renderClassGrid();
+            updateStats();
+        }
+
+        function refreshClassGrid() {
+            renderClassGrid();
+            updateStats();
+            showToast('↻ Refreshed');
+        }
+
+        async function refreshData() {
+            try {
+                await loadAllData();
+                renderAll();
+                showToast('↻ Refreshed');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // SAVE ATTENDANCE — every mark already persists immediately via
+        // setStudentAttendance, so this just confirms state is current.
+        // ============================================================
+        function saveAttendance() {
+            showToast('✅ Attendance saved');
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 2500);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const todayStr = formatDate(currentDate);
+            document.getElementById('attendanceDate').value = todayStr;
+
+            const connected = await checkConnected();
+            if (!connected) { showConnectBanner(); return; }
+
+            try {
+                await loadAllData();
+                renderAll();
+                updateStats();
+                console.log('📋 Attendance Module initialized');
+                console.log(`Classes: ${classes.length}, Students: ${students.length}`);
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        });
+
+        // Make functions globally accessible
+        window.loadSampleAttendance = loadSampleAttendance;
+        window.refreshData = refreshData;
+        window.saveAttendance = saveAttendance;
+        window.refreshClassGrid = refreshClassGrid;
+        window.openClassAttendance = openClassAttendance;
+        window.backToClasses = backToClasses;
+        window.markAttendance = markAttendance;
+        window.markAll = markAll;
+        window.loadAttendanceForDate = loadAttendanceForDate;
+        window.changeDate = changeDate;
+        window.setToday = setToday;
+        window.renderClassGrid = renderClassGrid;
+        window.renderStudentList = renderStudentList;
+        window.updateStats = updateStats;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+    </script>
+
+</body>
+</html>

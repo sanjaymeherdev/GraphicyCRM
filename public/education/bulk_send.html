@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Send Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+        .badge-purple {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+
+        /* Form */
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        select option {
+            background: var(--surface2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+        }
+
+        input[type="file"] {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--green);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text2);
+            cursor: pointer;
+            text-transform: none;
+            font-weight: 400;
+        }
+
+        .checkbox-group label:hover {
+            color: var(--text);
+        }
+
+        /* Student List */
+        .student-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg2);
+        }
+
+        .student-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .student-item:hover {
+            background: var(--surface2);
+        }
+
+        .student-item:last-child {
+            border-bottom: none;
+        }
+
+        .student-item .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .student-item .info {
+            flex: 1;
+        }
+
+        .student-item .info .name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .student-item .info .meta {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .student-item .status-badge {
+            font-size: 10px;
+        }
+
+        .student-item input[type="checkbox"] {
+            flex-shrink: 0;
+        }
+
+        /* Selection controls */
+        .selection-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 10px 14px;
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .selection-controls .count {
+            font-size: 12px;
+            color: var(--text2);
+            margin-left: auto;
+        }
+
+        .selection-controls .count strong {
+            color: var(--text);
+        }
+
+        /* Schedule section */
+        .schedule-section {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--surface2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-top: 12px;
+        }
+
+        .schedule-section .radio-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .schedule-section .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .schedule-section .radio-group input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--green);
+            cursor: pointer;
+        }
+
+        .schedule-section .datetime-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .filter-section {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .filter-section {
+                grid-template-columns: 1fr;
+            }
+            .schedule-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .schedule-section .radio-group {
+                flex-wrap: wrap;
+            }
+            .selection-controls {
+                flex-wrap: wrap;
+            }
+            .selection-controls .count {
+                margin-left: 0;
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .checkbox-group {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .help-text code {
+            background: var(--surface3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
+        .help-text strong {
+            color: var(--text);
+        }
+
+        /* Progress */
+        .progress-container {
+            margin-top: 12px;
+            display: none;
+        }
+
+        .progress-container .progress-bar {
+            background: var(--bg2);
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-container .progress-bar .progress-fill {
+            height: 100%;
+            background: var(--green);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-container .progress-text {
+            font-size: 12px;
+            color: var(--text2);
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+
+        /* CSV Import */
+        .csv-import-area {
+            border: 2px dashed var(--border2);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            text-align: center;
+            color: var(--text3);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .csv-import-area:hover {
+            border-color: var(--green);
+            color: var(--text2);
+        }
+
+        .csv-import-area.dragover {
+            border-color: var(--green);
+            background: var(--green-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">📨 Bulk<span>Send</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadSampleData()">📋 Load Sample</button>
+                <button class="btn btn-secondary btn-sm" onclick="refreshData()">↻ Refresh</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="totalStudents">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Selected</div>
+                <div class="stat-value" id="selectedCount">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Paid</div>
+                <div class="stat-value" id="paidCount">0</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Unpaid</div>
+                <div class="stat-value" id="unpaidCount">0</div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📨 Compose Bulk Message</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="sendBulkMessage()" id="sendBtn">📤 Send Now</button>
+                    <button class="btn btn-secondary" onclick="scheduleBulkMessage()" id="scheduleBtn">📅 Schedule</button>
+                </div>
+            </div>
+
+            <!-- Template Selection -->
+            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; padding:12px 16px; background:var(--bg2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+                <div style="flex:2; min-width:200px;">
+                    <span class="form-label" style="margin-top:0;">Select Template</span>
+                    <select id="templateSelect" onchange="previewTemplate()">
+                        <option value="">— Select a template —</option>
+                    </select>
+                </div>
+                <div style="flex:1; min-width:150px;">
+                    <span class="form-label" style="margin-top:0;">Default Template</span>
+                    <select id="defaultTemplateSelect" onchange="setDefaultTemplate()">
+                        <option value="">— None —</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-ghost btn-sm" onclick="previewTemplate()">👁️ Preview</button>
+                </div>
+            </div>
+
+            <!-- Template Preview -->
+            <div id="templatePreviewContainer" style="display:none; margin-bottom:16px; padding:12px; background:var(--bg2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="form-label" style="margin-top:0;">Template Preview</span>
+                    <span style="font-size:11px; color:var(--text3);">Variables: {{name}}, {{class}}, {{phone}}</span>
+                </div>
+                <div id="templatePreview" style="padding:12px; background:var(--surface); border-radius:8px; white-space:pre-wrap; font-size:13px; color:var(--text2); min-height:60px;">
+                    Select a template to preview
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label>Classes</label>
+                    <select id="classFilter" onchange="applyFilters()">
+                        <option value="all">All Classes</option>
+                    </select>
+                    <div class="checkbox-group" id="classCheckboxes">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>Fee Status</label>
+                    <select id="feeStatusFilter" onchange="applyFilters()">
+                        <option value="all">All Students</option>
+                        <option value="paid">✅ Paid Only</option>
+                        <option value="unpaid">⏳ Unpaid Only</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Selection Mode</label>
+                    <select id="selectionMode" onchange="applyFilters()">
+                        <option value="all">Select All</option>
+                        <option value="class">Select by Class</option>
+                        <option value="individual">Select Individual</option>
+                        <option value="csv">Import from CSV</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- CSV Import Area -->
+            <div id="csvImportArea" style="display:none; margin-bottom:16px;">
+                <div class="csv-import-area" id="csvDropZone" onclick="document.getElementById('csvFileInput').click()">
+                    <div style="font-size:36px; margin-bottom:8px;">📂</div>
+                    <p>Click or drag CSV file here</p>
+                    <p style="font-size:11px; color:var(--text3);">Format: name, phone, class, fee_status</p>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVImport(event)">
+                </div>
+                <div id="csvPreview" style="display:none; margin-top:12px; padding:12px; background:var(--surface2); border-radius:8px; border:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span id="csvCount" style="font-weight:600;">0 contacts imported</span>
+                        <button class="btn btn-danger btn-xs" onclick="clearCSV()">🗑 Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selection Controls -->
+            <div class="selection-controls">
+                <button class="btn btn-secondary btn-xs" onclick="selectAll()">✅ Select All</button>
+                <button class="btn btn-secondary btn-xs" onclick="deselectAll()">⭕ Deselect All</button>
+                <button class="btn btn-secondary btn-xs" onclick="selectPaid()">💰 Select Paid</button>
+                <button class="btn btn-secondary btn-xs" onclick="selectUnpaid()">⏳ Select Unpaid</button>
+                <span class="count">Selected: <strong id="selectedCountDisplay">0</strong> / <span id="totalDisplay">0</span></span>
+            </div>
+
+            <!-- Student List -->
+            <div class="student-list" id="studentList">
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <p>No students loaded. Click "Load Sample" to see demo data.</p>
+                </div>
+            </div>
+
+            <!-- Schedule Section -->
+            <div class="schedule-section">
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="sendTiming" value="immediate" checked onchange="toggleSchedule()">
+                        Send Immediately
+                    </label>
+                    <label>
+                        <input type="radio" name="sendTiming" value="schedule" onchange="toggleSchedule()">
+                        Schedule
+                    </label>
+                </div>
+                <div class="datetime-input" id="scheduleInput" style="display:none;">
+                    <span class="form-label" style="margin-top:0;">Date & Time</span>
+                    <input type="datetime-local" id="scheduleDateTime">
+                </div>
+                <div style="font-size:11px; color:var(--text3);">
+                    <span id="recipientCount">0</span> recipients will receive this message
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-text">
+                    <span id="progressLabel">Sending...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // BULK SEND MODULE - Complete JavaScript
+        // ============================================================
+
+        let students = [];
+        let filteredStudents = [];
+        let selectedStudents = new Set();
+        let templates = [];
+        let csvImportedStudents = [];
+        let isSending = false;
+
+        // ============================================================
+        // BACKEND API — modules/education
+        // ============================================================
+        const EDU_API = '/api/education';
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+            return body.data;
+        }
+        async function checkConnected() {
+            try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+        function showConnectBanner() {
+            const container = document.getElementById('studentListContainer');
+            const msg = '⚠️ No Google Sheet connected yet. Go to Settings to connect one before sending messages.';
+            if (container) container.innerHTML = `<div class="empty-state" style="color:var(--amber, #d97706);">${msg}</div>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        async function loadSampleData() {
+            const sampleStudents = [{
+                id: 's1', name: 'Aarav Sharma', class_display: '10-A',
+                phone: '919876543210', fee_status: 'paid', email: 'aarav@example.com'
+            }, {
+                id: 's2', name: 'Priya Patel', class_display: '12-B',
+                phone: '919876543211', fee_status: 'unpaid', email: 'priya@example.com'
+            }, {
+                id: 's3', name: 'Rahul Singh', class_display: '8-C',
+                phone: '919876543212', fee_status: 'paid', email: 'rahul@example.com'
+            }, {
+                id: 's4', name: 'Sneha Reddy', class_display: '11-A',
+                phone: '919876543213', fee_status: 'unpaid', email: 'sneha@example.com'
+            }, {
+                id: 's5', name: 'Vikram Kumar', class_display: '9-B',
+                phone: '919876543214', fee_status: 'paid', email: 'vikram@example.com'
+            }, {
+                id: 's6', name: 'Ananya Gupta', class_display: '10-B',
+                phone: '919876543215', fee_status: 'unpaid', email: 'ananya@example.com'
+            }, {
+                id: 's7', name: 'Arjun Nair', class_display: '12-A',
+                phone: '919876543216', fee_status: 'paid', email: 'arjun@example.com'
+            }, {
+                id: 's8', name: 'Meera Iyer', class_display: '7-A',
+                phone: '919876543217', fee_status: 'unpaid', email: 'meera@example.com'
+            }, {
+                id: 's9', name: 'Karan Joshi', class_display: '11-B',
+                phone: '919876543218', fee_status: 'paid', email: 'karan@example.com'
+            }, {
+                id: 's10', name: 'Nisha Patel', class_display: '9-A',
+                phone: '919876543219', fee_status: 'unpaid', email: 'nisha@example.com'
+            }, {
+                id: 's11', name: 'Rohit Sharma', class_display: '10-A',
+                phone: '919876543220', fee_status: 'paid', email: 'rohit@example.com'
+            }, {
+                id: 's12', name: 'Kavya Reddy', class_display: '8-B',
+                phone: '919876543221', fee_status: 'unpaid', email: 'kavya@example.com'
+            }];
+
+            try {
+                await apiFetch('/students/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleStudents }) });
+                await loadData();
+                showToast('✅ Loaded ' + students.length + ' sample students');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD DATA
+        // ============================================================
+        async function loadData() {
+            const rows = await apiFetch('/students');
+            students = (rows || []).map(s => ({
+                id: s.id, name: s.name, class: s.class_display,
+                phone: s.guardian_phone || s.phone, fee_status: s.fee_status, email: s.email,
+            }));
+            await loadTemplates();
+            applyFilters();
+            updateStats();
+            return students.length > 0;
+        }
+
+        // ============================================================
+        // TEMPLATES — real MessageTemplates sheet, module:'bulk_send'.
+        // Template `name` doubles as the Meta-approved WhatsApp template
+        // name used for actual sending (see modules/education/service.js).
+        // ============================================================
+        async function loadTemplates() {
+            templates = await apiFetch('/message-templates?module=bulk_send');
+            populateTemplateSelects();
+        }
+
+        async function seedDefaultTemplates() {
+            const defaults = [{
+                module: 'bulk_send', name: 'general_announcement',
+                content: 'Hello {{name}},\n\nThis is a general announcement from the school.\n\nThank you.',
+            }, {
+                module: 'bulk_send', name: 'fee_reminder',
+                content: 'Dear {{name}},\n\nThis is a reminder that your fee for class {{class}} is pending.\nPlease make the payment at the earliest.\n\nThank you.',
+            }, {
+                module: 'bulk_send', name: 'exam_notification',
+                content: 'Hi {{name}},\n\nYour upcoming exams for class {{class}} will start from next week.\nPlease prepare accordingly.\n\nBest wishes.',
+            }, {
+                module: 'bulk_send', name: 'holiday_notice',
+                content: 'Dear {{name}},\n\nThe school will remain closed on account of holidays.\n\nRegards.',
+            }];
+            await apiFetch('/message-templates/bulk', { method: 'POST', body: JSON.stringify({ rows: defaults }) });
+            await loadTemplates();
+        }
+
+        function populateTemplateSelects() {
+            const selects = ['templateSelect', 'defaultTemplateSelect'];
+            selects.forEach(selId => {
+                const sel = document.getElementById(selId);
+                if (!sel) return;
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">— Select a template —</option>' +
+                    templates.map(t => `<option value="${t.name}" ${t.name === currentVal ? 'selected' : ''}>${t.name}</option>`)
+                    .join('');
+            });
+
+            const defaultName = templates.find(t => String(t.is_default) === 'true')?.name;
+            if (defaultName) {
+                const sel = document.getElementById('templateSelect');
+                if (sel) { sel.value = defaultName; previewTemplate(); }
+            }
+        }
+
+        async function setDefaultTemplate() {
+            const sel = document.getElementById('defaultTemplateSelect');
+            const name = sel.value;
+            const current = templates.find(t => String(t.is_default) === 'true');
+
+            try {
+                if (current && current.name !== name) {
+                    await apiFetch(`/message-templates/${current.id}`, { method: 'PUT', body: JSON.stringify({ is_default: 'false' }) });
+                }
+                if (name) {
+                    const target = templates.find(t => t.name === name);
+                    await apiFetch(`/message-templates/${target.id}`, { method: 'PUT', body: JSON.stringify({ is_default: 'true' }) });
+                    document.getElementById('templateSelect').value = name;
+                    previewTemplate();
+                    showToast('✅ Default template set');
+                } else {
+                    showToast('Default template cleared');
+                }
+                await loadTemplates();
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function previewTemplate() {
+            const name = document.getElementById('templateSelect').value;
+            const container = document.getElementById('templatePreviewContainer');
+            const preview = document.getElementById('templatePreview');
+
+            if (!name) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const template = templates.find(t => t.name === name);
+            if (!template) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            let previewText = template.content || 'No content set for this template';
+            const sampleStudent = students.length > 0 ? students[0] : { name: 'Student', class: '10-A', phone: '919876543210' };
+            previewText = previewText
+                .replace(/\{\{name\}\}/g, sampleStudent.name)
+                .replace(/\{\{class\}\}/g, sampleStudent.class || 'N/A')
+                .replace(/\{\{phone\}\}/g, sampleStudent.phone || 'N/A');
+            preview.textContent = previewText;
+        }
+
+        // ============================================================
+        // FILTERS
+        // ============================================================
+        function applyFilters() {
+            const classFilter = document.getElementById('classFilter').value;
+            const feeStatus = document.getElementById('feeStatusFilter').value;
+            const selectionMode = document.getElementById('selectionMode').value;
+
+            // Populate class checkboxes
+            populateClassCheckboxes();
+
+            // Filter students
+            filteredStudents = students.filter(student => {
+                // Class filter
+                if (classFilter !== 'all' && student.class !== classFilter) return false;
+
+                // Fee status filter
+                if (feeStatus === 'paid' && student.fee_status !== 'paid') return false;
+                if (feeStatus === 'unpaid' && student.fee_status !== 'unpaid') return false;
+
+                return true;
+            });
+
+            // Apply selection mode
+            if (selectionMode === 'class') {
+                // Select by class checkboxes - handled by individual checkboxes
+            } else if (selectionMode === 'csv') {
+                document.getElementById('csvImportArea').style.display = 'block';
+                // Use CSV imported students
+                if (csvImportedStudents.length > 0) {
+                    filteredStudents = csvImportedStudents;
+                }
+            } else {
+                document.getElementById('csvImportArea').style.display = 'none';
+            }
+
+            // Update selection based on mode
+            if (selectionMode === 'all') {
+                selectAll();
+            } else if (selectionMode === 'individual') {
+                // Keep existing selections
+            }
+
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+        }
+
+        function populateClassCheckboxes() {
+            const container = document.getElementById('classCheckboxes');
+            const classes = [...new Set(students.map(s => s.class))].sort();
+
+            container.innerHTML = classes.map(cls => `
+                <label>
+                    <input type="checkbox" class="class-checkbox" value="${cls}" onchange="toggleClassSelection('${cls}')">
+                    ${cls}
+                </label>
+            `).join('');
+        }
+
+        function toggleClassSelection(className) {
+            const checkbox = document.querySelector(`.class-checkbox[value="${className}"]`);
+            if (!checkbox) return;
+
+            const classStudents = students.filter(s => s.class === className);
+            const isChecked = checkbox.checked;
+
+            classStudents.forEach(student => {
+                if (isChecked) {
+                    selectedStudents.add(student.id);
+                } else {
+                    selectedStudents.delete(student.id);
+                }
+            });
+
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+        }
+
+        // ============================================================
+        // SELECTION
+        // ============================================================
+        function selectAll() {
+            filteredStudents.forEach(s => selectedStudents.add(s.id));
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+            showToast('✅ All students selected');
+        }
+
+        function deselectAll() {
+            selectedStudents.clear();
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+            showToast('⭕ All students deselected');
+        }
+
+        function selectPaid() {
+            filteredStudents.filter(s => s.fee_status === 'paid').forEach(s => selectedStudents.add(s.id));
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+            showToast('💰 Paid students selected');
+        }
+
+        function selectUnpaid() {
+            filteredStudents.filter(s => s.fee_status === 'unpaid').forEach(s => selectedStudents.add(s.id));
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+            showToast('⏳ Unpaid students selected');
+        }
+
+        function toggleStudent(id) {
+            if (selectedStudents.has(id)) {
+                selectedStudents.delete(id);
+            } else {
+                selectedStudents.add(id);
+            }
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+        }
+
+        function toggleAllFiltered() {
+            const allSelected = filteredStudents.every(s => selectedStudents.has(s.id));
+            filteredStudents.forEach(s => {
+                if (allSelected) {
+                    selectedStudents.delete(s.id);
+                } else {
+                    selectedStudents.add(s.id);
+                }
+            });
+            renderStudentList();
+            updateStats();
+            updateRecipientCount();
+        }
+
+        // ============================================================
+        // CSV IMPORT
+        // ============================================================
+        function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+                csvImportedStudents = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = parseCSVLine(lines[i]);
+                    if (values.length < 2) continue;
+
+                    const student = {
+                        id: 'csv_' + i,
+                        name: values[0]?.trim() || 'Unknown',
+                        phone: values[1]?.trim().replace(/\D/g, '') || '',
+                        class: values[2]?.trim() || 'N/A',
+                        fee_status: values[3]?.trim().toLowerCase() || 'unknown',
+                        email: values[4]?.trim() || ''
+                    };
+
+                    if (student.phone.length === 10) student.phone = '91' + student.phone;
+                    if (student.phone.length >= 10) {
+                        csvImportedStudents.push(student);
+                    }
+                }
+
+                document.getElementById('csvPreview').style.display = 'block';
+                document.getElementById('csvCount').textContent = csvImportedStudents.length + ' contacts imported';
+
+                // Switch to CSV mode and show imported students
+                document.getElementById('selectionMode').value = 'csv';
+                applyFilters();
+                showToast('✅ Imported ' + csvImportedStudents.length + ' contacts from CSV');
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQuotes) {
+                    if (ch === '"' && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += ch;
+                    }
+                } else {
+                    if (ch === '"') {
+                        inQuotes = true;
+                    } else if (ch === ',') {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += ch;
+                    }
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function clearCSV() {
+            csvImportedStudents = [];
+            document.getElementById('csvPreview').style.display = 'none';
+            document.getElementById('csvFileInput').value = '';
+            document.getElementById('selectionMode').value = 'all';
+            applyFilters();
+            showToast('🗑 CSV data cleared');
+        }
+
+        // ============================================================
+        // RENDER
+        // ============================================================
+        function renderStudentList() {
+            const container = document.getElementById('studentList');
+
+            if (!filteredStudents.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">👥</div>
+                        <p>No students match your filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredStudents.map(student => {
+                const isSelected = selectedStudents.has(student.id);
+                const statusBadge = student.fee_status === 'paid' ?
+                    '<span class="badge badge-green">✅ Paid</span>' :
+                    '<span class="badge badge-amber">⏳ Unpaid</span>';
+
+                return `
+                    <div class="student-item" onclick="toggleStudent('${student.id}')">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleStudent('${student.id}')">
+                        <div class="avatar">${student.name.charAt(0).toUpperCase()}</div>
+                        <div class="info">
+                            <div class="name">${escapeHtml(student.name)}</div>
+                            <div class="meta">${escapeHtml(student.class)} • ${student.phone || 'No phone'}</div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('selectedCountDisplay').textContent = selectedStudents.size;
+            document.getElementById('totalDisplay').textContent = filteredStudents.length;
+        }
+
+        function updateStats() {
+            document.getElementById('totalStudents').textContent = students.length;
+            document.getElementById('selectedCount').textContent = selectedStudents.size;
+            document.getElementById('paidCount').textContent = students.filter(s => s.fee_status === 'paid').length;
+            document.getElementById('unpaidCount').textContent = students.filter(s => s.fee_status === 'unpaid').length;
+        }
+
+        function updateRecipientCount() {
+            const count = selectedStudents.size;
+            document.getElementById('recipientCount').textContent = count;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // SCHEDULE
+        // ============================================================
+        function toggleSchedule() {
+            const timing = document.querySelector('input[name="sendTiming"]:checked').value;
+            document.getElementById('scheduleInput').style.display = timing === 'schedule' ? 'block' : 'none';
+        }
+
+        // ============================================================
+        // SEND — sequential real sends via modules/education. Each call
+        // uses whatsapp.sendTemplate server-side, so `templateName` must
+        // be an APPROVED Meta WhatsApp template, not free-form text.
+        // ============================================================
+        async function sendBulkMessage() {
+            if (isSending) return;
+            const templateName = document.getElementById('templateSelect').value;
+            if (!templateName) {
+                showToast('Please select a template', true);
+                return;
+            }
+
+            const selected = students.filter(s => selectedStudents.has(s.id));
+            if (!selected.length) {
+                showToast('No students selected', true);
+                return;
+            }
+
+            if (!confirm(`Send message to ${selected.length} students?`)) return;
+
+            isSending = true;
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending...';
+
+            const progress = document.getElementById('progressContainer');
+            progress.style.display = 'block';
+
+            let sent = 0, failed = 0;
+
+            for (const student of selected) {
+                try {
+                    await apiFetch('/send', {
+                        method: 'POST',
+                        body: JSON.stringify({ studentId: student.id, name: student.name, phone: student.phone, templateName, module: 'bulk_send' }),
+                    });
+                    sent++;
+                } catch (err) {
+                    failed++;
+                }
+
+                const progressPercent = Math.round(((sent + failed) / selected.length) * 100);
+                document.getElementById('progressFill').style.width = progressPercent + '%';
+                document.getElementById('progressPercent').textContent = progressPercent + '%';
+                document.getElementById('progressLabel').textContent = `Sending... ${sent + failed}/${selected.length}`;
+            }
+
+            isSending = false;
+            btn.disabled = false;
+            btn.textContent = '📤 Send Now';
+            showToast(`✅ Sent: ${sent}, Failed: ${failed}`);
+
+            setTimeout(() => {
+                progress.style.display = 'none';
+                document.getElementById('progressFill').style.width = '0%';
+            }, 2000);
+        }
+
+        // Note: no real scheduling backend exists yet for bulk sends
+        // (unlike birthday/fee/invoice, which have a server-side poll
+        // tick). This only confirms the intent — wire it to a real job
+        // queue before relying on it in production.
+        function scheduleBulkMessage() {
+            const templateName = document.getElementById('templateSelect').value;
+            if (!templateName) {
+                showToast('Please select a template', true);
+                return;
+            }
+
+            const selected = students.filter(s => selectedStudents.has(s.id));
+            if (!selected.length) {
+                showToast('No students selected', true);
+                return;
+            }
+
+            const scheduleDate = document.getElementById('scheduleDateTime').value;
+            if (!scheduleDate) {
+                showToast('Please select a date and time', true);
+                return;
+            }
+
+            const date = new Date(scheduleDate);
+            if (date <= new Date()) {
+                showToast('Please select a future date and time', true);
+                return;
+            }
+
+            showToast(`⚠️ Scheduling isn't wired to a backend yet — send now instead, or ask your dev to add a job queue.`, true);
+        }
+
+        // ============================================================
+        // REFRESH
+        // ============================================================
+        async function refreshData() {
+            try {
+                await loadData();
+                showToast('↻ Refreshed');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 3500);
+        }
+
+        // ============================================================
+        // DRAG AND DROP
+        // ============================================================
+        function setupDragDrop() {
+            const dropZone = document.getElementById('csvDropZone');
+            if (!dropZone) return;
+
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length) {
+                    document.getElementById('csvFileInput').files = files;
+                    handleCSVImport({ target: { files: files } });
+                }
+            });
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const connected = await checkConnected();
+            if (!connected) { showConnectBanner(); return; }
+
+            try {
+                await loadData();
+
+                // Populate class filter
+                const classFilter = document.getElementById('classFilter');
+                const classes = [...new Set(students.map(s => s.class))].sort();
+                classFilter.innerHTML = '<option value="all">All Classes</option>' +
+                    classes.map(cls => `<option value="${cls}">${cls}</option>`).join('');
+
+                setupDragDrop();
+                applyFilters();
+
+                console.log('📨 Bulk Send Module initialized with ' + students.length + ' students');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        });
+
+        // Make functions globally accessible
+        window.loadSampleData = loadSampleData;
+        window.loadData = loadData;
+        window.seedDefaultTemplates = seedDefaultTemplates;
+        window.applyFilters = applyFilters;
+        window.selectAll = selectAll;
+        window.deselectAll = deselectAll;
+        window.selectPaid = selectPaid;
+        window.selectUnpaid = selectUnpaid;
+        window.toggleStudent = toggleStudent;
+        window.toggleAllFiltered = toggleAllFiltered;
+        window.toggleClassSelection = toggleClassSelection;
+        window.sendBulkMessage = sendBulkMessage;
+        window.scheduleBulkMessage = scheduleBulkMessage;
+        window.previewTemplate = previewTemplate;
+        window.setDefaultTemplate = setDefaultTemplate;
+        window.toggleSchedule = toggleSchedule;
+        window.handleCSVImport = handleCSVImport;
+        window.clearCSV = clearCSV;
+        window.refreshData = refreshData;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Reminder Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        /* Form */
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        select option {
+            background: var(--surface2);
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12.5px;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: var(--surface2);
+        }
+
+        /* Filters */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg2);
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .filter-bar .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-bar label {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            width: auto;
+            padding: 6px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            min-width: 100px;
+        }
+
+        .filter-bar input {
+            min-width: 150px;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pagination-info {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .pagination-controls .page-info {
+            padding: 4px 12px;
+            background: var(--surface2);
+            border-radius: 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .75);
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 580px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid var(--border2);
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-bar .filter-group {
+                flex-wrap: wrap;
+            }
+            .filter-bar select,
+            .filter-bar input {
+                flex: 1;
+                min-width: 80px;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            table {
+                font-size: 11px;
+            }
+            td,
+            th {
+                padding: 6px 8px;
+            }
+            .btn-xs {
+                padding: 2px 6px;
+                font-size: 10px;
+            }
+            .modal-box {
+                padding: 18px;
+                margin: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .help-text code {
+            background: var(--surface3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
+        .help-text strong {
+            color: var(--text);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">💰 Fee<span>Reminder</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="exportFeeData()">📤 Export CSV</button>
+                <button class="btn btn-secondary btn-sm" onclick="saveFeeDataToDb()">💾 Save to DB</button>
+            </div>
+        </header>
+
+        <!-- Google Sheet Connection — configured once in Settings (Apps
+             Script URL + secret). This panel just reflects status and
+             lets you refresh/seed sample data; no sheet ID/API key needed
+             here anymore. -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📊 Google Sheet Connection</div>
+                <div class="connection-status">
+                    <span id="sheetStatus" class="badge badge-amber">● Not Connected</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="loadFeeData()">↻ Refresh from Sheet</button>
+                <button class="btn btn-secondary" onclick="loadSampleData()">📋 Load Sample</button>
+            </div>
+            <div class="help-text">
+                💡 The connection itself (Apps Script URL + secret) is set up once on the <strong>Settings</strong> page.
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card green">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="feeTotalStudents">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Pending Fees</div>
+                <div class="stat-value" id="feePendingCount">0</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value" id="feeOverdueCount">0</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Reminders Sent</div>
+                <div class="stat-value" id="feeRemindersSent">0</div>
+            </div>
+        </div>
+
+        <!-- Fee Records Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📋 Fee Records <span id="feeCount" style="color:var(--text3);font-weight:400;">(0)</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="sendBulkReminders()">📨 Send All</button>
+                    <button class="btn btn-ghost btn-sm" onclick="loadFeeData()">↻ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select id="feeStatusFilter" onchange="renderFeeTable()">
+                        <option value="all">All</option>
+                        <option value="paid">✅ Paid</option>
+                        <option value="pending">⏳ Pending</option>
+                        <option value="overdue">🔴 Overdue</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search:</label>
+                    <input type="text" id="feeSearchInput" placeholder="Name or Class..." oninput="renderFeeTable()">
+                </div>
+                <div class="filter-group" style="margin-left:auto;">
+                    <label>Rows:</label>
+                    <select id="feeRowsPerPage" onchange="currentFeePage=1; renderFeeTable();">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:30px;">#</th>
+                            <th style="min-width:120px;">Name</th>
+                            <th style="min-width:80px;">Class</th>
+                            <th style="min-width:120px;">Months Due</th>
+                            <th style="min-width:110px;">Fee Due Date</th>
+                            <th style="min-width:90px;">Status</th>
+                            <th style="min-width:130px;">WhatsApp No.</th>
+                            <th style="min-width:80px;">Reminders</th>
+                            <th style="min-width:180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feeTableBody">
+                        <tr>
+                            <td colspan="9" style="text-align:center; color:var(--text3); padding:40px;">
+                                <div style="font-size:36px; margin-bottom:12px;">📊</div>
+                                <p>Enter a Google Sheet ID and click "Fetch Data" to load fee records.<br>Or click "Load Sample" to see demo data.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <div class="pagination-info">
+                    Showing <span id="feeStartRange">0</span> - <span id="feeEndRange">0</span> of <span id="feeTotalRecords">0</span> records
+                </div>
+                <div class="pagination-controls">
+                    <button class="btn btn-ghost btn-xs" onclick="changeFeePage('prev')" id="feePrevBtn">← Prev</button>
+                    <span class="page-info" id="feePageInfo">Page 1</span>
+                    <button class="btn btn-ghost btn-xs" onclick="changeFeePage('next')" id="feeNextBtn">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="feeEditModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">✏️ Edit Fee Record</div>
+                <button class="btn btn-ghost btn-xs" onclick="closeFeeEditModal()">✕</button>
+            </div>
+            <div id="feeEditForm">
+                <input type="hidden" id="feeEditRowIndex">
+                <span class="form-label" style="margin-top:0;">Student Name</span>
+                <input type="text" id="feeEditName">
+
+                <span class="form-label">Class</span>
+                <input type="text" id="feeEditClass">
+
+                <span class="form-label">Months Due</span>
+                <input type="text" id="feeEditMonthsDue" placeholder="Jan, Feb, Mar 2024">
+
+                <span class="form-label">Fee Due Date</span>
+                <input type="date" id="feeEditDueDate">
+
+                <span class="form-label">Status</span>
+                <select id="feeEditStatus">
+                    <option value="paid">✅ Paid</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="overdue">🔴 Overdue</option>
+                </select>
+
+                <span class="form-label">WhatsApp Number</span>
+                <input type="text" id="feeEditPhone" placeholder="919876543210">
+
+                <span class="form-label">Reminder Sent (comma separated dates)</span>
+                <input type="text" id="feeEditReminders" placeholder="2024-01-15, 2024-02-01">
+            </div>
+            <div class="btn-row" style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="saveFeeEdit()">💾 Save Changes</button>
+                <button class="btn btn-ghost" onclick="closeFeeEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // FEE REMINDER MODULE - Complete JavaScript
+        // ============================================================
+
+        let feeData = [];
+        let filteredFeeData = [];
+        let currentFeePage = 1;
+        let feeRowsPerPage = 25;
+
+        // ============================================================
+        // BACKEND API — modules/education
+        // ============================================================
+        const EDU_API = '/api/education';
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+            return body.data;
+        }
+        async function checkConnected() {
+            try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+        function showConnectBanner() {
+            const tbody = document.querySelector('#feeTableBody, tbody');
+            const msg = '⚠️ No Google Sheet connected yet. Go to Settings to connect one before managing fees.';
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--amber, #d97706); padding:40px;">${msg}</td></tr>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 3500);
+        }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        async function loadSampleData() {
+            const sampleFees = [{
+                student_id: 'sample_1', name: 'Aarav Sharma', class: '10-A',
+                monthsDue: 'Jan, Feb 2024', dueDate: '2024-03-15', status: 'pending',
+                phone: '919876543210', amount: '5000',
+            }, {
+                student_id: 'sample_2', name: 'Priya Patel', class: '12-B',
+                monthsDue: 'Jan, Feb, Mar 2024', dueDate: '2024-03-31', status: 'overdue',
+                phone: '919876543211', amount: '7500',
+            }, {
+                student_id: 'sample_3', name: 'Rahul Singh', class: '8-C',
+                monthsDue: 'Feb 2024', dueDate: '2024-02-28', status: 'paid',
+                phone: '919876543212', amount: '2500',
+            }, {
+                student_id: 'sample_4', name: 'Sneha Reddy', class: '11-A',
+                monthsDue: 'Jan, Feb, Mar 2024', dueDate: '2024-04-10', status: 'pending',
+                phone: '919876543213', amount: '7500',
+            }, {
+                student_id: 'sample_5', name: 'Vikram Kumar', class: '9-B',
+                monthsDue: 'Mar 2024', dueDate: '2024-03-20', status: 'pending',
+                phone: '919876543214', amount: '2500',
+            }, {
+                student_id: 'sample_6', name: 'Ananya Gupta', class: '10-B',
+                monthsDue: 'Jan, Feb 2024', dueDate: '2024-02-15', status: 'paid',
+                phone: '919876543215', amount: '5000',
+            }, {
+                student_id: 'sample_7', name: 'Arjun Nair', class: '12-A',
+                monthsDue: 'Jan, Feb, Mar 2024', dueDate: '2024-03-25', status: 'overdue',
+                phone: '919876543216', amount: '7500',
+            }, {
+                student_id: 'sample_8', name: 'Meera Iyer', class: '7-A',
+                monthsDue: 'Feb, Mar 2024', dueDate: '2024-04-05', status: 'pending',
+                phone: '919876543217', amount: '5000',
+            }];
+
+            try {
+                await apiFetch('/fees/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleFees }) });
+                await loadFeeData();
+                document.getElementById('sheetStatus').className = 'badge badge-green';
+                document.getElementById('sheetStatus').textContent = '● Sample Data Loaded';
+                showToast('✅ Loaded ' + feeData.length + ' sample records');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD FEE DATA — from the connected Google Sheet's Fees tab via
+        // modules/education (server-side proxy). The old direct-to-Google
+        // -Sheets-API approach here used a hardcoded API key shipped in
+        // client JS, which is both insecure and unnecessary now that a
+        // real backend exists — removed entirely, not just patched.
+        // ============================================================
+        async function loadFeeData() {
+            const rows = await apiFetch('/fees');
+            feeData = (rows || []).map(r => ({
+                id: r.id, name: r.name, class: r.class, monthsDue: r.monthsDue,
+                dueDate: r.dueDate, status: r.status || 'pending', phone: r.phone,
+                reminders: r.lastReminderDate || '', student_id: r.student_id, amount: r.amount,
+            }));
+            document.getElementById('sheetStatus').className = feeData.length ? 'badge badge-green' : 'badge';
+            document.getElementById('sheetStatus').textContent = feeData.length ? `● Connected (${feeData.length} records)` : '● No records yet';
+            renderFeeTable();
+            updateFeeStats();
+            return feeData.length > 0;
+        }
+
+        // ============================================================
+        // RENDER TABLE
+        // ============================================================
+        function renderFeeTable() {
+            const statusFilter = document.getElementById('feeStatusFilter').value;
+            const searchQuery = document.getElementById('feeSearchInput').value.toLowerCase().trim();
+
+            // Apply filters
+            filteredFeeData = feeData.filter(record => {
+                if (statusFilter !== 'all' && record.status !== statusFilter) return false;
+                if (searchQuery) {
+                    const searchable = `${record.name} ${record.class} ${record.monthsDue}`.toLowerCase();
+                    if (!searchable.includes(searchQuery)) return false;
+                }
+                return true;
+            });
+
+            // Sort by status (overdue first)
+            const statusOrder = { overdue: 0, pending: 1, paid: 2 };
+            filteredFeeData.sort((a, b) => (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2));
+
+            // Update counts
+            document.getElementById('feeTotalRecords').textContent = filteredFeeData.length;
+
+            // Pagination
+            feeRowsPerPage = parseInt(document.getElementById('feeRowsPerPage').value) || 25;
+            const totalPages = Math.ceil(filteredFeeData.length / feeRowsPerPage);
+            if (currentFeePage > totalPages) currentFeePage = totalPages || 1;
+
+            const start = (currentFeePage - 1) * feeRowsPerPage;
+            const end = Math.min(start + feeRowsPerPage, filteredFeeData.length);
+            const pageData = filteredFeeData.slice(start, end);
+
+            // Update range display
+            document.getElementById('feeStartRange').textContent = filteredFeeData.length > 0 ? start + 1 : 0;
+            document.getElementById('feeEndRange').textContent = end;
+            document.getElementById('feePageInfo').textContent = `Page ${currentFeePage} of ${totalPages || 1}`;
+
+            // Update button states
+            document.getElementById('feePrevBtn').disabled = currentFeePage <= 1;
+            document.getElementById('feeNextBtn').disabled = currentFeePage >= totalPages;
+
+            // Render rows
+            const tbody = document.getElementById('feeTableBody');
+            document.getElementById('feeCount').textContent = `(${feeData.length})`;
+
+            if (!pageData.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align:center; color:var(--text3); padding:40px;">
+                            <div style="font-size:36px; margin-bottom:12px;">📭</div>
+                            <p>${feeData.length > 0 ? 'No records match your filters' : 'No fee records loaded'}</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = pageData.map((record, idx) => {
+                const globalIdx = start + idx;
+                const statusBadge = {
+                    paid: 'badge-green',
+                    pending: 'badge-amber',
+                    overdue: 'badge-red'
+                } [record.status] || 'badge-amber';
+
+                const statusLabel = {
+                    paid: '✅ Paid',
+                    pending: '⏳ Pending',
+                    overdue: '🔴 Overdue'
+                } [record.status] || record.status;
+
+                const reminderCount = record.reminders ? record.reminders.split(',').filter(r => r.trim()).length : 0;
+
+                return `
+                    <tr>
+                        <td style="color:var(--text3); font-size:12px;">${globalIdx + 1}</td>
+                        <td><strong>${escapeHtml(record.name || '—')}</strong></td>
+                        <td>${escapeHtml(record.class || '—')}</td>
+                        <td style="font-size:12px;">${escapeHtml(record.monthsDue || '—')}</td>
+                        <td style="font-family:'DM Mono',monospace; font-size:12px;">${record.dueDate || '—'}</td>
+                        <td><span class="badge ${statusBadge}">${statusLabel}</span></td>
+                        <td style="font-family:'DM Mono',monospace; font-size:12px;">${record.phone || '—'}</td>
+                        <td style="text-align:center;">
+                            ${reminderCount > 0 
+                                ? `<span class="badge badge-blue">${reminderCount}x</span>` 
+                                : `<span style="color:var(--text3); font-size:12px;">—</span>`}
+                        </td>
+                        <td>
+                            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                                <button class="btn btn-primary btn-xs" onclick="sendFeeReminder('${record.id}')" ${record.phone ? '' : 'disabled'}>
+                                    📨 Send
+                                </button>
+                                <button class="btn btn-secondary btn-xs" onclick="openFeeEditModal('${record.id}')">
+                                    ✏️ Edit
+                                </button>
+                                <button class="btn btn-danger btn-xs" onclick="deleteFeeRecord('${record.id}')">
+                                    🗑
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // UPDATE STATS
+        // ============================================================
+        function updateFeeStats() {
+            document.getElementById('feeTotalStudents').textContent = feeData.length;
+            document.getElementById('feePendingCount').textContent = feeData.filter(r => r.status === 'pending').length;
+            document.getElementById('feeOverdueCount').textContent = feeData.filter(r => r.status === 'overdue').length;
+
+            let totalReminders = 0;
+            feeData.forEach(r => {
+                if (r.reminders) {
+                    totalReminders += r.reminders.split(',').filter(r => r.trim()).length;
+                }
+            });
+            document.getElementById('feeRemindersSent').textContent = totalReminders;
+        }
+
+        // ============================================================
+        // PAGINATION
+        // ============================================================
+        function changeFeePage(direction) {
+            const totalPages = Math.ceil(filteredFeeData.length / feeRowsPerPage);
+            if (direction === 'prev' && currentFeePage > 1) currentFeePage--;
+            else if (direction === 'next' && currentFeePage < totalPages) currentFeePage++;
+            else if (typeof direction === 'number') currentFeePage = direction;
+            renderFeeTable();
+        }
+
+        // ============================================================
+        // EDIT MODAL
+        // ============================================================
+        function openFeeEditModal(id) {
+            const record = feeData.find(r => r.id === id);
+            if (!record) {
+                showToast('Record not found', true);
+                return;
+            }
+
+            document.getElementById('feeEditRowIndex').value = id;
+            document.getElementById('feeEditName').value = record.name || '';
+            document.getElementById('feeEditClass').value = record.class || '';
+            document.getElementById('feeEditMonthsDue').value = record.monthsDue || '';
+            document.getElementById('feeEditDueDate').value = record.dueDate || '';
+            document.getElementById('feeEditStatus').value = record.status || 'pending';
+            document.getElementById('feeEditPhone').value = record.phone || '';
+            document.getElementById('feeEditReminders').value = record.reminders || '';
+
+            document.getElementById('feeEditModal').classList.add('open');
+        }
+
+        function closeFeeEditModal() {
+            document.getElementById('feeEditModal').classList.remove('open');
+        }
+
+        function saveFeeEdit() {
+            const id = document.getElementById('feeEditRowIndex').value;
+            const record = feeData.find(r => r.id === id);
+            if (!record) {
+                showToast('Record not found', true);
+                return;
+            }
+
+            const patch = {
+                name: document.getElementById('feeEditName').value.trim(),
+                class: document.getElementById('feeEditClass').value.trim(),
+                monthsDue: document.getElementById('feeEditMonthsDue').value.trim(),
+                dueDate: document.getElementById('feeEditDueDate').value,
+                status: document.getElementById('feeEditStatus').value,
+                phone: document.getElementById('feeEditPhone').value.trim().replace(/\D/g, ''),
+            };
+            if (patch.phone.length === 10) patch.phone = '91' + patch.phone;
+
+            apiFetch(`/fees/${id}`, { method: 'PUT', body: JSON.stringify(patch) })
+                .then(() => loadFeeData())
+                .then(() => {
+                    closeFeeEditModal();
+                    showToast('✅ Fee record updated successfully');
+                })
+                .catch(err => showToast('⚠️ ' + err.message, true));
+        }
+
+        // ============================================================
+        // DELETE RECORD
+        // ============================================================
+        async function deleteFeeRecord(id) {
+            if (!confirm('Delete this fee record?')) return;
+            try {
+                await apiFetch(`/fees/${id}`, { method: 'DELETE' });
+                await loadFeeData();
+                showToast('🗑 Record deleted');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // SEND REMINDER — real send via modules/education. Requires a
+        // default fee-reminder WhatsApp template to be set in Settings
+        // (Settings.defaultFeeTemplate) since this is a business-initiated
+        // message and must use an APPROVED Meta template, not free text.
+        // buildReminderMessage() below is now preview-only.
+        // ============================================================
+        function buildReminderMessage(record) {
+            const statusEmoji = {
+                pending: '⏳',
+                overdue: '🔴',
+                paid: '✅'
+            } [record.status] || '📌';
+
+            const statusText = {
+                pending: 'pending',
+                overdue: 'OVERDUE',
+                paid: 'paid'
+            } [record.status] || record.status;
+
+            return `📚 *Fee Reminder*
+
+        Dear *${record.name}*,
+
+        ${statusEmoji} Your fee of ${record.monthsDue || ''} is ${statusText.toUpperCase()}.
+
+        📅 Due Date: ${record.dueDate || 'N/A'}
+        📋 Class: ${record.class || 'N/A'}
+
+        Please make the payment at the earliest to avoid late fees.
+
+        Thank you,
+        Fee Management System`;
+        }
+
+        async function getDefaultFeeTemplate() {
+            const settings = await apiFetch('/settings');
+            return settings.defaultFeeTemplate || null;
+        }
+
+        async function sendFeeReminder(id) {
+            const record = feeData.find(r => r.id === id);
+            if (!record) {
+                showToast('Record not found', true);
+                return;
+            }
+
+            if (!record.phone) {
+                showToast('No WhatsApp number available', true);
+                return;
+            }
+
+            const templateName = await getDefaultFeeTemplate();
+            if (!templateName) {
+                showToast('⚠️ Set a default fee reminder template in Settings first', true);
+                return;
+            }
+
+            try {
+                await apiFetch('/send', {
+                    method: 'POST',
+                    body: JSON.stringify({ studentId: record.student_id || record.id, name: record.name, phone: record.phone, templateName, module: 'fee' }),
+                });
+                await apiFetch(`/fees/${id}`, { method: 'PUT', body: JSON.stringify({ lastReminderDate: new Date().toISOString() }) });
+                await loadFeeData();
+                showToast(`✅ Reminder sent to ${record.name}`);
+                // Preview of what a freeform reminder would have said — kept
+                // for reference; the actual WhatsApp content is defined by
+                // the approved template on Meta's side, not this text.
+                console.log(buildReminderMessage(record));
+            } catch (err) {
+                showToast(`❌ Failed to send: ${err.message}`, true);
+            }
+        }
+
+        // ============================================================
+        // BULK SEND
+        // ============================================================
+        async function sendBulkReminders() {
+            const pendingRecords = feeData.filter(r => (r.status === 'pending' || r.status === 'overdue') && r.phone);
+
+            if (!pendingRecords.length) {
+                showToast('No pending or overdue records with a phone number found');
+                return;
+            }
+
+            const templateName = await getDefaultFeeTemplate();
+            if (!templateName) {
+                showToast('⚠️ Set a default fee reminder template in Settings first', true);
+                return;
+            }
+
+            if (!confirm(`Send reminders to ${pendingRecords.length} students?`)) return;
+
+            const btn = document.querySelector('[onclick="sendBulkReminders()"]');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Sending...';
+            btn.disabled = true;
+
+            let sent = 0, failed = 0;
+
+            for (const record of pendingRecords) {
+                try {
+                    await apiFetch('/send', {
+                        method: 'POST',
+                        body: JSON.stringify({ studentId: record.student_id || record.id, name: record.name, phone: record.phone, templateName, module: 'fee' }),
+                    });
+                    await apiFetch(`/fees/${record.id}`, { method: 'PUT', body: JSON.stringify({ lastReminderDate: new Date().toISOString() }) });
+                    sent++;
+                } catch (err) {
+                    failed++;
+                }
+            }
+
+            await loadFeeData();
+            btn.textContent = originalText;
+            btn.disabled = false;
+            showToast(`📨 Sent: ${sent}, Failed: ${failed}`);
+        }
+
+        // ============================================================
+        // EXPORT CSV
+        // ============================================================
+        function exportFeeData() {
+            if (!feeData.length) {
+                showToast('No data to export', true);
+                return;
+            }
+
+            const headers = ['Name', 'Class', 'Months Due', 'Due Date', 'Status', 'WhatsApp No.', 'Reminders'];
+            const rows = feeData.map(r => [
+                r.name || '',
+                r.class || '',
+                r.monthsDue || '',
+                r.dueDate || '',
+                r.status || '',
+                r.phone || '',
+                r.reminders || ''
+            ]);
+
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fee_reminders_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('✅ CSV exported');
+        }
+
+        // ============================================================
+        // SAVE TO DATABASE — every edit already writes straight to the
+        // sheet via saveFeeEdit/deleteFeeRecord, so this just confirms.
+        // ============================================================
+        function saveFeeDataToDb() {
+            showToast('✅ Fee data is already saved (every change writes to your Sheet immediately)');
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const connected = await checkConnected();
+            if (!connected) { showConnectBanner(); return; }
+
+            try {
+                await loadFeeData();
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        });
+
+        // Make functions globally accessible
+        window.loadFeeData = loadFeeData;
+        window.loadSampleData = loadSampleData;
+        window.renderFeeTable = renderFeeTable;
+        window.updateFeeStats = updateFeeStats;
+        window.changeFeePage = changeFeePage;
+        window.openFeeEditModal = openFeeEditModal;
+        window.closeFeeEditModal = closeFeeEditModal;
+        window.saveFeeEdit = saveFeeEdit;
+        window.sendFeeReminder = sendFeeReminder;
+        window.sendBulkReminders = sendBulkReminders;
+        window.deleteFeeRecord = deleteFeeRecord;
+        window.exportFeeData = exportFeeData;
+        window.saveFeeDataToDb = saveFeeDataToDb;
+        window.buildReminderMessage = buildReminderMessage;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+    </script>
+
+</body>
+</html>

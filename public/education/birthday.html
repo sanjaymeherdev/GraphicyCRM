@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Reminder Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.55;
+            padding: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .logo span {
+            color: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        /* Birthday Grid */
+        .birthday-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .birthday-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 18px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .birthday-card:hover {
+            border-color: var(--border2);
+            transform: translateY(-2px);
+        }
+
+        .birthday-card.today {
+            border-color: var(--green);
+            background: var(--green-dim);
+            box-shadow: 0 0 20px rgba(34, 209, 114, 0.05);
+        }
+
+        .birthday-card .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .birthday-card .name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .birthday-card .class {
+            font-size: 12px;
+            color: var(--text2);
+            margin-bottom: 6px;
+        }
+
+        .birthday-card .dob {
+            font-size: 12px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 10px;
+        }
+
+        .birthday-card .today-badge {
+            display: inline-block;
+            background: var(--green);
+            color: #000;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .birthday-card .days-until {
+            font-size: 11px;
+            color: var(--text3);
+            margin-bottom: 10px;
+        }
+
+        .birthday-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .birthday-card .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Auto-send section */
+        .auto-send-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            background: var(--bg2);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .auto-send-section label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text2);
+            white-space: nowrap;
+        }
+
+        .auto-send-section select {
+            flex: 1;
+            min-width: 200px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        .auto-send-section select:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        .auto-send-section .status {
+            font-size: 12px;
+            color: var(--text3);
+            padding: 4px 12px;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .auto-send-section .status.active {
+            color: var(--green);
+            border-color: var(--green);
+            background: var(--green-dim);
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .stat-card.green::before {
+            background: var(--green);
+        }
+        .stat-card.amber::before {
+            background: var(--amber);
+        }
+        .stat-card.blue::before {
+            background: var(--blue);
+        }
+        .stat-card.purple::before {
+            background: var(--purple);
+        }
+        .stat-card.red::before {
+            background: var(--red);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-value {
+            color: var(--amber);
+        }
+        .stat-card.blue .stat-value {
+            color: var(--blue);
+        }
+        .stat-card.purple .stat-value {
+            color: var(--purple);
+        }
+        .stat-card.red .stat-value {
+            color: var(--red);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+        }
+        .btn-primary:hover {
+            background: #1bbf64;
+        }
+        .btn-primary:disabled {
+            background: var(--border2);
+            color: var(--text3);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #d93f5c;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+        }
+        .btn-ghost:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .btn-xs {
+            padding: 3px 9px;
+            font-size: 11px;
+            border-radius: 7px;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .badge-amber {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+        .badge-red {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+        .badge-blue {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        /* Form */
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            margin-top: 14px;
+        }
+        .form-label:first-child {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            padding: 11px 13px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--green);
+        }
+
+        select option {
+            background: var(--surface2);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .75);
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 580px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 9999;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .toast.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .toast.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid var(--border2);
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .birthday-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .header-actions {
+                justify-content: center;
+            }
+            .modal-box {
+                padding: 18px;
+                margin: 10px;
+            }
+            .auto-send-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .auto-send-section select {
+                min-width: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .btn {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .birthday-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .help-text code {
+            background: var(--surface3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+
+        .help-text strong {
+            color: var(--text);
+        }
+
+        /* Connection status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Template preview in modal */
+        .template-preview {
+            background: var(--bg2);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: var(--text2);
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            margin-top: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .template-preview .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--text3);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg2);
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .filter-bar .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-bar label {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            width: auto;
+            padding: 6px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">🎂 Birthday<span>Reminder</span></div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadSampleBirthdays()">📋 Load Sample</button>
+                <button class="btn btn-secondary btn-sm" onclick="syncBirthdayData()">🔄 Sync</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="birthdayTotal">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Today's Birthdays</div>
+                <div class="stat-value" id="birthdayToday">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">This Week</div>
+                <div class="stat-value" id="birthdayWeek">0</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Reminders Sent</div>
+                <div class="stat-value" id="birthdaySent">0</div>
+            </div>
+        </div>
+
+        <!-- Auto-Send Setup -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🤖 Auto Birthday Reminder</div>
+                <span id="autoStatus" class="badge badge-amber">● Not Configured</span>
+            </div>
+            <div class="auto-send-section">
+                <label>Default Template:</label>
+                <select id="defaultBirthdayTemplate">
+                    <option value="">— Select a template —</option>
+                </select>
+                <button class="btn btn-primary" onclick="setDefaultBirthdayTemplate()">✅ Set as Default</button>
+                <span id="defaultTemplateStatus" class="status">No default set</span>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="toggleAutoSend()" id="autoSendToggleBtn">▶ Enable Auto-Send</button>
+                <span style="font-size:12px; color:var(--text2); align-self:center;">
+                    Auto-send will automatically send birthday wishes at 9:00 AM for today's birthdays
+                </span>
+            </div>
+        </div>
+
+        <!-- Birthday Grid -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🎉 Birthdays <span id="birthdayCount" style="color:var(--text3);font-weight:400;">(0)</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-ghost btn-sm" onclick="refreshBirthdays()">↻ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Show:</label>
+                    <select id="birthdayFilter" onchange="renderBirthdayGrid()">
+                        <option value="all">All</option>
+                        <option value="today">🎂 Today Only</option>
+                        <option value="week">📅 This Week</option>
+                        <option value="month">📆 This Month</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search:</label>
+                    <input type="text" id="birthdaySearchInput" placeholder="Search name..." oninput="renderBirthdayGrid()">
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="birthday-grid" id="birthdayGrid">
+                <div class="empty-state" style="grid-column:1/-1;">
+                    <div class="empty-icon">🎂</div>
+                    <p>No birthday records found.<br>Click "Load Sample" to see demo data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Modal -->
+    <div class="modal" id="birthdaySendModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">🎂 Send Birthday Wish</div>
+                <button class="btn btn-ghost btn-xs" onclick="closeBirthdaySendModal()">✕</button>
+            </div>
+
+            <div id="sendStudentInfo" style="margin-bottom:16px; padding:12px; background:var(--bg2); border-radius:12px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div id="sendAvatar" style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, var(--purple), var(--blue)); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0;">A</div>
+                    <div>
+                        <div id="sendName" style="font-size:16px; font-weight:600;">Student Name</div>
+                        <div id="sendClass" style="font-size:12px; color:var(--text2);">Class</div>
+                    </div>
+                </div>
+            </div>
+
+            <span class="form-label" style="margin-top:0;">Select Template</span>
+            <select id="birthdayTemplateSelect" onchange="previewBirthdayTemplate()">
+                <option value="">— Select a template —</option>
+            </select>
+
+            <div id="templatePreviewContainer" style="margin-top:12px; display:none;">
+                <span class="form-label" style="margin-top:0;">Template Preview</span>
+                <div class="template-preview" id="birthdayTemplatePreview">
+                    <div class="label">Message Preview</div>
+                    <div id="previewContent">Select a template to preview</div>
+                </div>
+            </div>
+
+            <div style="margin-top:12px; font-size:12px; color:var(--text3);">
+                💡 The template should contain <code>{{name}}</code> placeholder for personalization.
+            </div>
+
+            <div class="btn-row" style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="sendBirthdayWish()" id="sendBirthdayBtn">📨 Send</button>
+                <button class="btn btn-ghost" onclick="closeBirthdaySendModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // BIRTHDAY REMINDER MODULE - Complete JavaScript
+        // ============================================================
+
+        let birthdayData = [];
+        let filteredBirthdayData = [];
+        let currentSendStudentId = null;
+        let autoSendEnabled = false;
+        let defaultTemplateName = null; // Meta-approved WhatsApp template NAME, not a local id
+        let templates = [];
+        let sentThisYearIds = new Set();
+
+        // ============================================================
+        // BACKEND API — modules/education
+        // ============================================================
+        const EDU_API = '/api/education';
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) {}
+            if (!res.ok || body.success === false) throw new Error(body.error || `Request failed (${res.status})`);
+            return body.data;
+        }
+        async function checkConnected() {
+            try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+        function showConnectBanner() {
+            const grid = document.getElementById('birthdayGrid');
+            const msg = '⚠️ No Google Sheet connected yet. Go to Settings to connect one before using birthday reminders.';
+            if (grid) grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1; color:var(--amber, #d97706);">${msg}</div>`;
+            showToast(msg, true);
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (isError ? 'error' : 'success');
+            t.style.display = 'block';
+            clearTimeout(t._to);
+            t._to = setTimeout(() => { t.style.display = 'none'; }, 3500);
+        }
+
+        // ============================================================
+        // SAMPLE DATA — seeds Students (with dob) + sample MessageTemplates
+        // (module:'birthday') so the page is demoable on a fresh sheet.
+        // ============================================================
+        async function loadSampleBirthdays() {
+            const today = new Date();
+            const month = today.getMonth();
+            const day = today.getDate();
+
+            const sampleStudents = [{
+                id: 'bday_1', name: 'Aarav Sharma', class_display: '10-A',
+                dob: `2008-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+                phone: '919876543210',
+            }, {
+                id: 'bday_2', name: 'Priya Patel', class_display: '12-B',
+                dob: `2007-${String(month+1).padStart(2,'0')}-${String(day+1).padStart(2,'0')}`,
+                phone: '919876543211',
+            }, {
+                id: 'bday_3', name: 'Rahul Singh', class_display: '8-C',
+                dob: `2010-${String(month+1).padStart(2,'0')}-${String(day+2).padStart(2,'0')}`,
+                phone: '919876543212',
+            }, {
+                id: 'bday_4', name: 'Sneha Reddy', class_display: '11-A',
+                dob: `2009-${String(month+2).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+                phone: '919876543213',
+            }, {
+                id: 'bday_5', name: 'Vikram Kumar', class_display: '9-B',
+                dob: `2010-${String(month+1).padStart(2,'0')}-${String(day+3).padStart(2,'0')}`,
+                phone: '919876543214',
+            }, {
+                id: 'bday_6', name: 'Ananya Gupta', class_display: '10-B',
+                dob: `2008-${String(month+2).padStart(2,'0')}-${String(day+1).padStart(2,'0')}`,
+                phone: '919876543215',
+            }, {
+                id: 'bday_7', name: 'Arjun Nair', class_display: '12-A',
+                dob: `2007-${String(month+1).padStart(2,'0')}-${String(day+4).padStart(2,'0')}`,
+                phone: '919876543216',
+            }, {
+                id: 'bday_8', name: 'Meera Iyer', class_display: '7-A',
+                dob: `2011-${String(month+3).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+                phone: '919876543217',
+            }];
+
+            const sampleTemplates = [{
+                module: 'birthday', name: 'birthday_wish',
+                content: '🎂 Happy Birthday {{name}}! Wishing you a wonderful day filled with joy and happiness. 🎉',
+                is_default: 'false',
+            }, {
+                module: 'birthday', name: 'birthday_special',
+                content: '🎈 Happy Birthday {{name}}! May your day be as special as you are. 🎁🎂',
+                is_default: 'false',
+            }];
+
+            try {
+                await apiFetch('/students/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleStudents }) });
+                await apiFetch('/message-templates/bulk', { method: 'POST', body: JSON.stringify({ rows: sampleTemplates }) });
+                await loadAllData();
+                showToast('✅ Loaded ' + birthdayData.length + ' sample birthday records');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // LOAD DATA — students (with dob) are the source of truth;
+        // BirthdaySent rows for this year mark who's already been wished.
+        // ============================================================
+        async function loadAllData() {
+            const [studentRows, templateRows, sentRows] = await Promise.all([
+                apiFetch('/students'),
+                apiFetch('/message-templates?module=birthday'),
+                apiFetch(`/birthday-sent?year=${new Date().getFullYear()}`),
+            ]);
+
+            birthdayData = (studentRows || [])
+                .filter(s => s.dob)
+                .map(s => ({
+                    id: s.id, name: s.name, class: s.class_display,
+                    dob: s.dob, phone: s.guardian_phone || s.phone,
+                }));
+
+            templates = templateRows || [];
+            sentThisYearIds = new Set((sentRows || []).map(r => r.student_id));
+            birthdayData.forEach(b => { b.sent = sentThisYearIds.has(b.id); });
+
+            await loadSettings();
+            loadTemplatesForBirthday();
+            renderBirthdayGrid();
+            updateBirthdayStats();
+            return birthdayData.length > 0;
+        }
+
+        async function loadSettings() {
+            const settings = await apiFetch('/settings');
+            defaultTemplateName = settings.defaultBirthdayTemplate || null;
+            autoSendEnabled = !!settings.autoSendEnabled;
+
+            const btn = document.getElementById('autoSendToggleBtn');
+            if (autoSendEnabled) {
+                btn.textContent = '⏹ Disable Auto-Send';
+                btn.className = 'btn btn-danger btn-sm';
+            } else {
+                btn.textContent = '▶ Enable Auto-Send';
+                btn.className = 'btn btn-secondary btn-sm';
+            }
+            updateDefaultTemplateStatus();
+        }
+
+        // ============================================================
+        // TEMPLATES — real MessageTemplates sheet, module:'birthday'.
+        // Template `name` doubles as the Meta-approved WhatsApp template
+        // name used for actual sending (see service.js — birthday/fee/
+        // invoice reminders must use approved templates, not free text,
+        // since these are business-initiated messages).
+        // ============================================================
+        function loadTemplatesForBirthday() {
+            const selects = ['birthdayTemplateSelect', 'defaultBirthdayTemplate'];
+            selects.forEach(selId => {
+                const sel = document.getElementById(selId);
+                if (!sel) return;
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">— Select a template —</option>' +
+                    templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+                if (currentVal) sel.value = currentVal;
+            });
+
+            if (defaultTemplateName) {
+                const sel = document.getElementById('defaultBirthdayTemplate');
+                if (sel) sel.value = defaultTemplateName;
+            }
+        }
+
+        async function setDefaultBirthdayTemplate() {
+            const sel = document.getElementById('defaultBirthdayTemplate');
+            const name = sel.value;
+
+            if (!name) {
+                showToast('Please select a template first', true);
+                return;
+            }
+
+            try {
+                await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ defaultBirthdayTemplate: name }) });
+                defaultTemplateName = name;
+                updateDefaultTemplateStatus();
+                document.getElementById('autoStatus').className = 'badge badge-green';
+                document.getElementById('autoStatus').textContent = '● Default Set';
+                showToast('✅ Default birthday template set');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function updateDefaultTemplateStatus() {
+            const statusEl = document.getElementById('defaultTemplateStatus');
+            if (defaultTemplateName) {
+                statusEl.textContent = `✅ Default: ${defaultTemplateName}`;
+                statusEl.className = 'status active';
+            } else {
+                statusEl.textContent = 'No default set';
+                statusEl.className = 'status';
+            }
+        }
+
+        // ============================================================
+        // AUTO-SEND — this toggle only sets Settings.autoSendEnabled.
+        // The actual sending happens server-side (modules/education's
+        // hourly poll tick in server.js), so it keeps working even with
+        // this tab closed — unlike the old client-side setInterval mock.
+        // ============================================================
+        async function toggleAutoSend() {
+            const btn = document.getElementById('autoSendToggleBtn');
+            const next = !autoSendEnabled;
+
+            if (next && !defaultTemplateName) {
+                showToast('Please set a default template first', true);
+                return;
+            }
+
+            try {
+                await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ autoSendEnabled: next }) });
+                autoSendEnabled = next;
+                if (autoSendEnabled) {
+                    btn.textContent = '⏹ Disable Auto-Send';
+                    btn.className = 'btn btn-danger btn-sm';
+                    showToast('✅ Auto-send enabled — the server checks for birthdays hourly');
+                } else {
+                    btn.textContent = '▶ Enable Auto-Send';
+                    btn.className = 'btn btn-secondary btn-sm';
+                    showToast('⏹ Auto-send disabled');
+                }
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        // ============================================================
+        // DATE HELPERS
+        // ============================================================
+        function getTodayDate() {
+            const d = new Date();
+            return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function getBirthdayDate(dob) {
+            if (!dob) return '';
+            const parts = dob.split('-');
+            if (parts.length === 3) {
+                return `${parts[1]}-${parts[2]}`;
+            }
+            return '';
+        }
+
+        function getDaysUntil(dob) {
+            if (!dob) return null;
+            const today = new Date();
+            const parts = dob.split('-');
+            const bday = new Date(today.getFullYear(), parseInt(parts[1]) - 1, parseInt(parts[2]));
+
+            if (bday < today) {
+                bday.setFullYear(today.getFullYear() + 1);
+            }
+
+            const diff = Math.ceil((bday - today) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+
+        function formatDate(dob) {
+            if (!dob) return 'N/A';
+            const parts = dob.split('-');
+            if (parts.length === 3) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${parseInt(parts[2])} ${months[parseInt(parts[1])-1]} ${parts[0]}`;
+            }
+            return dob;
+        }
+
+        function isToday(dob) {
+            return getBirthdayDate(dob) === getTodayDate();
+        }
+
+        function isThisWeek(dob) {
+            if (!dob) return false;
+            const days = getDaysUntil(dob);
+            return days !== null && days <= 7;
+        }
+
+        function isThisMonth(dob) {
+            if (!dob) return false;
+            const days = getDaysUntil(dob);
+            return days !== null && days <= 30;
+        }
+
+        // ============================================================
+        // RENDER GRID
+        // ============================================================
+        function renderBirthdayGrid() {
+            const filter = document.getElementById('birthdayFilter').value;
+            const search = document.getElementById('birthdaySearchInput').value.toLowerCase().trim();
+
+            filteredBirthdayData = birthdayData.filter(student => {
+                // Filter
+                if (filter === 'today' && !isToday(student.dob)) return false;
+                if (filter === 'week' && !isThisWeek(student.dob)) return false;
+                if (filter === 'month' && !isThisMonth(student.dob)) return false;
+
+                // Search
+                if (search) {
+                    if (!student.name.toLowerCase().includes(search) &&
+                        !student.class.toLowerCase().includes(search)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Sort: today first, then upcoming
+            filteredBirthdayData.sort((a, b) => {
+                const aDays = getDaysUntil(a.dob) || 999;
+                const bDays = getDaysUntil(b.dob) || 999;
+                return aDays - bDays;
+            });
+
+            const grid = document.getElementById('birthdayGrid');
+            document.getElementById('birthdayCount').textContent = `(${filteredBirthdayData.length})`;
+
+            if (!filteredBirthdayData.length) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <div class="empty-icon">🎂</div>
+                        <p>${birthdayData.length > 0 ? 'No birthdays match your filters' : 'No birthday records loaded'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filteredBirthdayData.map(student => {
+                const isTodayBirthday = isToday(student.dob);
+                const daysUntil = getDaysUntil(student.dob);
+                const todayBadge = isTodayBirthday ? '<div class="today-badge">🎂 TODAY</div>' : '';
+                const daysText = daysUntil !== null && !isTodayBirthday ?
+                    `<div class="days-until">📅 ${daysUntil} day${daysUntil > 1 ? 's' : ''} to go</div>` :
+                    '';
+                const isSent = student.sent && isTodayBirthday;
+
+                return `
+                    <div class="birthday-card ${isTodayBirthday ? 'today' : ''}">
+                        <div class="avatar">${student.name.charAt(0).toUpperCase()}</div>
+                        <div class="name">${escapeHtml(student.name)}</div>
+                        <div class="class">📚 ${escapeHtml(student.class || 'N/A')}</div>
+                        <div class="dob">🎂 ${formatDate(student.dob)}</div>
+                        ${todayBadge}
+                        ${daysText}
+                        ${isSent ? '<div class="badge badge-green" style="margin-bottom:10px;">✅ Sent</div>' : ''}
+                        <button class="btn ${isTodayBirthday && !student.sent ? 'btn-primary' : 'btn-secondary'}" 
+                                onclick="openBirthdaySendModal('${student.id}')"
+                                ${isTodayBirthday && !student.sent ? '' : 'disabled'}>
+                            ${isTodayBirthday ? (student.sent ? '✅ Sent' : '📨 Send Wish') : '🔒 Not Active'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // STATS
+        // ============================================================
+        function updateBirthdayStats() {
+            document.getElementById('birthdayTotal').textContent = birthdayData.length;
+            document.getElementById('birthdayToday').textContent = birthdayData.filter(b => isToday(b.dob)).length;
+            document.getElementById('birthdayWeek').textContent = birthdayData.filter(b => isThisWeek(b.dob)).length;
+            document.getElementById('birthdaySent').textContent = birthdayData.filter(b => b.sent).length;
+        }
+
+        // ============================================================
+        // SEND MODAL
+        // ============================================================
+        function openBirthdaySendModal(studentId) {
+            const student = birthdayData.find(b => b.id === studentId);
+            if (!student) {
+                showToast('Student not found', true);
+                return;
+            }
+
+            if (!isToday(student.dob)) {
+                showToast('This student\'s birthday is not today', true);
+                return;
+            }
+
+            currentSendStudentId = studentId;
+
+            // Update student info
+            document.getElementById('sendName').textContent = student.name;
+            document.getElementById('sendClass').textContent = `📚 ${student.class || 'N/A'} • 🎂 ${formatDate(student.dob)}`;
+            document.getElementById('sendAvatar').textContent = student.name.charAt(0).toUpperCase();
+
+            // Populate template select
+            const sel = document.getElementById('birthdayTemplateSelect');
+            const currentVal = defaultTemplateName || '';
+            sel.innerHTML = '<option value="">— Select a template —</option>' +
+                templates.map(t => `<option value="${t.name}" ${t.name === currentVal ? 'selected' : ''}>${t.name}</option>`)
+                .join('');
+
+            // Preview if default template is set
+            if (defaultTemplateName) {
+                document.getElementById('birthdayTemplateSelect').value = defaultTemplateName;
+                previewBirthdayTemplate();
+            } else {
+                document.getElementById('templatePreviewContainer').style.display = 'none';
+            }
+
+            document.getElementById('birthdaySendModal').classList.add('open');
+        }
+
+        function closeBirthdaySendModal() {
+            document.getElementById('birthdaySendModal').classList.remove('open');
+            currentSendStudentId = null;
+        }
+
+        function previewBirthdayTemplate() {
+            const templateName = document.getElementById('birthdayTemplateSelect').value;
+            const container = document.getElementById('templatePreviewContainer');
+            const previewContent = document.getElementById('previewContent');
+
+            if (!templateName) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const template = templates.find(t => t.name === templateName);
+            if (!template) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+
+            const student = birthdayData.find(b => b.id === currentSendStudentId);
+            const name = student ? student.name : '[Student Name]';
+
+            let preview = template.content || 'No content set for this template';
+            preview = preview.replace(/\{\{name\}\}/g, `<strong>${escapeHtml(name)}</strong>`);
+            preview = preview.replace(/\n/g, '<br>');
+
+            previewContent.innerHTML = preview;
+        }
+
+        // ============================================================
+        // SEND BIRTHDAY WISH — uses whatsapp.sendTemplate server-side, so
+        // `templateName` must match an APPROVED Meta WhatsApp template.
+        // ============================================================
+        async function sendBirthdayWish() {
+            const templateName = document.getElementById('birthdayTemplateSelect').value;
+            if (!templateName) {
+                showToast('Please select a template', true);
+                return;
+            }
+
+            const student = birthdayData.find(b => b.id === currentSendStudentId);
+            if (!student) {
+                showToast('Student not found', true);
+                return;
+            }
+
+            if (!student.phone) {
+                showToast('No phone number available', true);
+                return;
+            }
+
+            const btn = document.getElementById('sendBirthdayBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending...';
+
+            try {
+                await apiFetch('/send', {
+                    method: 'POST',
+                    body: JSON.stringify({ studentId: student.id, name: student.name, phone: student.phone, templateName, module: 'birthday' }),
+                });
+                await apiFetch('/birthday-sent', {
+                    method: 'POST',
+                    body: JSON.stringify({ student_id: student.id, year: String(new Date().getFullYear()), sent_at: new Date().toISOString() }),
+                });
+
+                student.sent = true;
+                sentThisYearIds.add(student.id);
+                renderBirthdayGrid();
+                updateBirthdayStats();
+                closeBirthdaySendModal();
+                showToast(`✅ Birthday wish sent to ${student.name}`);
+            } catch (err) {
+                showToast(`❌ Failed to send: ${err.message}`, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📨 Send';
+            }
+        }
+
+        // ============================================================
+        // SYNC / REFRESH
+        // ============================================================
+        async function syncBirthdayData() {
+            showToast('🔄 Syncing...');
+            try {
+                await loadAllData();
+                showToast('✅ Synced successfully');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+        }
+
+        function refreshBirthdays() {
+            renderBirthdayGrid();
+            updateBirthdayStats();
+            showToast('↻ Refreshed');
+        }
+
+        // ============================================================
+        // KEYBOARD SHORTCUTS
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeBirthdaySendModal();
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const connected = await checkConnected();
+            if (!connected) { showConnectBanner(); return; }
+
+            try {
+                await loadAllData();
+                console.log('🎂 Birthday Reminder Module initialized');
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+
+            // Auto-refresh the view every 5 minutes (data only, not a send
+            // trigger — actual sending is server-side, see toggleAutoSend).
+            setInterval(() => { loadAllData().catch(() => {}); }, 300000);
+        });
+
+        // Make functions globally accessible
+        window.loadSampleBirthdays = loadSampleBirthdays;
+        window.loadAllData = loadAllData;
+        window.renderBirthdayGrid = renderBirthdayGrid;
+        window.updateBirthdayStats = updateBirthdayStats;
+        window.openBirthdaySendModal = openBirthdaySendModal;
+        window.closeBirthdaySendModal = closeBirthdaySendModal;
+        window.sendBirthdayWish = sendBirthdayWish;
+        window.previewBirthdayTemplate = previewBirthdayTemplate;
+        window.setDefaultBirthdayTemplate = setDefaultBirthdayTemplate;
+        window.loadTemplatesForBirthday = loadTemplatesForBirthday;
+        window.toggleAutoSend = toggleAutoSend;
+        window.syncBirthdayData = syncBirthdayData;
+        window.refreshBirthdays = refreshBirthdays;
+        window.showToast = showToast;
+        window.escapeHtml = escapeHtml;
+        window.isToday = isToday;
+        window.isThisWeek = isThisWeek;
+        window.isThisMonth = isThisMonth;
+        window.getDaysUntil = getDaysUntil;
+        window.formatDate = formatDate;
+        window.getTodayDate = getTodayDate;
+    </script>
+
+</body>
+</html>
