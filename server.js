@@ -141,6 +141,20 @@ app.get('/', (req, res) => {
 });
 app.get('/login', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 
+// Clean-URL support for the standalone education pages (public/education/*.html).
+// These aren't part of the SPA — each is served as its own full page — but
+// without this, a link/bookmark to e.g. /education/fee (no .html) would miss
+// express.static's exact-match lookup above and fall through to the SPA
+// catch-all below, silently rendering index.html at the wrong URL instead
+// (and, since index.html's own asset links are root-relative, breaking its
+// styling too, since they'd resolve against /education/ instead of /).
+const EDUCATION_DIR = path.join(PUBLIC_DIR, 'education');
+app.get('/education/:page', (req, res, next) => {
+  const file = path.join(EDUCATION_DIR, `${req.params.page}.html`);
+  if (!file.startsWith(EDUCATION_DIR + path.sep)) return next(); // path traversal guard
+  res.sendFile(file, (err) => { if (err) next(); });
+});
+
 // SPA fallback for any other non-API path (client-side routing).
 app.get(/^\/(?!api\/).*/, (req, res) => {
   if (!req.session?.userId) return res.redirect('/login');
