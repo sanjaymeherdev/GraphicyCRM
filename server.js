@@ -148,8 +148,33 @@ app.get('/login', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html'
 // catch-all below, silently rendering index.html at the wrong URL instead
 // (and, since index.html's own asset links are root-relative, breaking its
 // styling too, since they'd resolve against /education/ instead of /).
+//
+// These routes previously had NO session check at all (unlike the SPA
+// catch-all just above), so a logged-out browser could load any education
+// page directly — the page would render (just with every apiFetch() call
+// failing 401 client-side) instead of bouncing to /login like every other
+// part of the app. requireEduPage below closes that gap and, on redirect,
+// carries the original URL via ?return_to= so login.html's existing
+// `window.location.href = params.get('return_to') || '/'` sends the person
+// straight back to the education page they wanted instead of the main SPA.
+function requireEduPage(req, res) {
+  if (req.session?.userId) return true;
+  res.redirect(`/login?return_to=${encodeURIComponent(req.originalUrl)}`);
+  return false;
+}
+
 const EDUCATION_DIR = path.join(PUBLIC_DIR, 'education');
+
+// Landing/hub page — links out to every module below (admin, attendance,
+// birthday, fee, invoice, bulk_send, settings). Bare /education (no
+// trailing page) doesn't match the /:page route beneath it, hence its own.
+app.get('/education', (req, res) => {
+  if (!requireEduPage(req, res)) return;
+  res.sendFile(path.join(EDUCATION_DIR, 'index.html'));
+});
+
 app.get('/education/:page', (req, res, next) => {
+  if (!requireEduPage(req, res)) return;
   const file = path.join(EDUCATION_DIR, `${req.params.page}.html`);
   if (!file.startsWith(EDUCATION_DIR + path.sep)) return next(); // path traversal guard
   res.sendFile(file, (err) => { if (err) next(); });

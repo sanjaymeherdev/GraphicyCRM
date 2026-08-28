@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Education — School Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0c1018;
+            --surface: #0f1520;
+            --surface2: #141c2a;
+            --surface3: #1a2335;
+            --border: #1e2d42;
+            --border2: #263550;
+            --text: #e8f0fb;
+            --text2: #7a90b0;
+            --text3: #445570;
+            --green: #22d172;
+            --green-dim: rgba(34, 209, 114, 0.10);
+            --amber: #f5a623;
+            --amber-dim: rgba(245, 166, 35, 0.12);
+            --red: #f04f6e;
+            --red-dim: rgba(240, 79, 110, 0.12);
+            --blue: #3d8ef5;
+            --blue-dim: rgba(61, 142, 245, 0.12);
+            --purple: #9d78fa;
+            --purple-dim: rgba(157, 120, 250, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        .app {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 24px 60px;
+        }
+
+        /* ---- shared nav bar (matches every education sub-page) ---- */
+        .edu-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            padding: 8px;
+            margin-bottom: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .edu-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--text2);
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s;
+        }
+        .edu-nav a:hover { color: var(--text); background: var(--surface2); }
+        .edu-nav a.active { color: var(--text); background: var(--green-dim); }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0 28px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo span { color: var(--text2); font-weight: 700; }
+        .back-link {
+            font-size: 12.5px;
+            color: var(--text2);
+            text-decoration: none;
+            padding: 8px 14px;
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .back-link:hover { color: var(--text); background: var(--surface2); }
+
+        .hero {
+            margin-bottom: 24px;
+        }
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .hero p { color: var(--text2); font-size: 13.5px; max-width: 560px; }
+
+        /* ---- connection status banner ---- */
+        .banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 16px 20px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 28px;
+            border: 1px solid var(--border2);
+        }
+        .banner.warn { background: var(--amber-dim); border-color: rgba(245,166,35,0.3); }
+        .banner.ok { background: var(--green-dim); border-color: rgba(34,209,114,0.3); }
+        .banner-text { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .banner-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .banner.warn .banner-dot { background: var(--amber); }
+        .banner.ok .banner-dot { background: var(--green); }
+        .banner strong { font-weight: 600; }
+        .banner .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .banner.warn .btn { background: var(--amber); color: #1a1200; }
+        .banner.ok .btn { background: transparent; color: var(--green); border: 1px solid rgba(34,209,114,0.35); }
+
+        /* ---- module cards ---- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: border-color 0.15s, transform 0.15s, background 0.15s;
+        }
+        .card:hover {
+            border-color: var(--border2);
+            background: var(--surface2);
+            transform: translateY(-2px);
+        }
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+        }
+        .card-icon.blue { background: var(--blue-dim); }
+        .card-icon.purple { background: var(--purple-dim); }
+        .card-icon.amber { background: var(--amber-dim); }
+        .card-icon.green { background: var(--green-dim); }
+        .card-icon.red { background: var(--red-dim); }
+        .card h3 { font-size: 15px; font-weight: 700; }
+        .card p { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+
+        @media (max-width: 640px) {
+            .app-header { flex-direction: column; align-items: stretch; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <nav class="edu-nav">
+            <a href="/education" class="active">🏠 Home</a>
+            <a href="/education/admin">🏫 Admin</a>
+            <a href="/education/attendance">📅 Attendance</a>
+            <a href="/education/birthday">🎂 Birthdays</a>
+            <a href="/education/fee">💰 Fees</a>
+            <a href="/education/invoice">🧾 Invoices</a>
+            <a href="/education/bulk_send">📨 Bulk Send</a>
+            <a href="/education/settings">⚙️ Settings</a>
+        </nav>
+
+        <header class="app-header">
+            <div class="logo">🏫 Education<span>Suite</span></div>
+            <a href="/" class="back-link">← Back to CRM</a>
+        </header>
+
+        <div class="hero">
+            <h1 id="heroTitle">Welcome back</h1>
+            <p>Manage students, staff, attendance, fees and invoices — all backed by your own Google Sheet, with WhatsApp reminders built in.</p>
+        </div>
+
+        <div id="banner"></div>
+
+        <div class="grid">
+            <a class="card" href="/education/admin">
+                <div class="card-icon blue">🏫</div>
+                <h3>Admin</h3>
+                <p>Students, teachers, staff and classes — the core records everything else references.</p>
+            </a>
+            <a class="card" href="/education/attendance">
+                <div class="card-icon green">📅</div>
+                <h3>Attendance</h3>
+                <p>Mark and review daily attendance by class.</p>
+            </a>
+            <a class="card" href="/education/birthday">
+                <div class="card-icon amber">🎂</div>
+                <h3>Birthdays</h3>
+                <p>Automatic WhatsApp birthday wishes for students, sent once a year.</p>
+            </a>
+            <a class="card" href="/education/fee">
+                <div class="card-icon red">💰</div>
+                <h3>Fees</h3>
+                <p>Track pending/overdue fees and send payment reminders.</p>
+            </a>
+            <a class="card" href="/education/invoice">
+                <div class="card-icon purple">🧾</div>
+                <h3>Invoices</h3>
+                <p>Generate, preview and send invoices to parents.</p>
+            </a>
+            <a class="card" href="/education/bulk_send">
+                <div class="card-icon blue">📨</div>
+                <h3>Bulk Send</h3>
+                <p>Send an approved WhatsApp template to any group of students at once.</p>
+            </a>
+            <a class="card" href="/education/settings">
+                <div class="card-icon green">⚙️</div>
+                <h3>Settings</h3>
+                <p>Connect your Google Sheet, manage message templates and auto-send rules.</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const EDU_API = '/api/education';
+
+        async function apiFetch(path, opts = {}) {
+            const res = await fetch(EDU_API + path, {
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            let body = {};
+            try { body = await res.json(); } catch (e) { /* non-JSON error page */ }
+            if (!res.ok || body.success === false) {
+                throw new Error(body.error || `Request failed (${res.status})`);
+            }
+            return body.data;
+        }
+
+        async function init() {
+            const banner = document.getElementById('banner');
+            try {
+                const cfg = await apiFetch('/config');
+                if (cfg?.school_name) {
+                    document.getElementById('heroTitle').textContent = cfg.school_name;
+                }
+                if (!cfg) {
+                    banner.innerHTML = `
+                        <div class="banner warn">
+                            <div class="banner-text"><span class="banner-dot"></span>
+                                <span><strong>No Google Sheet connected yet.</strong> Connect one to start adding students and sending reminders.</span>
+                            </div>
+                            <a class="btn" href="/education/settings">Connect now →</a>
+                        </div>`;
+                } else if (!cfg.active) {
+                    banner.innerHTML = `
+                        <div class="banner warn">
+                            <div class="banner-text"><span class="banner-dot"></span>
+                                <span><strong>Education module is disabled.</strong> Re-enable it in Settings to resume syncing.</span>
+                            </div>
+                            <a class="btn" href="/education/settings">Open Settings →</a>
+                        </div>`;
+                } else {
+                    banner.innerHTML = `
+                        <div class="banner ok">
+                            <div class="banner-text"><span class="banner-dot"></span>
+                                <span>Connected to <strong>${cfg.school_name || 'your Google Sheet'}</strong></span>
+                            </div>
+                            <a class="btn" href="/education/settings">Manage connection</a>
+                        </div>`;
+                }
+            } catch (err) {
+                banner.innerHTML = `
+                    <div class="banner warn">
+                        <div class="banner-text"><span class="banner-dot"></span>
+                            <span><strong>Couldn't load connection status.</strong> ${err.message}</span>
+                        </div>
+                        <a class="btn" href="/education/settings">Open Settings →</a>
+                    </div>`;
+            }
+        }
+        init();
+    </script>
+</body>
+</html>

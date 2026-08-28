@@ -105,6 +105,11 @@
           <button class="nav-item" data-tab="meetings"><i class="fas fa-calendar-check"></i> Meetings</button>
           <button class="nav-item" data-tab="billing"><i class="fas fa-credit-card"></i> Billing</button>
           <button class="nav-item" data-tab="api-keys"><i class="fas fa-key"></i> API Keys</button>
+          <!-- Education is a standalone app (public/education/*.html), not an
+               SPA tab like the buttons above — it's a real link, not a
+               data-tab button, since it navigates the browser away from
+               this page entirely. -->
+          <a class="nav-item" href="/education"><i class="fas fa-graduation-cap"></i> Education</a>
         </div>
       </div>
       <div class="sidebar-bottom">

@@ -67,6 +67,33 @@
         }
 
         /* Header */
+        .edu-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            padding: 8px;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .edu-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--text2);
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s;
+        }
+        .edu-nav a:hover { color: var(--text); background: var(--surface2); }
+        .edu-nav a.active { color: var(--text); background: var(--green-dim); }
+
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -848,6 +875,16 @@
 <body>
 
     <div class="app">
+        <nav class="edu-nav">
+            <a href="/education" class="edu-nav-link">🏠 Home</a>
+            <a href="/education/admin" class="edu-nav-link">🏫 Admin</a>
+            <a href="/education/attendance" class="edu-nav-link">📅 Attendance</a>
+            <a href="/education/birthday" class="edu-nav-link">🎂 Birthdays</a>
+            <a href="/education/fee" class="edu-nav-link">💰 Fees</a>
+            <a href="/education/invoice" class="edu-nav-link active">🧾 Invoices</a>
+            <a href="/education/bulk_send" class="edu-nav-link">📨 Bulk Send</a>
+            <a href="/education/settings" class="edu-nav-link">⚙️ Settings</a>
+        </nav>
         <!-- Header -->
         <header class="app-header">
             <div class="logo">📄 Invoice<span>Module</span></div>
