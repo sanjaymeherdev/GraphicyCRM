@@ -1557,6 +1557,38 @@
             }
         });
 
+        // Auto-refresh data when page becomes visible (user switches back to this tab)
+        document.addEventListener('visibilitychange', async function() {
+            if (!document.hidden) {
+                const connected = await checkConnected().catch(() => false);
+                if (connected) {
+                    try {
+                        await loadAllData();
+                        renderAll();
+                        updateStats();
+                    } catch (err) {
+                        // Silent fail on auto-refresh
+                    }
+                }
+            }
+        });
+
+        // Auto-refresh on page show (browser back/forward navigation)
+        window.addEventListener('pageshow', async function(event) {
+            if (event.persisted) {
+                const connected = await checkConnected().catch(() => false);
+                if (connected) {
+                    try {
+                        await loadAllData();
+                        renderAll();
+                        updateStats();
+                    } catch (err) {
+                        // Silent fail on auto-refresh
+                    }
+                }
+            }
+        });
+
         // Make functions globally accessible
         window.loadSampleAttendance = loadSampleAttendance;
         window.refreshData = refreshData;
