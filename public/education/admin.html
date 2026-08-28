@@ -1495,7 +1495,7 @@
         // ============================================================
         // TAB SWITCHING
         // ============================================================
-        function switchTab(tabName) {
+        async function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
 
@@ -1505,10 +1505,20 @@
             const tabBtn = document.querySelector(`.admin-tab[data-tab="${tabName}"]`);
             if (tabBtn) tabBtn.classList.add('active');
 
+            // Pull fresh data every time a tab is opened, so edits made
+            // elsewhere (another tab, another device) show up immediately —
+            // silent (no toast) since this fires on every click.
+            try {
+                await loadAllData();
+            } catch (err) {
+                showToast('⚠️ ' + err.message, true);
+            }
+
             if (tabName === 'students') renderStudents();
             if (tabName === 'teachers') renderTeachers();
             if (tabName === 'staff') renderStaff();
             if (tabName === 'classes') renderClasses();
+            updateStats();
         }
 
         // ============================================================
@@ -2017,7 +2027,7 @@
         // ============================================================
         // INIT
         // ============================================================
-        document.addEventListener('DOMContentLoaded', async function() {
+        window.addEventListener('load', async function() {
             const connected = await checkConnected();
             if (!connected) {
                 showConnectBanner();
