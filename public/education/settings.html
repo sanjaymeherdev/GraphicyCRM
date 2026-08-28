@@ -347,9 +347,18 @@
                 All of this module's data (students, attendance, fees, invoices) lives in a Google Sheet you control &mdash;
                 not in this app's database. One-time setup: deploy a small Apps Script as a Web App, then paste its URL back here.
             </p>
-            <div id="setupStep1" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div id="setupStep1" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <button class="btn btn-primary" onclick="getSetupScript()">📜 Get Setup Script</button>
+                <span style="color:var(--text2); font-size:13px;">or</span>
+                <input type="text" id="customSecretInput" placeholder="Use your own secret key (optional)" style="flex:1; min-width:220px;" />
             </div>
+            <p style="color:var(--text2); font-size:12px; margin-top:6px;">
+                Leave the key field blank to get a random one generated for you. If you fill it in, that exact value
+                is baked into the script below — clicking "Get Setup Script" again with the same value in the box
+                always regenerates the identical script, so re-deploying never desyncs the key stored here from
+                what's live in your Apps Script project. Pick something long and random, e.g. from
+                <code>openssl rand -hex 24</code>.
+            </p>
             <div id="setupStep2" style="display:none; margin-top:16px;">
                 <span class="form-label">1. Copy this into a new Apps Script project (script.google.com), deploy as Web App (Execute as: Me, Access: Anyone), then paste the resulting URL below:</span>
                 <textarea id="scriptCodeBox" readonly style="width:100%; height:160px; font-family:monospace; font-size:11px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:10px; margin-top:6px;"></textarea>
@@ -502,7 +511,9 @@
     // ============================================================
     async function getSetupScript() {
         try {
-            const result = await apiFetch('/script');
+            const custom = document.getElementById('customSecretInput').value.trim();
+            const qs = custom ? ('?secret=' + encodeURIComponent(custom)) : '';
+            const result = await apiFetch('/script' + qs);
             currentSecret = result.secret;
             document.getElementById('scriptCodeBox').value = result.script;
             document.getElementById('setupStep2').style.display = 'block';
@@ -696,7 +707,13 @@
             connected = !!cfg;
             updateConnectionUI();
 
-            const s = await apiFetch('/settings').catch(() => ({}));
+            let s = {};
+            try {
+                s = await apiFetch('/settings');
+            } catch (err) {
+                if (connected) showToast('⚠️ Connected, but reading settings failed: ' + err.message, true);
+                // else: not connected yet — nothing to load, this is expected
+            }
             settings = s || {};
             applyGeneral(settings);
 

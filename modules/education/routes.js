@@ -15,13 +15,21 @@ router.use(requireAuth, requireClient);
 // Step 2: frontend calls POST / with the resulting /exec URL (the secret
 // from step 1 is resent here so it gets persisted alongside it).
 // ---------------------------------------------------------------------
+// `?secret=` lets a person pin their own key (e.g. reuse the same value
+// across a rotation, or match one they've already deployed) instead of
+// always getting a fresh random one — regenerating on every visit was
+// silently desyncing the deployed script from crm_edu_config.secret_key_enc,
+// since only whichever secret was current in the browser at "Save
+// Connection" time actually got persisted. A random secret is still the
+// default for first-time setup.
 router.get('/script', (req, res) => {
-  const secret = service.generateSecret();
+  const custom = typeof req.query.secret === 'string' ? req.query.secret.trim() : '';
+  const secret = custom || service.generateSecret();
   res.json({ success: true, secret, script: buildScript(secret) });
 });
 
 router.get('/config', async (req, res) => {
-  try { res.json({ success: true, config: await service.getConfig(req.clientId) }); }
+  try { res.json({ success: true, data: await service.getConfig(req.clientId) }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -29,7 +37,7 @@ router.post('/config', async (req, res) => {
   const { scriptUrl, secret, schoolName, active } = req.body || {};
   try {
     const config = await service.saveConfig(req.clientId, { scriptUrl, secretKey: secret, schoolName, active });
-    res.json({ success: true, config });
+    res.json({ success: true, data: config });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
