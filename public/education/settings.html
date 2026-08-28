@@ -347,18 +347,38 @@
                 All of this module's data (students, attendance, fees, invoices) lives in a Google Sheet you control &mdash;
                 not in this app's database. One-time setup: deploy a small Apps Script as a Web App, then paste its URL back here.
             </p>
-            <div id="setupStep1" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button class="btn btn-primary" onclick="getSetupScript()">📜 Get Setup Script</button>
-                <span style="color:var(--text2); font-size:13px;">or</span>
-                <input type="text" id="customSecretInput" placeholder="Use your own secret key (optional)" style="flex:1; min-width:220px;" />
+            <div class="form-grid">
+                <div class="full-width">
+                    <span class="form-label">Secret Key</span>
+                    <input type="text" id="secretKeyInput" placeholder="Leave blank to auto-generate, or paste an existing script's key here" />
+                </div>
             </div>
-            <p style="color:var(--text2); font-size:12px; margin-top:6px;">
-                Leave the key field blank to get a random one generated for you. If you fill it in, that exact value
-                is baked into the script below — clicking "Get Setup Script" again with the same value in the box
-                always regenerates the identical script, so re-deploying never desyncs the key stored here from
-                what's live in your Apps Script project. Pick something long and random, e.g. from
-                <code>openssl rand -hex 24</code>.
+            <p style="color:var(--text2); font-size:12px; margin:6px 0 14px;">
+                This key must match on both sides — the value here and the <code>SECRET_KEY</code> inside your deployed
+                Apps Script. Use whichever flow fits:
             </p>
+
+            <div style="border:1px solid var(--border2); border-radius:8px; padding:12px; margin-bottom:12px;">
+                <div class="form-label" style="margin-bottom:6px;">A. Setting up a new script</div>
+                <p style="color:var(--text2); font-size:12px; margin-bottom:8px;">
+                    Click Get Setup Script (with the key field above blank, or filled in if you want to pick your own).
+                    It generates the code below with that key already baked in — copy it into a new Apps Script project,
+                    deploy, then paste the resulting URL into step 2 and Save Connection.
+                </p>
+                <button class="btn btn-primary" onclick="getSetupScript()">📜 Get Setup Script</button>
+            </div>
+
+            <div style="border:1px solid var(--border2); border-radius:8px; padding:12px; margin-bottom:12px;">
+                <div class="form-label" style="margin-bottom:6px;">B. Already have a script deployed</div>
+                <p style="color:var(--text2); font-size:12px; margin-bottom:8px;">
+                    Put its existing <code>SECRET_KEY</code> value in the field above, paste its <code>/exec</code> URL
+                    below, and click Save Connection — no need to generate a new script.
+                </p>
+                <div class="form-grid">
+                    <div class="full-width"><span class="form-label">Deployed Web App URL (ends in /exec)</span><input type="text" id="scriptUrlInputDirect" placeholder="https://script.google.com/macros/s/.../exec" /></div>
+                </div>
+                <button class="btn btn-primary" style="margin-top:8px;" onclick="saveConnection('scriptUrlInputDirect')">💾 Save Connection</button>
+            </div>
             <div id="setupStep2" style="display:none; margin-top:16px;">
                 <span class="form-label">1. Copy this into a new Apps Script project (script.google.com), deploy as Web App (Execute as: Me, Access: Anyone), then paste the resulting URL below:</span>
                 <textarea id="scriptCodeBox" readonly style="width:100%; height:160px; font-family:monospace; font-size:11px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:10px; margin-top:6px;"></textarea>
@@ -447,7 +467,6 @@
     // ============================================================
 
     const EDU_API = '/api/education';
-    let currentSecret = null; // held only long enough to save the connection
     let messageTemplatesByModule = { birthday: [], fee: [], invoice: [] };
     let settings = {};
     let connected = false;
@@ -511,10 +530,10 @@
     // ============================================================
     async function getSetupScript() {
         try {
-            const custom = document.getElementById('customSecretInput').value.trim();
+            const custom = document.getElementById('secretKeyInput').value.trim();
             const qs = custom ? ('?secret=' + encodeURIComponent(custom)) : '';
             const result = await apiFetch('/script' + qs);
-            currentSecret = result.secret;
+            document.getElementById('secretKeyInput').value = result.secret; // always shows the key actually in use
             document.getElementById('scriptCodeBox').value = result.script;
             document.getElementById('setupStep2').style.display = 'block';
             showToast('📜 Script generated — deploy it, then paste the URL below');
@@ -529,24 +548,25 @@
         navigator.clipboard?.writeText(box.value).then(() => showToast('📋 Copied')).catch(() => document.execCommand('copy'));
     }
 
-    async function saveConnection() {
-        const scriptUrl = document.getElementById('scriptUrlInput').value.trim();
+    async function saveConnection(urlFieldId) {
+        urlFieldId = urlFieldId || 'scriptUrlInput';
+        const scriptUrl = document.getElementById(urlFieldId).value.trim();
         if (!scriptUrl) {
             showToast('❌ Paste the deployed Web App URL first', true);
             return;
         }
-        if (!currentSecret) {
-            showToast('❌ Click "Get Setup Script" first — the secret is generated there', true);
+        const secret = document.getElementById('secretKeyInput').value.trim();
+        if (!secret) {
+            showToast('❌ Enter the secret key that matches your deployed script first', true);
             return;
         }
 
         try {
             await apiFetch('/config', {
                 method: 'POST',
-                body: JSON.stringify({ scriptUrl, secret: currentSecret, schoolName: document.getElementById('instituteName').value }),
+                body: JSON.stringify({ scriptUrl, secret, schoolName: document.getElementById('instituteName').value }),
             });
             connected = true;
-            currentSecret = null;
             updateConnectionUI();
             showResult('sheets', '✅ Connected successfully', 'success');
             showToast('✅ Google Sheet connected');
