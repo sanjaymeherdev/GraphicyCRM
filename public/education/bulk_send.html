@@ -952,6 +952,8 @@
         let filteredStudents = [];
         let selectedStudents = new Set();
         let templates = [];
+        let approvedTemplates = []; // live Meta-approved templates — see loadApprovedTemplates()
+        let defaultTemplateName = null; // Settings.defaultBulkSendTemplate — Meta-approved template NAME
         let csvImportedStudents = [];
         let isSending = false;
 
@@ -1047,13 +1049,35 @@
         }
 
         // ============================================================
-        // TEMPLATES — real MessageTemplates sheet, module:'bulk_send'.
-        // Template `name` doubles as the Meta-approved WhatsApp template
-        // name used for actual sending (see modules/education/service.js).
+        // TEMPLATES — the send/default pickers below are populated from
+        // the live Meta-approved list (approvedTemplates), not the local
+        // MessageTemplates sheet — a business-initiated bulk send must use
+        // an APPROVED Meta template, so the dropdown itself should only
+        // ever be able to offer a name Meta will actually accept. The
+        // chosen default is stored as Settings.defaultBulkSendTemplate
+        // (same pattern as defaultBirthdayTemplate/defaultFeeTemplate/
+        // defaultInvoiceTemplate), not a local MessageTemplates row, since
+        // an approved template name has no corresponding local row to flag.
         // ============================================================
         async function loadTemplates() {
-            templates = await apiFetch('/message-templates?module=bulk_send');
+            try {
+                approvedTemplates = await apiFetch('/approved-templates');
+            } catch (err) {
+                approvedTemplates = [];
+                console.error('Failed to load approved WhatsApp templates:', err.message);
+            }
+            try {
+                const settings = await apiFetch('/settings');
+                defaultTemplateName = settings?.defaultBulkSendTemplate || null;
+            } catch (err) {
+                defaultTemplateName = null;
+            }
             populateTemplateSelects();
+        }
+        // Extracts the BODY component's text from a Meta template, for preview only.
+        function approvedTemplateBody(tpl) {
+            const bodyComp = (tpl?.components || []).find(c => c.type === 'BODY');
+            return bodyComp?.text || '';
         }
 
         async function seedDefaultTemplates() {
@@ -1080,37 +1104,34 @@
                 const sel = document.getElementById(selId);
                 if (!sel) return;
                 const currentVal = sel.value;
-                sel.innerHTML = '<option value="">— Select a template —</option>' +
-                    templates.map(t => `<option value="${t.name}" ${t.name === currentVal ? 'selected' : ''}>${t.name}</option>`)
-                    .join('');
+                sel.innerHTML = approvedTemplates.length
+                    ? '<option value="">— Select a template —</option>' +
+                      approvedTemplates.map(t => `<option value="${t.name}" ${t.name === currentVal ? 'selected' : ''}>${t.name} (${t.language})</option>`).join('')
+                    : '<option value="">— No approved templates yet —</option>';
             });
 
-            const defaultName = templates.find(t => String(t.is_default) === 'true')?.name;
-            if (defaultName) {
+            if (defaultTemplateName) {
                 const sel = document.getElementById('templateSelect');
-                if (sel) { sel.value = defaultName; previewTemplate(); }
+                if (sel) { sel.value = defaultTemplateName; previewTemplate(); }
+                const defSel = document.getElementById('defaultTemplateSelect');
+                if (defSel) defSel.value = defaultTemplateName;
             }
         }
 
         async function setDefaultTemplate() {
             const sel = document.getElementById('defaultTemplateSelect');
             const name = sel.value;
-            const current = templates.find(t => String(t.is_default) === 'true');
 
             try {
-                if (current && current.name !== name) {
-                    await apiFetch(`/message-templates/${current.id}`, { method: 'PUT', body: JSON.stringify({ is_default: 'false' }) });
-                }
+                await apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ defaultBulkSendTemplate: name || '' }) });
+                defaultTemplateName = name || null;
                 if (name) {
-                    const target = templates.find(t => t.name === name);
-                    await apiFetch(`/message-templates/${target.id}`, { method: 'PUT', body: JSON.stringify({ is_default: 'true' }) });
                     document.getElementById('templateSelect').value = name;
                     previewTemplate();
                     showToast('✅ Default template set');
                 } else {
                     showToast('Default template cleared');
                 }
-                await loadTemplates();
             } catch (err) {
                 showToast('⚠️ ' + err.message, true);
             }
@@ -1126,16 +1147,17 @@
                 return;
             }
 
-            const template = templates.find(t => t.name === name);
+            const template = approvedTemplates.find(t => t.name === name);
             if (!template) {
                 container.style.display = 'none';
                 return;
             }
 
             container.style.display = 'block';
-            let previewText = template.content || 'No content set for this template';
+            let previewText = approvedTemplateBody(template) || 'No preview available for this template';
             const sampleStudent = students.length > 0 ? students[0] : { name: 'Student', class: '10-A', phone: '919876543210' };
             previewText = previewText
+                .replace(/\{\{\s*1\s*\}\}/g, sampleStudent.name)
                 .replace(/\{\{name\}\}/g, sampleStudent.name)
                 .replace(/\{\{class\}\}/g, sampleStudent.class || 'N/A')
                 .replace(/\{\{phone\}\}/g, sampleStudent.phone || 'N/A');

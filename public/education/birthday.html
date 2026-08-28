@@ -903,6 +903,7 @@
         let autoSendEnabled = false;
         let defaultTemplateName = null; // Meta-approved WhatsApp template NAME, not a local id
         let templates = [];
+        let approvedTemplates = []; // live Meta-approved templates — see loadApprovedTemplates()
         let sentThisYearIds = new Set();
 
         // ============================================================
@@ -922,6 +923,23 @@
         }
         async function checkConnected() {
             try { return !!(await apiFetch('/config')); } catch (e) { return false; }
+        }
+
+        // Live Meta-approved WhatsApp templates — the only names the send
+        // pickers below are allowed to offer (see modules/education's
+        // GET /approved-templates and modules/templates' listMetaApproved).
+        async function loadApprovedTemplates() {
+            try {
+                approvedTemplates = await apiFetch('/approved-templates');
+            } catch (err) {
+                approvedTemplates = [];
+                console.error('Failed to load approved WhatsApp templates:', err.message);
+            }
+        }
+        // Extracts the BODY component's text from a Meta template, for preview only.
+        function approvedTemplateBody(tpl) {
+            const bodyComp = (tpl?.components || []).find(c => c.type === 'BODY');
+            return bodyComp?.text || '';
         }
         function showConnectBanner() {
             const grid = document.getElementById('birthdayGrid');
@@ -1015,6 +1033,7 @@
                 apiFetch('/message-templates?module=birthday'),
                 apiFetch(`/birthday-sent?year=${new Date().getFullYear()}`),
             ]);
+            await loadApprovedTemplates();
 
             birthdayData = (studentRows || [])
                 .filter(s => s.dob)
@@ -1051,11 +1070,13 @@
         }
 
         // ============================================================
-        // TEMPLATES — real MessageTemplates sheet, module:'birthday'.
-        // Template `name` doubles as the Meta-approved WhatsApp template
-        // name used for actual sending (see service.js — birthday/fee/
-        // invoice reminders must use approved templates, not free text,
-        // since these are business-initiated messages).
+        // TEMPLATES — both send pickers below are populated from the live
+        // Meta-approved list (approvedTemplates, loaded in loadAllData via
+        // GET /approved-templates), not the local MessageTemplates sheet —
+        // birthday/fee/invoice reminders must use approved templates, not
+        // free text, since these are business-initiated messages, so the
+        // dropdown itself should only ever be able to offer a name Meta
+        // will actually accept.
         // ============================================================
         function loadTemplatesForBirthday() {
             const selects = ['birthdayTemplateSelect', 'defaultBirthdayTemplate'];
@@ -1063,8 +1084,10 @@
                 const sel = document.getElementById(selId);
                 if (!sel) return;
                 const currentVal = sel.value;
-                sel.innerHTML = '<option value="">— Select a template —</option>' +
-                    templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+                sel.innerHTML = approvedTemplates.length
+                    ? '<option value="">— Select a template —</option>' +
+                      approvedTemplates.map(t => `<option value="${t.name}">${t.name} (${t.language})</option>`).join('')
+                    : '<option value="">— No approved templates yet —</option>';
                 if (currentVal) sel.value = currentVal;
             });
 
@@ -1342,7 +1365,7 @@
                 return;
             }
 
-            const template = templates.find(t => t.name === templateName);
+            const template = approvedTemplates.find(t => t.name === templateName);
             if (!template) {
                 container.style.display = 'none';
                 return;
@@ -1353,7 +1376,8 @@
             const student = birthdayData.find(b => b.id === currentSendStudentId);
             const name = student ? student.name : '[Student Name]';
 
-            let preview = template.content || 'No content set for this template';
+            let preview = approvedTemplateBody(template) || 'No preview available for this template';
+            preview = preview.replace(/\{\{\s*1\s*\}\}/g, `<strong>${escapeHtml(name)}</strong>`);
             preview = preview.replace(/\{\{name\}\}/g, `<strong>${escapeHtml(name)}</strong>`);
             preview = preview.replace(/\n/g, '<br>');
 
